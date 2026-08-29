@@ -3,8 +3,8 @@ import { env } from '@/env';
 
 // Administrative Supabase client using Service Role Key for server-side storage operations
 const supabaseAdmin = createClient(
-  env.NEXT_PUBLIC_SUPABASE_URL,
-  env.SUPABASE_SERVICE_ROLE_KEY,
+  env.NEXT_PUBLIC_SUPABASE_URL || 'https://demo.supabase.co',
+  env.SUPABASE_SERVICE_ROLE_KEY || 'demo-service-role-key',
   {
     auth: {
       persistSession: false,
