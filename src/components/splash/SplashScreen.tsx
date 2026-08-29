@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Sparkles, ShieldCheck } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { TESTING_MODE } from '@/lib/config';
 
 export default function SplashScreen() {
   const router = useRouter();
@@ -12,9 +13,10 @@ export default function SplashScreen() {
   const [isFadingOut, setIsFadingOut] = useState(false);
 
   useEffect(() => {
-    // Smooth progress bar increment over 3 seconds (3000ms)
-    const intervalTime = 30; // 30ms step
-    const totalSteps = 3000 / intervalTime;
+    // Smooth progress bar increment over ~2.5 seconds (2500ms)
+    const duration = 2500;
+    const intervalTime = 25; // 25ms step
+    const totalSteps = duration / intervalTime;
     let currentStep = 0;
 
     const timer = setInterval(() => {
@@ -25,28 +27,34 @@ export default function SplashScreen() {
       if (currentProgress > 30 && currentProgress <= 70) {
         setStatusText('Validating Multi-Tenant Encrypted Session...');
       } else if (currentProgress > 70) {
-        setStatusText('Preparing Enterprise Recruiter Cockpit...');
+        setStatusText(TESTING_MODE ? 'Redirecting to Authentication Entry...' : 'Preparing Enterprise Recruiter Cockpit...');
       }
 
       if (currentStep >= totalSteps) {
         clearInterval(timer);
         setIsFadingOut(true);
 
-        // Perform authentication check at the end of splash screen duration
+        // Perform navigation check at the end of splash screen duration
         setTimeout(async () => {
           try {
-            const supabase = createClient();
-            const { data: { user } } = await supabase.auth.getUser();
-
-            if (user) {
-              router.replace('/cockpit');
-            } else {
+            if (TESTING_MODE) {
+              // Testing Mode: Always force routing to Login Page so user manually clicks Login
               router.replace('/login');
+            } else {
+              // Production Mode: Check session and auto-route if authenticated
+              const supabase = createClient();
+              const { data: { user } } = await supabase.auth.getUser();
+
+              if (user) {
+                router.replace('/cockpit');
+              } else {
+                router.replace('/login');
+              }
             }
           } catch (error) {
             router.replace('/login');
           }
-        }, 300); // 300ms fade transition
+        }, 300); // 300ms fade out transition
       }
     }, intervalTime);
 
@@ -103,7 +111,7 @@ export default function SplashScreen() {
         {/* Multi-Tenant Security Footer Badge */}
         <div className="pt-6 flex items-center justify-center gap-1.5 text-[11px] text-slate-500">
           <ShieldCheck className="h-4 w-4 text-emerald-400" />
-          <span>PostgreSQL RLS Tenant Scoped Security Active</span>
+          <span>{TESTING_MODE ? 'Testing Mode Auth Flow Active' : 'PostgreSQL RLS Tenant Scoped Security Active'}</span>
         </div>
       </div>
     </div>

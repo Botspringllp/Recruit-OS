@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { updateSession } from '@/lib/supabase/middleware';
+import { TESTING_MODE } from '@/lib/config';
 
 export async function middleware(request: NextRequest) {
   const { pathname, hostname } = request.nextUrl;
@@ -25,13 +26,48 @@ export async function middleware(request: NextRequest) {
     subdomain = parts[0];
   }
 
-  // Define public routes: login page, portal review, and splash entry route (/)
+  // Route definitions
   const isLoginRoute = pathname === '/login';
   const isSplashRoute = pathname === '/';
-  const isAuthOrPublicRoute = isLoginRoute || isSplashRoute || pathname.startsWith('/portal/review');
+  const isPublicRoute = isLoginRoute || isSplashRoute || pathname.startsWith('/portal/review');
 
-  // Unauthenticated user attempting to access protected dashboard routes (e.g. /cockpit, /jobs, /candidates)
-  if (!user && !isAuthOrPublicRoute) {
+  // =========================================================================
+  // TESTING MODE AUTHENTICATION BEHAVIOR (TESTING_MODE = true)
+  // =========================================================================
+  if (TESTING_MODE) {
+    // 1. Allow Splash route (/) to render without interception
+    if (isSplashRoute) {
+      return response;
+    }
+
+    // 2. Always allow Login route (/login) to render, even if a session already exists
+    if (isLoginRoute) {
+      return response;
+    }
+
+    // 3. Unauthenticated requests to protected routes redirect to Splash route (/)
+    if (!user && !isPublicRoute) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/';
+      return NextResponse.redirect(url);
+    }
+
+    // Inject tenant headers for authenticated sessions
+    response.headers.set('x-tenant-subdomain', subdomain);
+    if (user) {
+      const agencyId = user.user_metadata?.agency_id || 'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d';
+      response.headers.set('x-agency-id', agencyId);
+      response.headers.set('x-user-id', user.id);
+    }
+
+    return response;
+  }
+
+  // =========================================================================
+  // PRODUCTION MODE AUTHENTICATION BEHAVIOR (TESTING_MODE = false)
+  // =========================================================================
+  // Unauthenticated user attempting to access protected dashboard routes
+  if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     return NextResponse.redirect(url);

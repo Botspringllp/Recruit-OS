@@ -30,7 +30,7 @@ export default function LoginPage() {
         return;
       }
 
-      // Successful login redirect to recruiter cockpit
+      // Explicit user login action successful -> Redirect to recruiter cockpit
       router.push('/cockpit');
       router.refresh();
     } catch (err: any) {
@@ -70,14 +70,17 @@ export default function LoginPage() {
           </div>
         )}
 
-        {/* Form Inputs */}
-        <form onSubmit={handleLogin} className="space-y-4">
+        {/* Form Inputs (Full Browser Password Manager & Autofill Support) */}
+        <form onSubmit={handleLogin} className="space-y-4" method="POST">
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-300">Work Email</label>
+            <label htmlFor="email" className="text-xs font-semibold text-slate-300">Work Email</label>
             <div className="relative">
               <Mail className="h-4 w-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
+                id="email"
+                name="email"
                 type="email"
+                autoComplete="username email"
                 required
                 placeholder="name@agency.com"
                 value={email}
@@ -89,7 +92,7 @@ export default function LoginPage() {
 
           <div className="space-y-1.5">
             <div className="flex justify-between items-center">
-              <label className="text-xs font-semibold text-slate-300">Password</label>
+              <label htmlFor="password" className="text-xs font-semibold text-slate-300">Password</label>
               <a href="#forgot" className="text-[11px] text-brand-400 hover:text-brand-300 transition-colors">
                 Forgot password?
               </a>
@@ -97,7 +100,10 @@ export default function LoginPage() {
             <div className="relative">
               <Lock className="h-4 w-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
+                id="password"
+                name="password"
                 type="password"
+                autoComplete="current-password"
                 required
                 placeholder="••••••••••••"
                 value={password}
