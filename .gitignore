@@ -49,3 +49,6 @@ Thumbs.db
 # Temporary Files & Local Cache
 /tmp/
 *.tmp
+
+# Docs
+/docs
