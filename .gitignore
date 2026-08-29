@@ -2,6 +2,8 @@
 /node_modules
 /.pnp
 .pnp.js
+/docs
+/stitch_design
 
 # Next.js Build Output
 /.next/
@@ -51,4 +53,3 @@ Thumbs.db
 *.tmp
 
 # Docs
-/docs
