@@ -25,18 +25,20 @@ export async function middleware(request: NextRequest) {
     subdomain = parts[0];
   }
 
-  // Public auth routes
-  const isAuthRoute = pathname === '/login' || pathname.startsWith('/portal/review');
+  // Define public routes: login page, portal review, and splash entry route (/)
+  const isLoginRoute = pathname === '/login';
+  const isSplashRoute = pathname === '/';
+  const isAuthOrPublicRoute = isLoginRoute || isSplashRoute || pathname.startsWith('/portal/review');
 
-  // Unauthenticated user attempting to access protected dashboard routes
-  if (!user && !isAuthRoute) {
+  // Unauthenticated user attempting to access protected dashboard routes (e.g. /cockpit, /jobs, /candidates)
+  if (!user && !isAuthOrPublicRoute) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     return NextResponse.redirect(url);
   }
 
-  // Authenticated user attempting to access login page -> redirect to cockpit
-  if (user && isAuthRoute) {
+  // Authenticated user attempting to access login page directly -> redirect to cockpit
+  if (user && isLoginRoute) {
     const url = request.nextUrl.clone();
     url.pathname = '/cockpit';
     return NextResponse.redirect(url);

@@ -1,5 +1,5 @@
-import { redirect } from 'next/navigation';
+import SplashScreen from '@/components/splash/SplashScreen';
 
 export default function RootPage() {
-  redirect('/cockpit');
+  return <SplashScreen />;
 }
