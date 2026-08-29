@@ -56,9 +56,9 @@ export function SubmissionForm({ candidates, jobs, action }: SubmissionFormProps
   }
 
   return (
-    <form onSubmit={handleSubmit} className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-6 max-w-2xl">
+    <form onSubmit={handleSubmit} className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6 max-w-2xl font-sans">
       {errorMessage && (
-        <div className="p-4 bg-rose-500/10 border border-rose-500/30 rounded-xl text-xs text-rose-300">
+        <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl text-xs font-bold text-rose-700">
           {errorMessage}
         </div>
       )}
@@ -66,14 +66,14 @@ export function SubmissionForm({ candidates, jobs, action }: SubmissionFormProps
       <div className="space-y-5 text-xs">
         {/* Candidate Selection */}
         <div className="space-y-1.5">
-          <label className="text-slate-300 font-medium flex items-center gap-1.5">
-            <UserCheck className="h-3.5 w-3.5 text-brand-400" />
-            Select Candidate <span className="text-rose-400">*</span>
+          <label className="text-slate-900 font-extrabold uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+            <UserCheck className="h-3.5 w-3.5 text-amber-600" />
+            Select Candidate <span className="text-rose-500">*</span>
           </label>
           <select
             name="candidateId"
             required
-            className="w-full px-3.5 py-2.5 bg-slate-900/80 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-brand-500 transition"
+            className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 font-bold focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all"
           >
             <option value="">-- Choose Candidate --</option>
             {candidates.map((c) => (
@@ -82,19 +82,19 @@ export function SubmissionForm({ candidates, jobs, action }: SubmissionFormProps
               </option>
             ))}
           </select>
-          {errors.candidateId && <p className="text-[11px] text-rose-400">{errors.candidateId}</p>}
+          {errors.candidateId && <p className="text-[11px] font-bold text-rose-500">{errors.candidateId}</p>}
         </div>
 
         {/* Job Mandate Selection */}
         <div className="space-y-1.5">
-          <label className="text-slate-300 font-medium flex items-center gap-1.5">
-            <Briefcase className="h-3.5 w-3.5 text-indigo-400" />
-            Select Job Mandate Requisition <span className="text-rose-400">*</span>
+          <label className="text-slate-900 font-extrabold uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+            <Briefcase className="h-3.5 w-3.5 text-amber-600" />
+            Select Job Mandate Requisition <span className="text-rose-500">*</span>
           </label>
           <select
             name="jobId"
             required
-            className="w-full px-3.5 py-2.5 bg-slate-900/80 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-brand-500 transition"
+            className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 font-bold focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all"
           >
             <option value="">-- Choose Job Mandate --</option>
             {jobs.map((j) => (
@@ -103,30 +103,30 @@ export function SubmissionForm({ candidates, jobs, action }: SubmissionFormProps
               </option>
             ))}
           </select>
-          {errors.jobId && <p className="text-[11px] text-rose-400">{errors.jobId}</p>}
+          {errors.jobId && <p className="text-[11px] font-bold text-rose-500">{errors.jobId}</p>}
         </div>
 
         {/* Recruiter Intake Notes */}
         <div className="space-y-1.5">
-          <label className="text-slate-300 font-medium flex items-center gap-1.5">
-            <FileText className="h-3.5 w-3.5 text-cyan-400" />
+          <label className="text-slate-900 font-extrabold uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+            <FileText className="h-3.5 w-3.5 text-amber-600" />
             Recruiter Intake & Screening Notes
           </label>
           <textarea
             name="notes"
             rows={4}
             placeholder="Add candidate evaluation summary, notice period flexibility, expected CTC breakdown..."
-            className="w-full px-3.5 py-2.5 bg-slate-900/80 border border-slate-800 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 transition"
+            className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 font-bold placeholder:text-slate-400 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all"
           />
         </div>
       </div>
 
       {/* Buttons */}
-      <div className="flex items-center justify-between pt-4 border-t border-slate-800/80">
+      <div className="flex items-center justify-between pt-6 border-t border-slate-100">
         <button
           type="button"
           onClick={() => router.back()}
-          className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition flex items-center gap-2"
+          className="px-5 py-2.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-extrabold transition flex items-center gap-2"
         >
           <ArrowLeft className="h-4 w-4" />
           Cancel
@@ -135,7 +135,7 @@ export function SubmissionForm({ candidates, jobs, action }: SubmissionFormProps
         <button
           type="submit"
           disabled={loading}
-          className="px-5 py-2.5 bg-gradient-to-r from-brand-600 to-indigo-600 text-white rounded-xl text-xs font-semibold hover:brightness-110 transition flex items-center gap-2 shadow-glow-brand disabled:opacity-50"
+          className="px-6 py-2.5 bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-slate-950 rounded-xl text-xs font-black transition flex items-center gap-2 shadow-md shadow-amber-500/20 disabled:opacity-50"
         >
           {loading ? (
             <>
@@ -144,7 +144,7 @@ export function SubmissionForm({ candidates, jobs, action }: SubmissionFormProps
             </>
           ) : (
             <>
-              <Send className="h-4 w-4" />
+              <Send className="h-4 w-4 stroke-[2.5]" />
               Submit Candidate to Pipeline
             </>
           )}

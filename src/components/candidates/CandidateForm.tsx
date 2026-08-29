@@ -58,9 +58,9 @@ export function CandidateForm({ initialData, action, isEdit = false }: Candidate
   }
 
   return (
-    <form onSubmit={handleSubmit} className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-6 max-w-3xl">
+    <form onSubmit={handleSubmit} className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6 max-w-3xl font-sans">
       {errorMessage && (
-        <div className="p-4 bg-rose-500/10 border border-rose-500/30 rounded-xl text-xs text-rose-300">
+        <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl text-xs font-bold text-rose-700">
           {errorMessage}
         </div>
       )}
@@ -68,9 +68,9 @@ export function CandidateForm({ initialData, action, isEdit = false }: Candidate
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-xs">
         {/* First Name */}
         <div className="space-y-1.5">
-          <label className="text-slate-300 font-medium flex items-center gap-1.5">
-            <User className="h-3.5 w-3.5 text-brand-400" />
-            First Name <span className="text-rose-400">*</span>
+          <label className="text-slate-900 font-extrabold uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+            <User className="h-3.5 w-3.5 text-amber-600" />
+            First Name <span className="text-rose-500">*</span>
           </label>
           <input
             type="text"
@@ -78,16 +78,16 @@ export function CandidateForm({ initialData, action, isEdit = false }: Candidate
             defaultValue={initialData?.firstName || ''}
             placeholder="e.g. Rahul"
             required
-            className="w-full px-3.5 py-2.5 bg-slate-900/80 border border-slate-800 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 transition"
+            className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 font-bold placeholder:text-slate-400 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all"
           />
-          {errors.firstName && <p className="text-[11px] text-rose-400">{errors.firstName}</p>}
+          {errors.firstName && <p className="text-[11px] font-bold text-rose-500">{errors.firstName}</p>}
         </div>
 
         {/* Last Name */}
         <div className="space-y-1.5">
-          <label className="text-slate-300 font-medium flex items-center gap-1.5">
-            <User className="h-3.5 w-3.5 text-brand-400" />
-            Last Name <span className="text-rose-400">*</span>
+          <label className="text-slate-900 font-extrabold uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+            <User className="h-3.5 w-3.5 text-amber-600" />
+            Last Name <span className="text-rose-500">*</span>
           </label>
           <input
             type="text"
@@ -95,16 +95,16 @@ export function CandidateForm({ initialData, action, isEdit = false }: Candidate
             defaultValue={initialData?.lastName || ''}
             placeholder="e.g. Sharma"
             required
-            className="w-full px-3.5 py-2.5 bg-slate-900/80 border border-slate-800 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 transition"
+            className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 font-bold placeholder:text-slate-400 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all"
           />
-          {errors.lastName && <p className="text-[11px] text-rose-400">{errors.lastName}</p>}
+          {errors.lastName && <p className="text-[11px] font-bold text-rose-500">{errors.lastName}</p>}
         </div>
 
         {/* Email */}
         <div className="space-y-1.5">
-          <label className="text-slate-300 font-medium flex items-center gap-1.5">
-            <Mail className="h-3.5 w-3.5 text-cyan-400" />
-            Email Address <span className="text-rose-400">*</span>
+          <label className="text-slate-900 font-extrabold uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+            <Mail className="h-3.5 w-3.5 text-amber-600" />
+            Email Address <span className="text-rose-500">*</span>
           </label>
           <input
             type="email"
@@ -112,16 +112,16 @@ export function CandidateForm({ initialData, action, isEdit = false }: Candidate
             defaultValue={initialData?.email || ''}
             placeholder="e.g. rahul.sharma@example.com"
             required
-            className="w-full px-3.5 py-2.5 bg-slate-900/80 border border-slate-800 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 transition"
+            className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 font-bold placeholder:text-slate-400 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all"
           />
-          {errors.email && <p className="text-[11px] text-rose-400">{errors.email}</p>}
+          {errors.email && <p className="text-[11px] font-bold text-rose-500">{errors.email}</p>}
         </div>
 
         {/* Phone */}
         <div className="space-y-1.5">
-          <label className="text-slate-300 font-medium flex items-center gap-1.5">
-            <Phone className="h-3.5 w-3.5 text-emerald-400" />
-            Phone Number <span className="text-rose-400">*</span>
+          <label className="text-slate-900 font-extrabold uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+            <Phone className="h-3.5 w-3.5 text-amber-600" />
+            Phone Number <span className="text-rose-500">*</span>
           </label>
           <input
             type="text"
@@ -129,15 +129,15 @@ export function CandidateForm({ initialData, action, isEdit = false }: Candidate
             defaultValue={initialData?.phone || ''}
             placeholder="e.g. +919876543210"
             required
-            className="w-full px-3.5 py-2.5 bg-slate-900/80 border border-slate-800 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 transition"
+            className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 font-bold placeholder:text-slate-400 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all"
           />
-          {errors.phone && <p className="text-[11px] text-rose-400">{errors.phone}</p>}
+          {errors.phone && <p className="text-[11px] font-bold text-rose-500">{errors.phone}</p>}
         </div>
 
         {/* Current Company */}
         <div className="space-y-1.5">
-          <label className="text-slate-300 font-medium flex items-center gap-1.5">
-            <Building className="h-3.5 w-3.5 text-slate-400" />
+          <label className="text-slate-900 font-extrabold uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+            <Building className="h-3.5 w-3.5 text-amber-600" />
             Current Company
           </label>
           <input
@@ -145,14 +145,14 @@ export function CandidateForm({ initialData, action, isEdit = false }: Candidate
             name="currentCompany"
             defaultValue={initialData?.currentCompany || ''}
             placeholder="e.g. TechCorp Solutions"
-            className="w-full px-3.5 py-2.5 bg-slate-900/80 border border-slate-800 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 transition"
+            className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 font-bold placeholder:text-slate-400 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all"
           />
         </div>
 
         {/* Designation */}
         <div className="space-y-1.5">
-          <label className="text-slate-300 font-medium flex items-center gap-1.5">
-            <Briefcase className="h-3.5 w-3.5 text-indigo-400" />
+          <label className="text-slate-900 font-extrabold uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+            <Briefcase className="h-3.5 w-3.5 text-amber-600" />
             Designation / Role
           </label>
           <input
@@ -160,14 +160,14 @@ export function CandidateForm({ initialData, action, isEdit = false }: Candidate
             name="currentDesignation"
             defaultValue={initialData?.currentDesignation || ''}
             placeholder="e.g. Senior Software Engineer"
-            className="w-full px-3.5 py-2.5 bg-slate-900/80 border border-slate-800 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 transition"
+            className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 font-bold placeholder:text-slate-400 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all"
           />
         </div>
 
         {/* Total Experience */}
         <div className="space-y-1.5">
-          <label className="text-slate-300 font-medium flex items-center gap-1.5">
-            <Award className="h-3.5 w-3.5 text-amber-400" />
+          <label className="text-slate-900 font-extrabold uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+            <Award className="h-3.5 w-3.5 text-amber-600" />
             Total Experience (Years)
           </label>
           <input
@@ -177,15 +177,15 @@ export function CandidateForm({ initialData, action, isEdit = false }: Candidate
             name="totalExperienceYears"
             defaultValue={initialData?.totalExperienceYears ? String(initialData.totalExperienceYears) : ''}
             placeholder="e.g. 5.5"
-            className="w-full px-3.5 py-2.5 bg-slate-900/80 border border-slate-800 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 transition"
+            className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 font-bold placeholder:text-slate-400 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all"
           />
-          {errors.totalExperienceYears && <p className="text-[11px] text-rose-400">{errors.totalExperienceYears}</p>}
+          {errors.totalExperienceYears && <p className="text-[11px] font-bold text-rose-500">{errors.totalExperienceYears}</p>}
         </div>
 
         {/* Current Location */}
         <div className="space-y-1.5">
-          <label className="text-slate-300 font-medium flex items-center gap-1.5">
-            <MapPin className="h-3.5 w-3.5 text-rose-400" />
+          <label className="text-slate-900 font-extrabold uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+            <MapPin className="h-3.5 w-3.5 text-amber-600" />
             Location
           </label>
           <input
@@ -193,20 +193,20 @@ export function CandidateForm({ initialData, action, isEdit = false }: Candidate
             name="currentLocation"
             defaultValue={initialData?.currentLocation || ''}
             placeholder="e.g. Bengaluru, India"
-            className="w-full px-3.5 py-2.5 bg-slate-900/80 border border-slate-800 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 transition"
+            className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 font-bold placeholder:text-slate-400 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all"
           />
         </div>
 
         {/* Candidate Source */}
         <div className="space-y-1.5 md:col-span-2">
-          <label className="text-slate-300 font-medium flex items-center gap-1.5">
-            <Layers className="h-3.5 w-3.5 text-purple-400" />
+          <label className="text-slate-900 font-extrabold uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+            <Layers className="h-3.5 w-3.5 text-amber-600" />
             Candidate Source
           </label>
           <select
             name="source"
             defaultValue={initialData?.source || 'DIRECT_INTAKE'}
-            className="w-full px-3.5 py-2.5 bg-slate-900/80 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-brand-500 transition"
+            className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 font-bold focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all"
           >
             <option value="DIRECT_INTAKE">Direct Intake</option>
             <option value="LINKEDIN">LinkedIn</option>
@@ -218,11 +218,11 @@ export function CandidateForm({ initialData, action, isEdit = false }: Candidate
       </div>
 
       {/* Buttons */}
-      <div className="flex items-center justify-between pt-4 border-t border-slate-800/80">
+      <div className="flex items-center justify-between pt-6 border-t border-slate-100">
         <button
           type="button"
           onClick={() => router.back()}
-          className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition flex items-center gap-2"
+          className="px-5 py-2.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-extrabold transition flex items-center gap-2"
         >
           <ArrowLeft className="h-4 w-4" />
           Cancel
@@ -231,7 +231,7 @@ export function CandidateForm({ initialData, action, isEdit = false }: Candidate
         <button
           type="submit"
           disabled={loading}
-          className="px-5 py-2.5 bg-gradient-to-r from-brand-600 to-indigo-600 text-white rounded-xl text-xs font-semibold hover:brightness-110 transition flex items-center gap-2 shadow-glow-brand disabled:opacity-50"
+          className="px-6 py-2.5 bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-slate-950 rounded-xl text-xs font-black transition flex items-center gap-2 shadow-md shadow-amber-500/20 disabled:opacity-50"
         >
           {loading ? (
             <>
@@ -240,7 +240,7 @@ export function CandidateForm({ initialData, action, isEdit = false }: Candidate
             </>
           ) : (
             <>
-              <Save className="h-4 w-4" />
+              <Save className="h-4 w-4 stroke-[2.5]" />
               {isEdit ? 'Update Candidate Profile' : 'Save Candidate Record'}
             </>
           )}

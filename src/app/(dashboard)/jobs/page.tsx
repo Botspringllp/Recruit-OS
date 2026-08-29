@@ -67,39 +67,39 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
   const statusOptions = ['ALL', 'DRAFT', 'OPEN', 'ACTIVE', 'ON_HOLD', 'PAUSED', 'FILLED', 'CLOSED', 'CANCELLED'];
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-6 pb-12 font-sans">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-5">
         <div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
-            <Briefcase className="h-6 w-6 text-indigo-600" />
+            <Briefcase className="h-6 w-6 text-amber-500" />
             Job Mandates
           </h1>
-          <p className="text-xs font-semibold text-slate-600 mt-1">
+          <p className="text-xs font-semibold text-slate-500 mt-1">
             Client hiring requisitions & recruitment execution ({totalJobs} total mandates)
           </p>
         </div>
 
         <Link
           href="/jobs/new"
-          className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-extrabold interactive-hover flex items-center gap-2 shadow-md shadow-indigo-600/20 self-start sm:self-auto"
+          className="px-4 py-2.5 bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-slate-950 rounded-xl text-xs font-black shadow-md shadow-amber-500/20 flex items-center gap-2 self-start sm:self-auto transition-all"
         >
-          <Plus className="h-4 w-4" />
+          <Plus className="h-4 w-4 stroke-[3]" />
           Create Mandate
         </Link>
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm shadow-slate-200/50 flex flex-col md:flex-row md:items-center justify-between gap-4 text-xs">
+      <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 text-xs">
         <form method="GET" action="/jobs" className="flex flex-wrap items-center gap-3 flex-1">
           <div className="relative flex-1 min-w-[200px] max-w-xs">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-indigo-600" />
+            <Search className="absolute left-3.5 top-2.5 h-4 w-4 text-amber-500" />
             <input
               type="text"
               name="q"
               defaultValue={query}
               placeholder="Search title, company..."
-              className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 font-bold placeholder:text-slate-500 focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 transition-all duration-200"
+              className="w-full pl-9 pr-4 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 font-bold placeholder:text-slate-400 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all duration-200"
             />
           </div>
 
@@ -109,7 +109,7 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
             <select
               name="status"
               defaultValue={statusFilter}
-              className="px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 font-bold focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 transition-all duration-200"
+              className="px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 font-bold focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all duration-200"
             >
               {statusOptions.map((st) => (
                 <option key={st} value={st}>
@@ -123,7 +123,7 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
           <select
             name="sort"
             defaultValue={sortOption}
-            className="px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 font-bold focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 transition-all duration-200"
+            className="px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 font-bold focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all duration-200"
           >
             <option value="newest">Sort: Newest</option>
             <option value="oldest">Sort: Oldest</option>
@@ -132,13 +132,13 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
 
           <button
             type="submit"
-            className="px-4 py-2 bg-slate-900 hover:bg-indigo-600 text-white rounded-xl font-extrabold interactive-hover transition-all duration-200 shadow-2xs"
+            className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-extrabold transition-all duration-200"
           >
             Filter
           </button>
         </form>
 
-        <span className="text-xs text-slate-600 font-bold shrink-0">
+        <span className="text-xs text-slate-500 font-bold shrink-0">
           Showing {jobList.length > 0 ? skip + 1 : 0}-{skip + jobList.length} of {totalJobs}
         </span>
       </div>
@@ -147,15 +147,15 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {jobList.length > 0 ? (
           jobList.map((job) => (
-            <div key={job.id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm shadow-slate-200/50 hover:shadow-md hover:border-indigo-400/60 transition-all duration-200 flex flex-col justify-between space-y-4">
+            <div key={job.id} className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md hover:border-amber-300 transition-all duration-200 flex flex-col justify-between space-y-4">
               <div className="space-y-3">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
-                    <Link href={`/jobs/${job.id}`} className="font-extrabold text-sm text-slate-900 hover:text-indigo-600 transition-colors line-clamp-1">
+                    <Link href={`/jobs/${job.id}`} className="font-extrabold text-sm text-slate-900 hover:text-amber-600 transition-colors line-clamp-1">
                       {job.title}
                     </Link>
-                    <div className="flex items-center gap-1.5 text-xs text-slate-600 font-semibold mt-1">
-                      <Building2 className="h-3.5 w-3.5 text-indigo-600 shrink-0" />
+                    <div className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold mt-1">
+                      <Building2 className="h-3.5 w-3.5 text-amber-600 shrink-0" />
                       <span className="truncate">{job.client?.companyName || 'Unassigned Client'}</span>
                     </div>
                   </div>
@@ -174,7 +174,7 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
                   <div>
                     <span className="text-[10px] text-slate-500 block uppercase font-bold">Submissions</span>
                     <span className="font-extrabold text-slate-900 flex items-center gap-1">
-                      <Users className="h-3.5 w-3.5 text-indigo-600" />
+                      <Users className="h-3.5 w-3.5 text-amber-600" />
                       {job.submissions.length} Candidates
                     </span>
                   </div>
@@ -193,7 +193,7 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
                 <div className="flex items-center gap-1">
                   <Link
                     href={`/jobs/${job.id}`}
-                    className="p-1.5 rounded-lg bg-slate-100 hover:bg-indigo-600 text-slate-700 hover:text-white transition-all duration-200"
+                    className="p-1.5 rounded-lg bg-slate-100 hover:bg-amber-500 text-slate-700 hover:text-slate-950 transition-all duration-200"
                     title="View Mandate Details"
                   >
                     <ArrowUpRight className="h-4 w-4" />
@@ -211,7 +211,7 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
             </div>
           ))
         ) : (
-          <div className="col-span-full py-12 text-center text-slate-600 bg-white border border-slate-200 rounded-2xl text-xs font-bold shadow-2xs">
+          <div className="col-span-full py-12 text-center text-slate-500 bg-white border border-slate-200 rounded-3xl text-xs font-bold shadow-sm">
             No job mandates found matching your search and filter criteria.
           </div>
         )}
@@ -220,7 +220,7 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="p-4 border-t border-slate-200 flex items-center justify-between text-xs">
-          <span className="text-slate-600 font-bold">
+          <span className="text-slate-500 font-bold">
             Page <span className="font-extrabold text-slate-900">{currentPage}</span> of{' '}
             <span className="font-extrabold text-slate-900">{totalPages}</span>
           </span>
@@ -229,12 +229,12 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
             {currentPage > 1 ? (
               <Link
                 href={`/jobs?page=${currentPage - 1}${query ? `&q=${encodeURIComponent(query)}` : ''}${statusFilter !== 'ALL' ? `&status=${statusFilter}` : ''}&sort=${sortOption}`}
-                className="px-3.5 py-1.5 bg-white border border-slate-300 text-slate-800 hover:bg-slate-100 font-bold rounded-lg flex items-center gap-1 transition-all duration-200 shadow-2xs"
+                className="px-3.5 py-1.5 bg-white border border-slate-300 text-slate-800 hover:bg-slate-50 font-bold rounded-xl flex items-center gap-1 transition-all duration-200"
               >
                 <ChevronLeft className="h-4 w-4" /> Previous
               </Link>
             ) : (
-              <span className="px-3.5 py-1.5 bg-slate-100 border border-slate-200 text-slate-400 font-bold rounded-lg flex items-center gap-1 cursor-not-allowed">
+              <span className="px-3.5 py-1.5 bg-slate-100 border border-slate-200 text-slate-400 font-bold rounded-xl flex items-center gap-1 cursor-not-allowed">
                 <ChevronLeft className="h-4 w-4" /> Previous
               </span>
             )}
@@ -242,12 +242,12 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
             {currentPage < totalPages ? (
               <Link
                 href={`/jobs?page=${currentPage + 1}${query ? `&q=${encodeURIComponent(query)}` : ''}${statusFilter !== 'ALL' ? `&status=${statusFilter}` : ''}&sort=${sortOption}`}
-                className="px-3.5 py-1.5 bg-white border border-slate-300 text-slate-800 hover:bg-slate-100 font-bold rounded-lg flex items-center gap-1 transition-all duration-200 shadow-2xs"
+                className="px-3.5 py-1.5 bg-white border border-slate-300 text-slate-800 hover:bg-slate-50 font-bold rounded-xl flex items-center gap-1 transition-all duration-200"
               >
                 Next <ChevronRight className="h-4 w-4" />
               </Link>
             ) : (
-              <span className="px-3.5 py-1.5 bg-slate-100 border border-slate-200 text-slate-400 font-bold rounded-lg flex items-center gap-1 cursor-not-allowed">
+              <span className="px-3.5 py-1.5 bg-slate-100 border border-slate-200 text-slate-400 font-bold rounded-xl flex items-center gap-1 cursor-not-allowed">
                 Next <ChevronRight className="h-4 w-4" />
               </span>
             )}
