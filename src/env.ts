@@ -47,28 +47,26 @@ export function validateEnv(): Env {
 
   if (!result.success) {
     const formattedErrors = result.error.issues
-      .map((issue) => `  ❌ [${issue.path.join('.')}]: ${issue.message}`)
+      .map((issue) => `  [${issue.path.join('.')}]: ${issue.message}`)
       .join('\n');
 
     const banner = `
 =================================================================
-❌ CRITICAL ENVIRONMENT VALIDATION ERROR — RECRUITOS STARTUP ABORTED
+CRITICAL: ENVIRONMENT VALIDATION ERROR — RECRUITOS STARTUP ABORTED
 =================================================================
-The application failed to initialize because one or more required
-environment variables are missing or invalid:
+Missing or invalid environment variables:
 
 ${formattedErrors}
 
 Please ensure all mandatory variables are defined in '.env.local'
-or system environment before starting RecruitOS.
+or the Vercel Environment Variables dashboard before deploying.
 =================================================================
 `;
 
     console.error(banner);
 
-    if (typeof process !== 'undefined' && typeof process.exit === 'function') {
-      process.exit(1);
-    }
+    // NOTE: Do NOT call process.exit(1) here — it crashes the Edge Runtime (Vercel middleware).
+    // Instead, throw an error that Next.js can handle gracefully.
     throw new Error(banner);
   }
 
