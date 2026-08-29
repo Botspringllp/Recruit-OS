@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Sparkles, Lock, Mail, ArrowRight, ShieldCheck, AlertCircle } from 'lucide-react';
+import { Lock, Mail, ArrowRight, ShieldCheck, AlertCircle } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 
 export default function LoginPage() {
@@ -30,7 +30,7 @@ export default function LoginPage() {
         return;
       }
 
-      // Explicit user login action successful -> Redirect to recruiter cockpit
+      // Successful login redirect to recruiter cockpit
       router.push('/cockpit');
       router.refresh();
     } catch (err: any) {
@@ -40,42 +40,48 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0b0f19] text-white flex flex-col justify-center items-center p-4 relative overflow-hidden font-sans">
-      {/* Background Ambient Glow Effects */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-brand-600/20 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-10 right-10 w-72 h-72 bg-indigo-600/15 rounded-full blur-3xl pointer-events-none" />
+    <div className="min-h-screen bg-[#07090e] text-slate-900 flex flex-col justify-center items-center p-4 relative overflow-hidden font-sans">
+      {/* Ambient Background Glow Effects */}
+      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-amber-500/15 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-10 right-10 w-96 h-96 bg-yellow-600/10 rounded-full blur-[100px] pointer-events-none" />
 
-      {/* Login Card Shell */}
-      <div className="w-full max-w-md glass-panel p-8 rounded-3xl border border-slate-800/80 shadow-2xl space-y-6 relative z-10">
-        {/* Brand Header */}
-        <div className="text-center space-y-2">
-          <div className="h-12 w-12 rounded-2xl bg-gradient-to-tr from-brand-600 via-indigo-600 to-cyan-500 p-0.5 shadow-glow-brand flex items-center justify-center mx-auto mb-3">
-            <div className="h-full w-full bg-slate-950 rounded-[14px] flex items-center justify-center">
-              <Sparkles className="h-6 w-6 text-brand-400" />
-            </div>
+      {/* Main High-Contrast White + Dark Yellow Card Shell */}
+      <div className="w-full max-w-md bg-white p-8 sm:p-10 rounded-3xl border border-amber-200/80 shadow-2xl shadow-amber-500/10 space-y-6 relative z-10 animate-in fade-in zoom-in-95 duration-300">
+        
+        {/* Brand Header with Direct Custom Logo */}
+        <div className="text-center space-y-3">
+          <img
+            src="/recruitos-logo.png"
+            alt="RecruitOS Brand Logo"
+            className="h-16 w-auto mx-auto object-contain"
+          />
+
+          <div className="space-y-1">
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
+              Recruit<span className="text-amber-600">OS</span>
+            </h1>
+            <p className="text-xs font-bold text-slate-500 tracking-wide">
+              Enterprise Recruiter Cockpit & Data Platform
+            </p>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">
-            Sign In to <span className="text-brand-400">RecruitOS</span>
-          </h1>
-          <p className="text-xs text-slate-400">
-            Enterprise Recruiter Cockpit & Data Platform
-          </p>
         </div>
 
         {/* Error Feedback Banner */}
         {errorMsg && (
-          <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2 animate-in fade-in duration-200">
-            <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+          <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center gap-2.5 animate-in fade-in duration-200">
+            <AlertCircle className="h-4 w-4 shrink-0 text-rose-500" />
             <span>{errorMsg}</span>
           </div>
         )}
 
-        {/* Form Inputs (Full Browser Password Manager & Autofill Support) */}
-        <form onSubmit={handleLogin} className="space-y-4" method="POST">
+        {/* High-Contrast Form Inputs */}
+        <form onSubmit={handleLogin} className="space-y-5" method="POST">
           <div className="space-y-1.5">
-            <label htmlFor="email" className="text-xs font-semibold text-slate-300">Work Email</label>
+            <label htmlFor="email" className="text-xs font-extrabold text-slate-800 uppercase tracking-wider block">
+              Work Email
+            </label>
             <div className="relative">
-              <Mail className="h-4 w-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <Mail className="h-4.5 w-4.5 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 id="email"
                 name="email"
@@ -85,20 +91,22 @@ export default function LoginPage() {
                 placeholder="name@agency.com"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-900/80 border border-slate-800 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-brand-500/60 transition-colors"
+                className="w-full pl-11 pr-4 py-3 rounded-xl bg-slate-50 border border-slate-300 text-sm font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:border-amber-500 focus:ring-4 focus:ring-amber-500/20 transition-all"
               />
             </div>
           </div>
 
           <div className="space-y-1.5">
             <div className="flex justify-between items-center">
-              <label htmlFor="password" className="text-xs font-semibold text-slate-300">Password</label>
-              <a href="#forgot" className="text-[11px] text-brand-400 hover:text-brand-300 transition-colors">
+              <label htmlFor="password" className="text-xs font-extrabold text-slate-800 uppercase tracking-wider block">
+                Password
+              </label>
+              <a href="#forgot" className="text-xs font-extrabold text-amber-600 hover:text-amber-700 hover:underline transition-colors">
                 Forgot password?
               </a>
             </div>
             <div className="relative">
-              <Lock className="h-4 w-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <Lock className="h-4.5 w-4.5 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 id="password"
                 name="password"
@@ -108,34 +116,36 @@ export default function LoginPage() {
                 placeholder="••••••••••••"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-900/80 border border-slate-800 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-brand-500/60 transition-colors"
+                className="w-full pl-11 pr-4 py-3 rounded-xl bg-slate-50 border border-slate-300 text-sm font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:border-amber-500 focus:ring-4 focus:ring-amber-500/20 transition-all"
               />
             </div>
           </div>
 
+          {/* Dark Yellow Primary Action Button */}
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 rounded-xl bg-gradient-to-r from-brand-600 via-indigo-600 to-brand-700 hover:from-brand-500 hover:to-indigo-500 text-white font-semibold text-xs shadow-glow-brand transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full py-3.5 rounded-xl bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 active:scale-[0.99] text-white font-extrabold text-sm shadow-lg shadow-amber-500/30 tracking-wide transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {loading ? (
-              <span className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              <span className="h-5 w-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
             ) : (
               <>
                 <span>Sign In to Cockpit</span>
-                <ArrowRight className="h-4 w-4" />
+                <ArrowRight className="h-4 w-4 stroke-[2.5]" />
               </>
             )}
           </button>
         </form>
 
-        {/* Footer Tenant Shield Indicator */}
-        <div className="pt-4 border-t border-slate-800/80 text-center">
-          <p className="text-[11px] text-slate-400 flex items-center justify-center gap-1.5">
-            <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
+        {/* Footer Security Badge */}
+        <div className="pt-4 border-t border-slate-100 text-center">
+          <p className="text-xs font-bold text-slate-600 flex items-center justify-center gap-1.5">
+            <ShieldCheck className="h-4 w-4 text-amber-600" />
             <span>End-to-End Multi-Tenant Encrypted</span>
           </p>
         </div>
+
       </div>
     </div>
   );

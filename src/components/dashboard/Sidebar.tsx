@@ -11,7 +11,6 @@ import {
   Handshake,
   Receipt,
   Settings,
-  Sparkles,
   Award,
   X
 } from 'lucide-react';
@@ -141,19 +140,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
           isOpenMobile ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        {/* Brand Header */}
+        {/* Brand Header with Direct Custom Logo (No background or round container) */}
         <div className="h-16 px-6 flex items-center justify-between border-b border-slate-800/80">
-          <a href="/cockpit" className="flex items-center gap-3 group">
-            <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-indigo-500 via-indigo-600 to-amber-400 p-0.5 shadow-md flex items-center justify-center">
-              <div className="h-full w-full bg-slate-950 rounded-[10px] flex items-center justify-center">
-                <Sparkles className="h-4.5 w-4.5 text-amber-400 group-hover:rotate-12 transition-transform duration-200" />
-              </div>
-            </div>
+          <a href="/cockpit" className="flex items-center gap-2.5 group">
+            <img
+              src="/recruitos-logo.png"
+              alt="RecruitOS Brand Logo"
+              className="h-12 w-auto object-contain group-hover:scale-105 transition-transform duration-200"
+            />
             <div className="flex flex-col">
               <span className="font-extrabold text-base tracking-tight text-white flex items-center gap-1">
                 Recruit<span className="text-amber-400">OS</span>
               </span>
-              <span className="text-[9px] font-extrabold uppercase tracking-widest text-indigo-400">
+              <span className="text-[9px] font-extrabold uppercase tracking-widest text-amber-400">
                 Enterprise SaaS
               </span>
             </div>
@@ -182,12 +181,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 href={item.href}
                 className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 group ${
                   isActive
-                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30 font-extrabold'
+                    ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20 font-black'
                     : 'text-slate-300 hover:text-white hover:bg-slate-800/70'
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <span className={`${isActive ? 'text-white' : 'text-slate-400 group-hover:text-amber-400'} transition-colors`}>
+                  <span className={`${isActive ? 'text-slate-950' : 'text-slate-400 group-hover:text-amber-400'} transition-colors`}>
                     {renderIcon(item.icon)}
                   </span>
                   <span>{item.label}</span>
@@ -195,7 +194,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
                 {item.badgeCount !== undefined && item.badgeCount > 0 && (
                   <span className={`px-2 py-0.5 text-[10px] font-extrabold rounded-full ${
-                    isActive ? 'bg-white text-indigo-950' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                    isActive ? 'bg-slate-950 text-amber-400' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
                   }`}>
                     {item.badgeCount}
                   </span>

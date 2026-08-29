@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Sparkles, ShieldCheck } from 'lucide-react';
+import { ShieldCheck } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { TESTING_MODE } from '@/lib/config';
 
@@ -63,54 +63,51 @@ export default function SplashScreen() {
 
   return (
     <div
-      className={`fixed inset-0 z-50 bg-[#0b0f19] text-white flex flex-col justify-center items-center p-6 transition-opacity duration-300 ${
+      className={`fixed inset-0 z-50 bg-[#07090e] text-white flex flex-col justify-center items-center p-6 transition-opacity duration-300 ${
         isFadingOut ? 'opacity-0 pointer-events-none' : 'opacity-100'
       }`}
     >
       {/* Background Ambient Glow Effects */}
-      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-brand-600/20 rounded-full blur-3xl pointer-events-none animate-pulse" />
-      <div className="absolute bottom-1/4 right-1/3 w-80 h-80 bg-indigo-600/15 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-amber-500/20 rounded-full blur-3xl pointer-events-none animate-pulse" />
+      <div className="absolute bottom-1/4 right-1/3 w-80 h-80 bg-yellow-600/15 rounded-full blur-3xl pointer-events-none" />
 
       {/* Main Centered Splash Branding Card */}
       <div className="w-full max-w-sm text-center space-y-6 relative z-10 animate-in fade-in zoom-in duration-500">
-        {/* Animated Glowing Logo Icon */}
-        <div className="relative mx-auto w-20 h-20">
-          <div className="absolute inset-0 rounded-3xl bg-gradient-to-tr from-brand-600 via-indigo-600 to-cyan-500 blur-md opacity-75 animate-pulse" />
-          <div className="relative h-full w-full rounded-3xl bg-slate-950 border border-slate-800 p-0.5 shadow-2xl flex items-center justify-center">
-            <div className="h-full w-full bg-slate-900/90 rounded-[22px] flex items-center justify-center">
-              <Sparkles className="h-9 w-9 text-brand-400 animate-spin-slow" />
-            </div>
-          </div>
-        </div>
+        {/* Direct Custom Logo */}
+        <img
+          src="/recruitos-logo.png"
+          alt="RecruitOS Logo"
+          className="h-20 w-auto mx-auto object-contain animate-pulse"
+        />
 
         {/* Brand Name & Subtitle */}
         <div className="space-y-1.5">
           <h1 className="text-3xl font-black tracking-tight text-white">
-            Recruit<span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 via-indigo-400 to-cyan-400">OS</span>
+            Recruit<span className="text-amber-500">OS</span>
           </h1>
-          <p className="text-xs font-semibold text-slate-400 tracking-wide uppercase">
+          <p className="text-xs font-bold text-slate-400 tracking-wide uppercase">
             Enterprise Recruitment Operating System
           </p>
         </div>
 
         {/* Progress Bar & Status Telemetry */}
         <div className="space-y-3 pt-4">
-          <div className="w-full bg-slate-900 border border-slate-800 h-2 rounded-full overflow-hidden p-0.5 shadow-inner">
+          <div className="w-full bg-slate-900 border border-slate-800 h-2.5 rounded-full overflow-hidden p-0.5 shadow-inner">
             <div
-              className="bg-gradient-to-r from-brand-500 via-indigo-500 to-cyan-400 h-full rounded-full transition-all duration-75 ease-out shadow-glow-brand"
+              className="bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 h-full rounded-full transition-all duration-75 ease-out shadow-glow-amber"
               style={{ width: `${progress}%` }}
             />
           </div>
 
-          <div className="flex items-center justify-between text-[11px] font-medium text-slate-400">
+          <div className="flex items-center justify-between text-[11px] font-bold text-slate-400">
             <span className="transition-all duration-300">{statusText}</span>
-            <span className="font-mono text-brand-400 font-bold">{progress}%</span>
+            <span className="font-mono text-amber-400 font-extrabold">{progress}%</span>
           </div>
         </div>
 
         {/* Multi-Tenant Security Footer Badge */}
-        <div className="pt-6 flex items-center justify-center gap-1.5 text-[11px] text-slate-500">
-          <ShieldCheck className="h-4 w-4 text-emerald-400" />
+        <div className="pt-6 flex items-center justify-center gap-1.5 text-[11px] font-semibold text-slate-500">
+          <ShieldCheck className="h-4 w-4 text-amber-500" />
           <span>{TESTING_MODE ? 'Testing Mode Auth Flow Active' : 'PostgreSQL RLS Tenant Scoped Security Active'}</span>
         </div>
       </div>
