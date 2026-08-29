@@ -1,0 +1,28 @@
+const fs = require('fs');
+const path = require('path');
+
+const envPath = path.join(process.cwd(), '.env.local');
+if (fs.existsSync(envPath)) {
+  const envConfig = fs.readFileSync(envPath, 'utf-8');
+  envConfig.split('\n').forEach(line => {
+    const cleanedLine = line.replace(/\r/g, '').trim();
+    const match = cleanedLine.match(/^([^=]+)=(.*)$/);
+    if (match) process.env[match[1].trim()] = match[2].trim().replace(/^\"|\"$/g, '');
+  });
+}
+
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
+
+async function inspectColumns() {
+  const cols = await prisma.$queryRawUnsafe(`
+    SELECT column_name, data_type 
+    FROM information_schema.columns 
+    WHERE table_name = 'job_offer_audits';
+  `);
+  console.log('Columns in job_offer_audits:');
+  cols.forEach(c => console.log(` - ${c.column_name} (${c.data_type})`));
+  await prisma.$disconnect();
+}
+
+inspectColumns();

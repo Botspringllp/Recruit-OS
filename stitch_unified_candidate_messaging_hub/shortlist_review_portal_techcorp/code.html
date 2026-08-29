@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>TalentStream | Shortlist Review</title>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Google Fonts: Inter -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "surface-tint": "#565e74",
+            "inverse-primary": "#bec6e0",
+            "on-secondary-fixed-variant": "#554500",
+            "primary-fixed": "#dae2fd",
+            "on-tertiary-fixed": "#001e2c",
+            "on-secondary-container": "#6f5c00",
+            "surface-container-lowest": "#ffffff",
+            "secondary-container": "#fed400",
+            "on-primary-container": "#7c839b",
+            "surface": "#f8f9ff",
+            "on-secondary-fixed": "#231b00",
+            "on-primary-fixed": "#131b2e",
+            "surface-container-high": "#dce9ff",
+            "error-container": "#ffdad6",
+            "secondary-fixed": "#ffe177",
+            "surface-container": "#e5eeff",
+            "outline": "#76777d",
+            "background": "#f8f9ff",
+            "on-surface": "#0b1c30",
+            "inverse-surface": "#213145",
+            "surface-container-highest": "#d3e4fe",
+            "outline-variant": "#c6c6cd",
+            "on-error": "#ffffff",
+            "on-error-container": "#93000a",
+            "tertiary": "#000000",
+            "error": "#ba1a1a",
+            "surface-bright": "#f8f9ff",
+            "on-background": "#0b1c30",
+            "on-secondary": "#ffffff",
+            "on-tertiary-container": "#008ebf",
+            "secondary": "#715d00",
+            "primary-fixed-dim": "#bec6e0",
+            "tertiary-container": "#001e2c",
+            "on-tertiary": "#ffffff",
+            "surface-variant": "#d3e4fe",
+            "on-primary": "#ffffff",
+            "on-tertiary-fixed-variant": "#004c69",
+            "surface-container-low": "#eff4ff",
+            "primary-container": "#131b2e",
+            "on-surface-variant": "#45464d",
+            "tertiary-fixed-dim": "#7bd0ff",
+            "surface-dim": "#cbdbf5",
+            "inverse-on-surface": "#eaf1ff",
+            "tertiary-fixed": "#c4e7ff",
+            "secondary-fixed-dim": "#ebc300",
+            "on-primary-fixed-variant": "#3f465c",
+            "primary": "#000000"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.125rem",
+            "lg": "0.25rem",
+            "xl": "0.5rem",
+            "full": "0.75rem"
+          },
+          "spacing": {
+            "stack-xs": "4px",
+            "margin-desktop": "32px",
+            "sidebar-width": "280px",
+            "stack-lg": "24px",
+            "margin-mobile": "16px",
+            "stack-sm": "8px",
+            "gutter": "24px",
+            "stack-md": "16px",
+            "container-max": "1440px"
+          },
+          "fontFamily": {
+            "headline-lg": ["Inter"],
+            "headline-md": ["Inter"],
+            "body-lg": ["Inter"],
+            "body-md": ["Inter"],
+            "body-sm": ["Inter"],
+            "label-md": ["Inter"],
+            "label-sm": ["Inter"]
+          },
+          "fontSize": {
+            "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+            "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+            "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+            "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+            "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+            "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+            "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "500"}]
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    body {
+      background-color: #f8f9ff;
+      font-family: 'Inter', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      vertical-align: middle;
+    }
+    .candidate-card {
+      transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .candidate-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 20px -8px rgba(0, 0, 0, 0.08);
+    }
+  </style>
+</head>
+<body class="min-h-screen text-on-surface">
+<!-- TopAppBar Component -->
+<!-- JSON Logic: Use style_bg_color, style_brand_logo, style_shell_layout -->
+<header class="bg-primary-container shadow-sm fixed top-0 w-full z-50">
+<div class="flex justify-between items-center w-full px-margin-desktop py-stack-sm h-16">
+<div class="flex items-center gap-stack-md">
+<span class="material-symbols-outlined text-secondary text-2xl">stream</span>
+<h1 class="font-headline-md text-headline-md font-bold text-secondary">
+          TechCorp — Shortlist Review: Senior Backend Lead
+        </h1>
+</div>
+<div class="flex items-center gap-stack-lg">
+<div class="relative hidden md:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-primary-container">search</span>
+<input class="bg-on-primary-fixed-variant/20 border-none rounded-lg pl-10 pr-4 py-2 text-white placeholder:text-on-primary-container focus:ring-2 focus:ring-secondary-container transition-all w-64 text-sm" placeholder="Filter candidates..." type="text"/>
+</div>
+<button class="bg-secondary-container text-on-secondary-fixed font-label-md text-label-md px-stack-md py-2 rounded hover:opacity-90 transition-all">
+          Create Job
+        </button>
+</div>
+</div>
+</header>
+<!-- Main Canvas -->
+<main class="pt-24 pb-12 px-margin-desktop max-w-[1440px] mx-auto">
+<!-- Breadcrumbs / Summary -->
+<div class="mb-stack-lg flex justify-between items-end">
+<div>
+<nav class="flex text-on-primary-container text-body-sm font-body-sm mb-stack-xs">
+<span class="hover:text-secondary cursor-pointer">Jobs</span>
+<span class="mx-2">/</span>
+<span class="text-on-surface">Shortlist Review</span>
+</nav>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Qualified Candidates</h2>
+</div>
+<div class="text-on-primary-container text-body-sm">
+        Showing 3 of 12 profiles
+      </div>
+</div>
+<!-- 3-Column Bento/Grid Layout -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-gutter">
+<!-- Candidate Card 1 -->
+<div class="candidate-card bg-white border border-outline-variant p-stack-lg flex flex-col justify-between h-full">
+<div>
+<div class="flex items-start justify-between mb-stack-md">
+<div class="w-16 h-16 bg-surface-container-highest rounded-full overflow-hidden flex-shrink-0">
+<img class="w-full h-full object-cover" data-alt="A professional headshot of a software engineer in a modern, bright office environment. The subject is looking directly at the camera with a confident smile. The background is softly blurred, showing clean white walls and a hint of lush green office plants, maintaining a high-contrast professional SaaS aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCwMKGtYzCGbtCGH3szLvroEOKfUIvld1_EXNAgU-39Ri6wvPDhxwVfAw9eLt-QCmqDP14_XZyKpsaMcEYrsALyfE3kwcvZ-FGZ0230r1d3xUrrXxkHPYuDHkndqkb2SIjhwEZikvbGvxevxr8PBekfrAT_t9h14ybITmc9ITJeZ3-qthosLXwRv0ZzW4Gj21FvEZL5Ch7hXt3jUnye0Z-Gv7EXgZXopozdYhKOye0yY-K-sLLGz4bC"/>
+</div>
+<span class="bg-green-100 text-green-800 text-label-sm font-label-sm px-2 py-1 rounded">Match: 94%</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface mb-1">Senior Java / AWS Specialist</h3>
+<p class="text-on-primary-container font-body-sm text-body-sm mb-stack-lg">Location: Remote (US-Based)</p>
+<div class="space-y-stack-sm mb-stack-lg">
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-lg">work_history</span>
+<span class="font-body-md text-body-md">7.5 Years Experience</span>
+</div>
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-lg">calendar_today</span>
+<span class="font-body-md text-body-md">Notice: 30 Days</span>
+</div>
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-lg">payments</span>
+<span class="font-body-md text-body-md">Expected: $120k</span>
+</div>
+</div>
+</div>
+<button class="w-full bg-secondary-container text-on-secondary-fixed font-label-md text-label-md py-stack-md rounded-lg hover:bg-secondary transition-colors flex items-center justify-center gap-2">
+          View CV &amp; Details
+          <span class="material-symbols-outlined">arrow_forward</span>
+</button>
+</div>
+<!-- Candidate Card 2 -->
+<div class="candidate-card bg-white border border-outline-variant p-stack-lg flex flex-col justify-between h-full">
+<div>
+<div class="flex items-start justify-between mb-stack-md">
+<div class="w-16 h-16 bg-surface-container-highest rounded-full overflow-hidden flex-shrink-0">
+<img class="w-full h-full object-cover" data-alt="A professional portrait of a tech lead with spectacles, wearing a crisp neutral shirt. The lighting is bright and airy, typical of a high-end corporate setting. The depth of field is shallow, emphasizing the person's friendly and capable expression, perfectly aligned with a minimalist enterprise portal design." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDNUcl0MwAKW4hf7kCdoDHgDfUGib_YAXs9CIzfo7XQHM-REuf-wrc-eJZkZPn5992Fj65_l85LEwE69HNPHxn5mxHkiTKC7cYAeeIjhu4QGmCuqGTBAd9IRhaAIUI2HKf0eUL35W_LRJ92qHrJY9CfLft343tkd4kDSz8ht8IGYmebDognNwT2C6SX4tGtQZtnNCnoBm32p0ZLP5jN3sYR02QOZhuAd9Mv4FnyW57i3Fq2N7CDXlnF"/>
+</div>
+<span class="bg-blue-100 text-blue-800 text-label-sm font-label-sm px-2 py-1 rounded">Match: 88%</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface mb-1">Full Stack Engineer (Node/React)</h3>
+<p class="text-on-primary-container font-body-sm text-body-sm mb-stack-lg">Location: Austin, TX</p>
+<div class="space-y-stack-sm mb-stack-lg">
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-lg">work_history</span>
+<span class="font-body-md text-body-md">6 Years Experience</span>
+</div>
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-lg">bolt</span>
+<span class="font-body-md text-body-md">Notice: Immediate</span>
+</div>
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-lg">payments</span>
+<span class="font-body-md text-body-md">Expected: $115k</span>
+</div>
+</div>
+</div>
+<button class="w-full bg-secondary-container text-on-secondary-fixed font-label-md text-label-md py-stack-md rounded-lg hover:bg-secondary transition-colors flex items-center justify-center gap-2">
+          View CV &amp; Details
+          <span class="material-symbols-outlined">arrow_forward</span>
+</button>
+</div>
+<!-- Candidate Card 3 -->
+<div class="candidate-card bg-white border border-outline-variant p-stack-lg flex flex-col justify-between h-full">
+<div>
+<div class="flex items-start justify-between mb-stack-md">
+<div class="w-16 h-16 bg-surface-container-highest rounded-full overflow-hidden flex-shrink-0">
+<img class="w-full h-full object-cover" data-alt="A sophisticated business profile photo of an experienced backend developer. The subject is set against a clean, minimalist architectural background with large glass windows and soft morning light. The overall mood is one of quiet authority and technical mastery, using a palette of whites and deep grays." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB1DxtnghoUPfZy2-Af-w41lEd3x80qrG0sFxisjiz-QZi6qfJOIQpEgGz_Fyayn0V7CnakKbnK6zd6-mARdgVm5FhJM8Zu2LIfXpMTSmXwnLfc9sg7fq7ptGmHGF-uGB-Srkj7kPPtBW-zWJJDNAh9uM8ZHs33HyrjM-7lJamP9gdyZLZ0d0QVWs3K2SmBuNPCs4p0OBcRVixCu-hMd5m34EnrFjOLR2iIXGEyTnhKuYBODPzc6I7d"/>
+</div>
+<span class="bg-purple-100 text-purple-800 text-label-sm font-label-sm px-2 py-1 rounded">Top Choice</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface mb-1">Backend Architect</h3>
+<p class="text-on-primary-container font-body-sm text-body-sm mb-stack-lg">Location: London, UK (Visa Ready)</p>
+<div class="space-y-stack-sm mb-stack-lg">
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-lg">work_history</span>
+<span class="font-body-md text-body-md">10 Years Experience</span>
+</div>
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-lg">timer</span>
+<span class="font-body-md text-body-md">Notice: 60 Days</span>
+</div>
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-lg">payments</span>
+<span class="font-body-md text-body-md">Expected: $145k</span>
+</div>
+</div>
+</div>
+<button class="w-full bg-secondary-container text-on-secondary-fixed font-label-md text-label-md py-stack-md rounded-lg hover:bg-secondary transition-colors flex items-center justify-center gap-2">
+          View CV &amp; Details
+          <span class="material-symbols-outlined">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- Utility Bar Footer -->
+<div class="mt-margin-desktop bg-surface-container-low border border-outline-variant rounded-xl p-stack-md flex flex-wrap items-center justify-between gap-stack-md">
+<div class="flex items-center gap-stack-md">
+<span class="text-body-sm text-on-primary-container">Batch Actions:</span>
+<button class="flex items-center gap-1 text-on-surface font-label-md text-label-md px-3 py-1 hover:bg-surface-container transition-colors rounded">
+<span class="material-symbols-outlined text-lg">download</span> Export Selected
+        </button>
+<button class="flex items-center gap-1 text-on-surface font-label-md text-label-md px-3 py-1 hover:bg-surface-container transition-colors rounded">
+<span class="material-symbols-outlined text-lg">mail</span> Email Team
+        </button>
+</div>
+<div class="flex items-center gap-stack-sm">
+<button class="w-10 h-10 flex items-center justify-center border border-outline-variant rounded hover:bg-white transition-all">
+<span class="material-symbols-outlined">chevron_left</span>
+</button>
+<span class="text-body-sm font-body-sm px-2">Page 1 of 4</span>
+<button class="w-10 h-10 flex items-center justify-center border border-outline-variant rounded hover:bg-white transition-all">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+</div>
+</main>
+<!-- Micro-interaction Script -->
+<script>
+    document.querySelectorAll('.candidate-card').forEach(card => {
+      card.addEventListener('mouseenter', () => {
+        // Soft focus state logic could go here
+      });
+    });
+    
+    // Smooth scroll and basic interaction handling
+    window.addEventListener('load', () => {
+      document.body.classList.add('opacity-100');
+    });
+  </script>
+</body></html>

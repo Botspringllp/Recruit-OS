@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Bi-Weekly Notice Period Pulse</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "tertiary": "#000000",
+                    "on-surface-variant": "#45464d",
+                    "secondary": "#715d00",
+                    "on-secondary-fixed-variant": "#554500",
+                    "secondary-fixed-dim": "#ebc300",
+                    "secondary-container": "#fed400",
+                    "on-secondary-container": "#6f5c00",
+                    "inverse-on-surface": "#eaf1ff",
+                    "background": "#f8f9ff",
+                    "outline": "#76777d",
+                    "tertiary-container": "#001e2c",
+                    "surface-variant": "#d3e4fe",
+                    "outline-variant": "#c6c6cd",
+                    "on-secondary": "#ffffff",
+                    "on-error-container": "#93000a",
+                    "surface-tint": "#565e74",
+                    "surface-dim": "#cbdbf5",
+                    "error-container": "#ffdad6",
+                    "secondary-fixed": "#ffe177",
+                    "surface": "#f8f9ff",
+                    "on-primary-fixed": "#131b2e",
+                    "tertiary-fixed": "#c4e7ff",
+                    "on-tertiary": "#ffffff",
+                    "primary-fixed": "#dae2fd",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-container-high": "#dce9ff",
+                    "on-primary-fixed-variant": "#3f465c",
+                    "primary-container": "#131b2e",
+                    "on-surface": "#0b1c30",
+                    "error": "#ba1a1a",
+                    "surface-container-highest": "#d3e4fe",
+                    "on-tertiary-fixed-variant": "#004c69",
+                    "on-background": "#0b1c30",
+                    "on-secondary-fixed": "#231b00",
+                    "surface-bright": "#f8f9ff",
+                    "on-tertiary-container": "#008ebf",
+                    "on-primary-container": "#7c839b",
+                    "primary-fixed-dim": "#bec6e0",
+                    "on-error": "#ffffff",
+                    "surface-container-low": "#eff4ff",
+                    "on-primary": "#ffffff",
+                    "on-tertiary-fixed": "#001e2c",
+                    "inverse-primary": "#bec6e0",
+                    "surface-container": "#e5eeff",
+                    "primary": "#000000",
+                    "inverse-surface": "#213145",
+                    "tertiary-fixed-dim": "#7bd0ff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "margin-mobile": "16px",
+                    "gutter": "24px",
+                    "stack-xs": "4px",
+                    "stack-sm": "8px",
+                    "stack-md": "16px",
+                    "stack-lg": "24px",
+                    "margin-desktop": "32px",
+                    "sidebar-width": "280px",
+                    "container-max": "1440px"
+            },
+            "fontFamily": {
+                    "label-md": ["Inter"],
+                    "body-md": ["Inter"],
+                    "headline-lg-mobile": ["Inter"],
+                    "label-sm": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "display-lg": ["Inter"]
+            },
+            "fontSize": {
+                    "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8f9ff;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .pulse-shadow {
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05);
+        }
+        .active-ring {
+            box-shadow: 0 0 0 2px #fed40033;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface antialiased">
+<!-- Top Navigation Bar -->
+<header class="fixed top-0 w-full z-50 bg-surface border-b border-outline-variant shadow-sm h-16 flex items-center px-margin-mobile mx-auto">
+<div class="flex items-center w-full max-w-container-max mx-auto justify-between">
+<div class="flex items-center gap-4">
+<button class="material-symbols-outlined text-primary active:scale-95 duration-150 p-2 hover:bg-surface-container-low rounded-full">arrow_back</button>
+<span class="font-headline-md text-headline-md font-bold text-primary">RecruitOS</span>
+</div>
+<div class="h-8 w-8 rounded-full bg-primary-container flex items-center justify-center text-on-primary-container text-xs font-bold">JD</div>
+</div>
+</header>
+<!-- Main Content Area -->
+<main class="pt-24 pb-32 px-margin-mobile max-w-md mx-auto min-h-screen">
+<!-- Header Card -->
+<section class="mb-stack-lg">
+<div class="bg-surface-container-lowest p-stack-lg rounded-xl pulse-shadow border border-outline-variant">
+<h1 class="font-headline-md text-headline-md text-primary mb-stack-sm">Notice Period Update — Day 15 of 60</h1>
+<div class="w-full bg-surface-container rounded-full h-2 overflow-hidden">
+<div class="bg-primary h-full transition-all duration-1000 ease-out" style="width: 25%"></div>
+</div>
+<p class="font-label-sm text-label-sm text-on-surface-variant mt-stack-sm">25% of notice period completed. Keep us updated to ensure a smooth transition.</p>
+</div>
+</section>
+<!-- Pulse Form -->
+<form class="space-y-stack-lg" id="pulseForm">
+<div class="space-y-stack-md">
+<label class="font-headline-md text-headline-md block text-primary">Has your current employer made a counter-offer?</label>
+<div class="grid gap-stack-sm">
+<!-- Choice 1 -->
+<label class="relative flex items-center p-stack-md bg-surface-container-lowest border border-outline-variant rounded-lg cursor-pointer hover:bg-surface-container-low transition-colors active:scale-[0.98]">
+<input class="sr-only peer" name="counter_offer" type="radio" value="no"/>
+<div class="flex items-center gap-stack-md w-full">
+<div class="w-5 h-5 rounded-full border-2 border-outline flex items-center justify-center peer-checked:border-primary peer-checked:bg-primary transition-all">
+<div class="w-2 h-2 bg-white rounded-full opacity-0 peer-checked:opacity-100"></div>
+</div>
+<span class="font-body-md text-body-md text-on-surface">No Counter-Offer</span>
+</div>
+<div class="absolute inset-0 border-2 border-transparent peer-checked:border-primary rounded-lg pointer-events-none"></div>
+</label>
+<!-- Choice 2 (Highlighted Warning) -->
+<label class="relative flex items-center p-stack-md bg-secondary-container border border-secondary-container rounded-lg cursor-pointer hover:opacity-90 transition-all active:scale-[0.98] pulse-shadow">
+<input class="sr-only peer" name="counter_offer" type="radio" value="advice"/>
+<div class="flex items-center gap-stack-md w-full">
+<div class="w-5 h-5 rounded-full border-2 border-tertiary flex items-center justify-center peer-checked:bg-tertiary transition-all">
+<div class="w-2 h-2 bg-secondary-container rounded-full opacity-0 peer-checked:opacity-100"></div>
+</div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-tertiary">Counter-Offer Made</span>
+<span class="text-[12px] font-medium text-on-secondary-container">(Need Recruiter Advice)</span>
+</div>
+</div>
+<div class="absolute inset-0 border-2 border-transparent peer-checked:border-tertiary rounded-lg pointer-events-none"></div>
+</label>
+<!-- Choice 3 -->
+<label class="relative flex items-center p-stack-md bg-surface-container-lowest border border-outline-variant rounded-lg cursor-pointer hover:bg-surface-container-low transition-colors active:scale-[0.98]">
+<input class="sr-only peer" name="counter_offer" type="radio" value="declined"/>
+<div class="flex items-center gap-stack-md w-full">
+<div class="w-5 h-5 rounded-full border-2 border-outline flex items-center justify-center peer-checked:border-primary peer-checked:bg-primary transition-all">
+<div class="w-2 h-2 bg-white rounded-full opacity-0 peer-checked:opacity-100"></div>
+</div>
+<span class="font-body-md text-body-md text-on-surface">Declined Counter-Offer</span>
+</div>
+<div class="absolute inset-0 border-2 border-transparent peer-checked:border-primary rounded-lg pointer-events-none"></div>
+</label>
+</div>
+</div>
+<!-- Upload Zone -->
+<div class="space-y-stack-sm">
+<label class="font-label-md text-label-md text-on-surface-variant px-1">Upload Resignation Acceptance Copy (PDF/Image)</label>
+<div class="border-2 border-dashed border-outline-variant rounded-xl p-stack-lg bg-surface-container-low flex flex-col items-center justify-center gap-stack-sm hover:bg-surface-container transition-all cursor-pointer" id="dropzone">
+<span class="material-symbols-outlined text-outline text-4xl">cloud_upload</span>
+<div class="text-center">
+<p class="font-body-md text-body-md text-primary font-semibold">Tap to select or drag &amp; drop</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Maximum file size: 5MB</p>
+</div>
+<input accept=".pdf,image/*" class="hidden" id="fileInput" type="file"/>
+</div>
+<!-- File preview placeholder -->
+<div class="hidden p-stack-sm bg-surface-container-high rounded-lg flex items-center justify-between" id="filePreview">
+<div class="flex items-center gap-stack-sm">
+<span class="material-symbols-outlined text-primary">description</span>
+<span class="font-label-sm text-label-sm text-primary truncate max-w-[200px]" id="fileName">resignation.pdf</span>
+</div>
+<button class="material-symbols-outlined text-error text-xl" id="removeFile" type="button">close</button>
+</div>
+</div>
+<!-- Submit Button -->
+<div class="fixed bottom-16 left-0 w-full p-margin-mobile bg-gradient-to-t from-background via-background to-transparent md:relative md:bottom-0 md:bg-none md:p-0">
+<button class="w-full bg-primary text-on-primary h-14 rounded-lg font-label-md text-label-md flex items-center justify-center gap-stack-sm active:scale-95 transition-all shadow-lg md:shadow-none" type="submit">
+                    Submit Update
+                    <span class="material-symbols-outlined">send</span>
+</button>
+</div>
+</form>
+</main>
+<!-- Bottom Navigation Bar (Contextual Suppression Logic applied for sub-pages, but showing as anchor per JSON) -->
+<nav class="fixed bottom-0 left-0 w-full flex justify-around items-center h-16 px-4 bg-tertiary z-50">
+<a class="flex flex-col items-center justify-center text-on-secondary dark:text-on-surface-variant hover:bg-on-tertiary-fixed-variant transition-all active:opacity-80 scale-98" href="#">
+<span class="material-symbols-outlined">event_available</span>
+<span class="font-label-sm text-label-sm">Interviews</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary dark:text-on-surface-variant hover:bg-on-tertiary-fixed-variant transition-all active:opacity-80 scale-98" href="#">
+<span class="material-symbols-outlined">inventory_2</span>
+<span class="font-label-sm text-label-sm">Prep Kit</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary dark:text-on-surface-variant hover:bg-on-tertiary-fixed-variant transition-all active:opacity-80 scale-98" href="#">
+<span class="material-symbols-outlined">schedule</span>
+<span class="font-label-sm text-label-sm">Slots</span>
+</a>
+<a class="flex flex-col items-center justify-center text-secondary-container dark:text-primary font-bold border-l-4 border-secondary-container pl-1 hover:bg-on-tertiary-fixed-variant transition-all active:opacity-80 scale-98" href="#">
+<span class="material-symbols-outlined">timer</span>
+<span class="font-label-sm text-label-sm">Notice</span>
+</a>
+</nav>
+<script>
+        // Simple micro-interactions
+        const dropzone = document.getElementById('dropzone');
+        const fileInput = document.getElementById('fileInput');
+        const filePreview = document.getElementById('filePreview');
+        const fileName = document.getElementById('fileName');
+        const removeFile = document.getElementById('removeFile');
+
+        dropzone.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                fileName.textContent = e.target.files[0].name;
+                filePreview.classList.remove('hidden');
+                dropzone.classList.add('hidden');
+            }
+        });
+
+        removeFile.addEventListener('click', (e) => {
+            e.stopPropagation();
+            fileInput.value = '';
+            filePreview.classList.add('hidden');
+            dropzone.classList.remove('hidden');
+        });
+
+        // Form submission animation
+        const form = document.getElementById('pulseForm');
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const btn = form.querySelector('button[type="submit"]');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="material-symbols-outlined animate-spin">refresh</span> Submitting...';
+            
+            setTimeout(() => {
+                btn.innerHTML = '<span class="material-symbols-outlined">check_circle</span> Success';
+                btn.classList.replace('bg-primary', 'bg-green-600');
+                
+                // Subtle haptic-like visual feedback
+                if (window.navigator.vibrate) window.navigator.vibrate(50);
+            }, 1200);
+        });
+
+        // Radio button visual focus enhancement
+        const radios = document.querySelectorAll('input[name="counter_offer"]');
+        radios.forEach(radio => {
+            radio.addEventListener('change', () => {
+                radios.forEach(r => r.closest('label').classList.remove('active-ring'));
+                radio.closest('label').classList.add('active-ring');
+            });
+        });
+    </script>
+</body></html>

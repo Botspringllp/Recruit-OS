@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RecruitPro | Probation Guarantee Tracker</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-secondary-fixed-variant": "#554500",
+                    "inverse-primary": "#bec6e0",
+                    "surface-dim": "#cbdbf5",
+                    "inverse-on-surface": "#eaf1ff",
+                    "error-container": "#ffdad6",
+                    "on-primary-fixed-variant": "#3f465c",
+                    "on-primary-container": "#7c839b",
+                    "on-error": "#ffffff",
+                    "surface-container-highest": "#d3e4fe",
+                    "primary-fixed-dim": "#bec6e0",
+                    "surface-container-high": "#dce9ff",
+                    "on-surface": "#0b1c30",
+                    "secondary-fixed-dim": "#ebc300",
+                    "surface": "#f8f9ff",
+                    "secondary": "#715d00",
+                    "tertiary": "#000000",
+                    "primary": "#000000",
+                    "on-secondary-container": "#6f5c00",
+                    "tertiary-fixed-dim": "#7bd0ff",
+                    "outline-variant": "#c6c6cd",
+                    "on-error-container": "#93000a",
+                    "tertiary-container": "#001e2c",
+                    "surface-container": "#e5eeff",
+                    "secondary-container": "#fed400",
+                    "primary-container": "#131b2e",
+                    "on-primary-fixed": "#131b2e",
+                    "on-secondary": "#ffffff",
+                    "error": "#ba1a1a",
+                    "on-secondary-fixed": "#231b00",
+                    "inverse-surface": "#213145",
+                    "surface-bright": "#f8f9ff",
+                    "surface-variant": "#d3e4fe",
+                    "surface-container-lowest": "#ffffff",
+                    "on-tertiary-container": "#008ebf",
+                    "surface-tint": "#565e74",
+                    "on-background": "#0b1c30",
+                    "on-tertiary-fixed-variant": "#004c69",
+                    "on-tertiary-fixed": "#001e2c",
+                    "secondary-fixed": "#ffe177",
+                    "background": "#f8f9ff",
+                    "primary-fixed": "#dae2fd",
+                    "on-surface-variant": "#45464d",
+                    "on-tertiary": "#ffffff",
+                    "surface-container-low": "#eff4ff",
+                    "outline": "#76777d",
+                    "on-primary": "#ffffff",
+                    "tertiary-fixed": "#c4e7ff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "container-max": "1440px",
+                    "stack-sm": "8px",
+                    "stack-md": "16px",
+                    "stack-xs": "4px",
+                    "stack-lg": "24px",
+                    "margin-mobile": "16px",
+                    "sidebar-width": "280px",
+                    "margin-desktop": "32px",
+                    "gutter": "24px"
+            },
+            "fontFamily": {
+                    "label-sm": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "display-lg": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "headline-lg-mobile": ["Inter"],
+                    "label-md": ["Inter"],
+                    "body-md": ["Inter"]
+            },
+            "fontSize": {
+                    "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #F8FAFC;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .custom-shadow {
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05);
+        }
+        .bento-grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 24px;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen">
+<!-- Sidebar Navigation -->
+<aside class="bg-primary fixed left-0 top-0 h-full w-[280px] border-r border-outline-variant flex flex-col py-stack-lg z-50">
+<div class="px-margin-desktop mb-stack-lg">
+<h1 class="text-headline-md font-headline-md font-bold text-on-primary">RecruitPro</h1>
+<p class="text-label-sm font-label-sm text-on-primary opacity-60">Enterprise Recruitment</p>
+</div>
+<nav class="flex-1 flex flex-col">
+<a class="flex items-center gap-stack-md py-stack-md px-margin-desktop text-on-primary opacity-70 hover:bg-primary-container transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="text-label-md font-label-md">Dashboard</span>
+</a>
+<!-- Active Tab: Candidates -->
+<a class="relative flex items-center gap-stack-md py-stack-md px-margin-desktop text-secondary-container font-bold before:content-[''] before:absolute before:left-0 before:w-1 before:h-full before:bg-secondary-container hover:bg-primary-container transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">person_search</span>
+<span class="text-label-md font-label-md">Candidates</span>
+</a>
+<a class="flex items-center gap-stack-md py-stack-md px-margin-desktop text-on-primary opacity-70 hover:bg-primary-container transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">account_tree</span>
+<span class="text-label-md font-label-md">Pipeline</span>
+</a>
+<a class="flex items-center gap-stack-md py-stack-md px-margin-desktop text-on-primary opacity-70 hover:bg-primary-container transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">payments</span>
+<span class="text-label-md font-label-md">Finance</span>
+</a>
+<div class="mt-auto border-t border-white/10 pt-stack-md">
+<button class="mx-margin-desktop mb-stack-md bg-secondary-container text-primary w-[calc(100%-64px)] py-3 rounded font-bold text-label-md hover:opacity-90 transition-opacity">
+                    Add New Candidate
+                </button>
+<a class="flex items-center gap-stack-md py-stack-md px-margin-desktop text-on-primary opacity-70 hover:bg-primary-container" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="text-label-md font-label-md">Settings</span>
+</a>
+<a class="flex items-center gap-stack-md py-stack-md px-margin-desktop text-on-primary opacity-70 hover:bg-primary-container" href="#">
+<span class="material-symbols-outlined">help</span>
+<span class="text-label-md font-label-md">Help</span>
+</a>
+</div>
+</nav>
+</aside>
+<!-- Top AppBar -->
+<header class="fixed top-0 left-[280px] right-0 h-16 bg-surface border-b border-outline-variant flex justify-between items-center px-margin-desktop z-40 shadow-sm">
+<div class="flex items-center bg-surface-container-low px-4 py-2 rounded-lg border border-outline-variant w-96">
+<span class="material-symbols-outlined text-on-surface-variant mr-2">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-body-sm w-full" placeholder="Search candidates, companies..." type="text"/>
+</div>
+<div class="flex items-center gap-stack-md">
+<button class="p-2 text-on-surface-variant hover:bg-surface-container rounded-full relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-1 right-1 w-2 h-2 bg-error rounded-full"></span>
+</button>
+<div class="h-8 w-[1px] bg-outline-variant mx-2"></div>
+<div class="flex items-center gap-stack-sm cursor-pointer hover:opacity-80">
+<div class="text-right">
+<p class="text-label-md font-bold text-on-surface">Alex Rivera</p>
+<p class="text-[10px] text-on-surface-variant uppercase tracking-widest">Admin</p>
+</div>
+<img class="w-10 h-10 rounded-full border border-outline-variant object-cover" data-alt="Professional studio portrait of a corporate recruitment manager in a minimalist office setting, soft natural window lighting, neutral colors, shallow depth of field with high-end digital aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAJEvZHYGZdGTtibxAuS0qQ3JNA6eus2bTp_raFbDXXvv1T4rbI89waTLTe7LaRxoZXr2KVMlsRe8G1G5rg4KBCsAnc5bqZ8-pY3ai6amf7gclXuA_papenrx37Mc0Noq0_p5pLS_t55IS8rw4Up662mYb7Yh1K4L4yCZQ2frXY5PCuQgI-QXQlpkXPAIe7lwsT03Q6PKqC6h1JJ1v8aAxklYy2ng2jG9MA05XLn-sXViqawI4ovYk1"/>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="ml-[280px] pt-24 px-margin-desktop pb-margin-desktop max-w-container-max mx-auto">
+<!-- Header Section -->
+<div class="mb-stack-lg flex justify-between items-end">
+<div>
+<nav class="flex gap-2 text-body-sm text-on-surface-variant mb-2">
+<span class="hover:underline cursor-pointer">Candidates</span>
+<span>/</span>
+<span class="text-on-surface font-semibold">Ankit Sharma</span>
+</nav>
+<h2 class="text-headline-lg font-headline-lg text-on-surface">Candidate Lifecycle</h2>
+</div>
+<div class="flex gap-stack-sm">
+<button class="px-stack-lg py-2 border border-outline text-on-surface font-bold text-label-md rounded flex items-center gap-2 hover:bg-surface-container-low transition-all">
+<span class="material-symbols-outlined">download</span> Export Report
+                </button>
+<button class="px-stack-lg py-2 bg-primary text-on-primary font-bold text-label-md rounded flex items-center gap-2 hover:opacity-90 transition-all">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">edit</span> Edit Profile
+                </button>
+</div>
+</div>
+<div class="bento-grid">
+<!-- THE REQUESTED COMPONENT: Probation Guarantee Tracker -->
+<div class="col-span-12 lg:col-span-8 bg-surface-container-lowest rounded-xl border border-outline-variant custom-shadow p-stack-lg">
+<div class="flex justify-between items-start mb-stack-lg">
+<div>
+<div class="flex items-center gap-stack-sm mb-1">
+<span class="material-symbols-outlined text-primary">verified_user</span>
+<h3 class="text-headline-md font-headline-md text-on-surface">Probation Guarantee Tracker</h3>
+</div>
+<p class="text-body-md text-on-surface-variant">
+<span class="font-bold text-primary">Ankit Sharma</span> — TechCorp
+                        </p>
+</div>
+<div class="bg-green-50 text-green-700 border border-green-200 px-3 py-1.5 rounded-full flex items-center gap-2">
+<div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+<span class="text-label-md font-bold">Status: Active Probation / Health Score Good</span>
+</div>
+</div>
+<!-- Progress Bar Section -->
+<div class="mb-stack-lg">
+<div class="flex justify-between items-end mb-2">
+<span class="text-body-sm text-on-surface-variant">Day 68 of 90</span>
+<span class="text-label-md font-bold text-primary">22 Days Remaining</span>
+</div>
+<div class="h-4 w-full bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-secondary-container transition-all duration-1000 ease-out" style="width: 75%;"></div>
+</div>
+</div>
+<!-- Timeline Milestones -->
+<div class="grid grid-cols-3 gap-gutter relative mb-stack-lg">
+<!-- Connector Line -->
+<div class="absolute top-4 left-0 right-0 h-[1px] bg-outline-variant -z-0"></div>
+<div class="relative z-10 flex flex-col items-center text-center">
+<div class="w-8 h-8 rounded-full bg-green-100 text-green-700 flex items-center justify-center border-2 border-white mb-2">
+<span class="material-symbols-outlined text-sm">check</span>
+</div>
+<p class="text-label-md font-bold text-on-surface">Day 30 Check</p>
+<p class="text-body-sm text-green-600 font-medium">(Passed)</p>
+</div>
+<div class="relative z-10 flex flex-col items-center text-center">
+<div class="w-8 h-8 rounded-full bg-green-100 text-green-700 flex items-center justify-center border-2 border-white mb-2">
+<span class="material-symbols-outlined text-sm">check</span>
+</div>
+<p class="text-label-md font-bold text-on-surface">Day 60 Pulse</p>
+<p class="text-body-sm text-green-600 font-medium">(Passed)</p>
+</div>
+<div class="relative z-10 flex flex-col items-center text-center">
+<div class="w-8 h-8 rounded-full bg-surface-container-high text-on-surface-variant flex items-center justify-center border-2 border-white mb-2">
+<span class="material-symbols-outlined text-sm">event</span>
+</div>
+<p class="text-label-md font-bold text-on-surface">Day 90 Expiry</p>
+<p class="text-body-sm text-on-surface-variant">(Upcoming - 20th Jan 2027)</p>
+</div>
+</div>
+<!-- Action Button -->
+<div class="flex justify-end pt-stack-md border-t border-outline-variant">
+<button class="bg-[#0F172A] text-white px-stack-lg py-3 rounded-lg flex items-center gap-stack-md hover:bg-black transition-all group">
+<span class="material-symbols-outlined">history_edu</span>
+<span class="text-label-md font-bold">Log Candidate Check-in</span>
+<span class="material-symbols-outlined group-hover:translate-x-1 transition-transform">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- Sidebar Info Card (Candidate Quick Stats) -->
+<div class="col-span-12 lg:col-span-4 bg-primary text-on-primary rounded-xl p-stack-lg custom-shadow flex flex-col">
+<div class="flex items-center gap-stack-md mb-stack-lg">
+<img class="w-16 h-16 rounded-xl object-cover ring-2 ring-secondary-container" data-alt="Portrait of Ankit Sharma, a professional South Asian male in his early 30s, wearing a modern business-casual outfit, set against a clean studio backdrop. High-quality corporate photography, sharp focus, sophisticated lighting with a hint of tech-focused blue-navy aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDmFeP-35JM4XvAacU-2Q829dUnXuyyYXlcp9IheKHA4gv-MOd692IXpASBxq9eNhPO7FKbPYBqpyP9zIL_j1Dozn1DczeS5l6HI-iVMHWl4J4pmqBczpAjoO-On4SOaQcHQwalgrH1nYtmVzLqBqdJvQPEdGx5k_IRrK5lSAMD8IGdzZBctUq-GRu5H84CibWuDLSU7THK_y3-_XiRJ7ByeXq86U1yUx696ZYcSdUWL6a1ShMfkHym"/>
+<div>
+<h4 class="text-headline-md font-bold">Ankit Sharma</h4>
+<p class="text-body-sm opacity-70">Senior Solutions Architect</p>
+</div>
+</div>
+<div class="space-y-stack-md mb-stack-lg">
+<div class="flex justify-between border-b border-white/10 pb-2">
+<span class="text-body-sm opacity-60">Company</span>
+<span class="text-body-sm font-medium">TechCorp Solutions</span>
+</div>
+<div class="flex justify-between border-b border-white/10 pb-2">
+<span class="text-body-sm opacity-60">Placement Date</span>
+<span class="text-body-sm font-medium">Oct 22, 2026</span>
+</div>
+<div class="flex justify-between border-b border-white/10 pb-2">
+<span class="text-body-sm opacity-60">Consultant</span>
+<span class="text-body-sm font-medium">Sarah Jenkins</span>
+</div>
+</div>
+<div class="bg-primary-container p-stack-md rounded-lg mt-auto">
+<p class="text-label-sm font-bold text-secondary-container mb-1">NOTES</p>
+<p class="text-body-sm text-on-primary/80 italic line-clamp-3">
+                        "Initial feedback from the Engineering Manager is very positive. Ankit has already contributed to the Q1 architecture roadmap. Retention probability: High."
+                    </p>
+</div>
+</div>
+<!-- Recent Interactions Feed -->
+<div class="col-span-12 bg-surface-container-lowest rounded-xl border border-outline-variant custom-shadow p-stack-lg">
+<h3 class="text-label-md font-bold text-on-surface mb-stack-lg border-b border-outline-variant pb-2 uppercase tracking-widest">Recent Activity Feed</h3>
+<div class="space-y-stack-lg">
+<!-- Day 60 Check -->
+<div class="flex gap-stack-md">
+<div class="flex flex-col items-center">
+<div class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">chat_bubble</span>
+</div>
+<div class="w-[2px] h-full bg-outline-variant mt-2"></div>
+</div>
+<div class="pb-stack-lg">
+<div class="flex items-center gap-2 mb-1">
+<span class="text-label-md font-bold">Day 60 Pulse Completed</span>
+<span class="text-body-sm text-on-surface-variant">· 8 days ago</span>
+</div>
+<p class="text-body-md text-on-surface-variant bg-surface-container-low p-3 rounded-lg border border-outline-variant">
+                                Candidate reports high satisfaction with team culture. Manager confirmed "exceeds expectations" for initial ramp-up goals.
+                            </p>
+</div>
+</div>
+<!-- Day 30 Check -->
+<div class="flex gap-stack-md">
+<div class="flex flex-col items-center">
+<div class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">task_alt</span>
+</div>
+<div class="w-[2px] h-12 bg-outline-variant mt-2"></div>
+</div>
+<div>
+<div class="flex items-center gap-2 mb-1">
+<span class="text-label-md font-bold">Day 30 Review Signed Off</span>
+<span class="text-body-sm text-on-surface-variant">· Nov 21, 2026</span>
+</div>
+<p class="text-body-md text-on-surface-variant">
+                                Automation of probation milestone triggered guarantee fee partial release.
+                            </p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Contextual Floating Action Button -->
+<button class="fixed bottom-margin-desktop right-margin-desktop w-14 h-14 bg-secondary-container text-primary rounded-full shadow-lg flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-50">
+<span class="material-symbols-outlined" style="font-variation-settings: 'opsz' 48, 'wght' 600;">add</span>
+</button>
+<script>
+        // Simple micro-interaction for the progress bar
+        document.addEventListener('DOMContentLoaded', () => {
+            const progressBar = document.querySelector('.bg-secondary-container');
+            if(progressBar) {
+                setTimeout(() => {
+                    progressBar.style.width = '75.5%'; // Subtle nudge to show it's active
+                }, 500);
+            }
+        });
+    </script>
+</body></html>

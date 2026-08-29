@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+<title>Post-Interview Debrief</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind Configuration -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-primary-container": "#7c839b",
+                    "surface-dim": "#cbdbf5",
+                    "outline-variant": "#c6c6cd",
+                    "on-secondary": "#ffffff",
+                    "inverse-primary": "#bec6e0",
+                    "on-secondary-fixed-variant": "#554500",
+                    "tertiary-fixed": "#c4e7ff",
+                    "primary": "#000000",
+                    "surface-container-lowest": "#ffffff",
+                    "inverse-surface": "#213145",
+                    "error": "#ba1a1a",
+                    "surface": "#f8f9ff",
+                    "background": "#f8f9ff",
+                    "tertiary-fixed-dim": "#7bd0ff",
+                    "on-surface-variant": "#45464d",
+                    "outline": "#76777d",
+                    "surface-container-low": "#eff4ff",
+                    "on-error-container": "#93000a",
+                    "on-tertiary-fixed-variant": "#004c69",
+                    "on-tertiary-fixed": "#001e2c",
+                    "on-tertiary": "#ffffff",
+                    "surface-variant": "#d3e4fe",
+                    "on-primary": "#ffffff",
+                    "surface-container": "#e5eeff",
+                    "primary-fixed": "#dae2fd",
+                    "on-secondary-fixed": "#231b00",
+                    "surface-container-high": "#dce9ff",
+                    "surface-container-highest": "#d3e4fe",
+                    "tertiary": "#000000",
+                    "surface-tint": "#565e74",
+                    "on-error": "#ffffff",
+                    "on-background": "#0b1c30",
+                    "error-container": "#ffdad6",
+                    "secondary": "#715d00",
+                    "secondary-fixed-dim": "#ebc300",
+                    "on-primary-fixed-variant": "#3f465c",
+                    "on-primary-fixed": "#131b2e",
+                    "on-tertiary-container": "#008ebf",
+                    "tertiary-container": "#001e2c",
+                    "secondary-container": "#fed400",
+                    "surface-bright": "#f8f9ff",
+                    "on-surface": "#0b1c30",
+                    "on-secondary-container": "#6f5c00",
+                    "primary-fixed-dim": "#bec6e0",
+                    "secondary-fixed": "#ffe177",
+                    "primary-container": "#131b2e",
+                    "inverse-on-surface": "#eaf1ff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "stack-xs": "4px",
+                    "sidebar-width": "280px",
+                    "stack-sm": "8px",
+                    "margin-mobile": "16px",
+                    "gutter": "24px",
+                    "stack-md": "16px",
+                    "stack-lg": "24px",
+                    "margin-desktop": "32px",
+                    "container-max": "1440px"
+            },
+            "fontFamily": {
+                    "label-sm": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "display-lg": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "body-md": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "label-md": ["Inter"],
+                    "headline-lg-mobile": ["Inter"]
+            },
+            "fontSize": {
+                    "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .filled-icon {
+            font-variation-settings: 'FILL' 1;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 2px;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface min-h-screen flex flex-col">
+<!-- Top Navigation Anchor -->
+<header class="bg-primary-container text-secondary flex justify-between items-center w-full px-margin-mobile h-16 fixed top-0 z-50">
+<div class="flex items-center gap-4">
+<button class="active:scale-95 transition-transform hover:opacity-80">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md font-bold tracking-tight text-secondary">Debrief</h1>
+</div>
+<div class="flex items-center">
+<button class="active:scale-95 transition-transform hover:opacity-80">
+<span class="material-symbols-outlined">account_circle</span>
+</button>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-1 mt-16 px-margin-mobile pt-stack-lg pb-32">
+<!-- Welcome / Title -->
+<div class="mb-stack-lg">
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile text-primary mb-1">Post-Interview Debrief</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Help us calibrate by sharing your thoughts while they're fresh.</p>
+</div>
+<!-- Survey Sections -->
+<div class="space-y-stack-lg">
+<!-- Star Rating Section -->
+<section>
+<label class="block font-label-md text-label-md text-primary mb-stack-sm">How was your experience?</label>
+<div class="bg-surface-container-lowest p-stack-md border border-outline-variant shadow-sm flex justify-center gap-2">
+<!-- Rating Stars (5 Selected) -->
+<span class="material-symbols-outlined text-secondary-container filled-icon text-3xl">star</span>
+<span class="material-symbols-outlined text-secondary-container filled-icon text-3xl">star</span>
+<span class="material-symbols-outlined text-secondary-container filled-icon text-3xl">star</span>
+<span class="material-symbols-outlined text-secondary-container filled-icon text-3xl">star</span>
+<span class="material-symbols-outlined text-secondary-container filled-icon text-3xl">star</span>
+</div>
+</section>
+<!-- Interest Level Section -->
+<section>
+<label class="block font-label-md text-label-md text-primary mb-stack-sm">Interest Level</label>
+<div class="space-y-stack-sm">
+<!-- Option 1: Selected -->
+<div class="flex items-center justify-between p-stack-md bg-secondary-container/10 border-2 border-secondary-container shadow-sm group cursor-pointer transition-all">
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-secondary">100% Excited to Join!</span>
+<span class="text-[11px] text-secondary/70">Ready for the next steps immediately.</span>
+</div>
+<span class="material-symbols-outlined text-secondary filled-icon">check_circle</span>
+</div>
+<!-- Option 2: Unselected -->
+<div class="flex items-center justify-between p-stack-md bg-surface-container-lowest border border-outline-variant hover:border-outline transition-all cursor-pointer">
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface">Have Some Doubts</span>
+<span class="text-[11px] text-on-surface-variant">Need clarification on role or culture.</span>
+</div>
+<div class="w-6 h-6 rounded-full border-2 border-outline-variant"></div>
+</div>
+<!-- Option 3: Unselected -->
+<div class="flex items-center justify-between p-stack-md bg-surface-container-lowest border border-outline-variant hover:border-outline transition-all cursor-pointer">
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface">Not Interested</span>
+<span class="text-[11px] text-on-surface-variant">The position isn't a fit at this time.</span>
+</div>
+<div class="w-6 h-6 rounded-full border-2 border-outline-variant"></div>
+</div>
+</div>
+</section>
+<!-- Quick Notes Section -->
+<section>
+<label class="block font-label-md text-label-md text-primary mb-stack-sm">Quick Notes</label>
+<div class="relative">
+<textarea class="w-full h-40 p-stack-md font-body-md text-body-md bg-surface-container-lowest border border-outline-variant focus:border-primary focus:ring-2 focus:ring-secondary-container/20 outline-none transition-all placeholder:text-on-surface-variant/50" placeholder="Add quick notes or questions asked during the interview..."></textarea>
+</div>
+</section>
+</div>
+</main>
+<!-- Bottom Action Bar -->
+<div class="fixed bottom-0 left-0 right-0 p-margin-mobile bg-white/80 backdrop-blur-md border-t border-outline-variant z-40">
+<button class="w-full bg-primary text-on-primary py-4 px-6 font-label-md text-label-md active:scale-[0.98] transition-transform hover:opacity-90 flex justify-center items-center gap-2">
+            Submit Debrief
+            <span class="material-symbols-outlined text-sm">send</span>
+</button>
+</div>
+<!-- Bottom Navigation Shell (Persistent) -->
+<nav class="fixed bottom-0 w-full z-50 flex justify-around items-center bg-primary px-4 py-2 pb-safe md:hidden">
+<a class="flex flex-col items-center justify-center text-on-primary-container dark:text-on-surface-variant hover:text-secondary-container active:scale-90 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">menu_book</span>
+<span class="font-label-sm text-label-sm">Prep</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-primary-container dark:text-on-surface-variant hover:text-secondary-container active:scale-90 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">event_available</span>
+<span class="font-label-sm text-label-sm">Slots</span>
+</a>
+<a class="flex flex-col items-center justify-center text-secondary dark:text-secondary-fixed bg-primary-container dark:bg-primary rounded-xl px-4 py-1 active:scale-90 transition-all duration-200" href="#">
+<span class="material-symbols-outlined filled-icon">rate_review</span>
+<span class="font-label-sm text-label-sm">Debrief</span>
+</a>
+</nav>
+<!-- Visual Polish: Top Gradient Overlay (Subtle) -->
+<div class="fixed top-16 left-0 w-full h-4 bg-gradient-to-b from-background to-transparent pointer-events-none z-30"></div>
+<script>
+        // Simple Interaction Logic for Radio Cards
+        const cards = document.querySelectorAll('.space-y-stack-sm > div');
+        cards.forEach(card => {
+            card.addEventListener('click', () => {
+                // Reset all
+                cards.forEach(c => {
+                    c.classList.remove('bg-secondary-container/10', 'border-secondary-container', 'border-2');
+                    c.classList.add('bg-surface-container-lowest', 'border-outline-variant', 'border');
+                    const label = c.querySelector('span:first-child');
+                    label.classList.remove('text-secondary');
+                    label.classList.add('text-on-surface');
+                    const iconContainer = c.querySelector('div:last-child, span:last-child');
+                    if (iconContainer.tagName === 'SPAN') {
+                        const newCircle = document.createElement('div');
+                        newCircle.className = 'w-6 h-6 rounded-full border-2 border-outline-variant';
+                        iconContainer.replaceWith(newCircle);
+                    }
+                });
+
+                // Set Active
+                card.classList.remove('bg-surface-container-lowest', 'border-outline-variant', 'border');
+                card.classList.add('bg-secondary-container/10', 'border-secondary-container', 'border-2');
+                const label = card.querySelector('span:first-child');
+                label.classList.remove('text-on-surface');
+                label.classList.add('text-secondary');
+                const circle = card.querySelector('div:last-child');
+                const newIcon = document.createElement('span');
+                newIcon.className = 'material-symbols-outlined text-secondary filled-icon';
+                newIcon.textContent = 'check_circle';
+                circle.replaceWith(newIcon);
+            });
+        });
+    </script>
+</body></html>

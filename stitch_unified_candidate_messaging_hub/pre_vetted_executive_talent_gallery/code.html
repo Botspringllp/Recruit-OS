@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Apex Recruitment Partners | Talent Gallery</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-container-high": "#dce9ff",
+                    "surface-bright": "#f8f9ff",
+                    "error-container": "#ffdad6",
+                    "surface-variant": "#d3e4fe",
+                    "surface": "#f8f9ff",
+                    "surface-container-low": "#eff4ff",
+                    "on-primary-container": "#7c839b",
+                    "background": "#f8f9ff",
+                    "secondary-fixed": "#ffe177",
+                    "primary-container": "#131b2e",
+                    "surface-container": "#e5eeff",
+                    "outline": "#76777d",
+                    "tertiary-container": "#001e2c",
+                    "surface-dim": "#cbdbf5",
+                    "tertiary-fixed": "#c4e7ff",
+                    "on-primary": "#ffffff",
+                    "on-secondary": "#ffffff",
+                    "inverse-on-surface": "#eaf1ff",
+                    "secondary-container": "#fed400",
+                    "on-tertiary-fixed-variant": "#004c69",
+                    "tertiary-fixed-dim": "#7bd0ff",
+                    "surface-container-lowest": "#ffffff",
+                    "on-secondary-container": "#6f5c00",
+                    "inverse-primary": "#bec6e0",
+                    "on-surface-variant": "#45464d",
+                    "on-background": "#0b1c30",
+                    "on-primary-fixed": "#131b2e",
+                    "tertiary": "#000000",
+                    "surface-container-highest": "#d3e4fe",
+                    "inverse-surface": "#213145",
+                    "primary-fixed-dim": "#bec6e0",
+                    "on-surface": "#0b1c30",
+                    "on-primary-fixed-variant": "#3f465c",
+                    "on-secondary-fixed-variant": "#554500",
+                    "on-tertiary-fixed": "#001e2c",
+                    "on-tertiary": "#ffffff",
+                    "surface-tint": "#565e74",
+                    "on-error-container": "#93000a",
+                    "on-error": "#ffffff",
+                    "secondary": "#715d00",
+                    "primary-fixed": "#dae2fd",
+                    "on-tertiary-container": "#008ebf",
+                    "on-secondary-fixed": "#231b00",
+                    "secondary-fixed-dim": "#ebc300",
+                    "primary": "#000000",
+                    "outline-variant": "#c6c6cd",
+                    "error": "#ba1a1a"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "stack-xs": "4px",
+                    "sidebar-width": "280px",
+                    "stack-sm": "8px",
+                    "gutter": "24px",
+                    "container-max": "1440px",
+                    "stack-md": "16px",
+                    "stack-lg": "24px",
+                    "margin-mobile": "16px",
+                    "margin-desktop": "32px"
+            },
+            "fontFamily": {
+                    "display-lg": ["Inter"],
+                    "headline-lg-mobile": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "label-md": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "label-sm": ["Inter"],
+                    "body-md": ["Inter"],
+                    "headline-lg": ["Inter"]
+            },
+            "fontSize": {
+                    "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; background-color: #F8FAFC; }
+        .talent-card {
+            background: white;
+            border: 1px solid #E2E8F0;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .talent-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 20px -5px rgb(0 0 0 / 0.1);
+        }
+        .deep-navy { background-color: #0F172A; }
+        .text-deep-navy { color: #0F172A; }
+        .btn-primary { 
+            background-color: #FFD400; 
+            color: #0F172A; 
+            font-weight: 600;
+            transition: background-color 0.2s;
+        }
+        .btn-primary:hover { background-color: #E6BF00; }
+        .tag-badge {
+            background-color: #F1F5F9;
+            color: #475569;
+            font-size: 0.75rem;
+            font-weight: 500;
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="text-on-background">
+<!-- TopNavBar -->
+<header class="bg-surface-container-lowest sticky top-0 z-50 border-b border-outline-variant shadow-sm">
+<div class="flex justify-between items-center h-16 px-margin-desktop max-w-container-max mx-auto">
+<div class="font-display-lg text-display-lg font-black text-primary">
+                Apex Recruitment Partners
+            </div>
+<nav class="hidden md:flex items-center space-x-gutter">
+<a class="text-primary font-bold border-b-2 border-secondary-container font-label-md text-label-md" href="#">Candidates</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors duration-200 font-label-md text-label-md" href="#">Specialisms</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors duration-200 font-label-md text-label-md" href="#">Insights</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors duration-200 font-label-md text-label-md" href="#">About Us</a>
+</nav>
+<div class="flex items-center space-x-stack-md">
+<button class="text-on-surface-variant hover:text-primary font-label-md text-label-md">Login</button>
+<button class="bg-primary-container text-on-primary font-label-md text-label-md px-6 py-2 rounded-lg hover:opacity-90 transition-opacity">Hire Talent</button>
+</div>
+</div>
+</header>
+<main class="max-w-container-max mx-auto px-margin-desktop py-16">
+<!-- Section Header -->
+<div class="mb-12">
+<div class="inline-flex items-center px-3 py-1 bg-surface-container-high rounded-full mb-4">
+<span class="material-symbols-outlined text-sm mr-2 text-primary" style="font-size: 16px;">verified</span>
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">Vetted &amp; Ready</span>
+</div>
+<h1 class="font-display-lg text-display-lg text-deep-navy mb-4">Pre-Vetted Executive Talent Available</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-2xl">
+                Browse our curated selection of top-tier professionals ready to make an immediate impact on your organization's growth and infrastructure.
+            </p>
+</div>
+<!-- Talent Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-stack-lg">
+<!-- Card 1 -->
+<div class="talent-card p-stack-lg rounded-xl flex flex-col h-full">
+<div class="mb-6 h-48 overflow-hidden rounded-lg bg-surface-container">
+<img class="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-500" data-alt="A professional studio portrait of a confident technology architect in a modern office setting. The lighting is crisp and cinematic, highlighting a sophisticated tech-oriented workspace in the background. The aesthetic is clean and high-end, utilizing a color palette of whites and deep navies, reflecting a precision enterprise atmosphere with a focus on authority and engineering excellence." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA42198lklMy1JWSiHYA54ynxdAucM6IsH7-xzn45di7PAOYFe8sJh72rZyO-azOlgkwkT1SB7scK1xZPDhcPtGDCRr15dESkOE9cXJU2tQO3uPvrMYWc0Li0RWFXiR8vv-Hy8DQj7Ya9LiEjC659d_QCSEv3D-B9amuBFiBCVDZFn-OHnQ6bHE8e45tgZfxf2wL2sAYAllogv1ewm0AHXr1-62T1qboJretcTNQuHEsbHr3D_1ztRq"/>
+</div>
+<div class="flex-grow">
+<h3 class="font-headline-md text-headline-md text-deep-navy mb-2">Senior Java &amp; AWS Architect</h3>
+<div class="flex flex-wrap gap-2 mb-4">
+<span class="tag-badge">Java</span>
+<span class="tag-badge">AWS</span>
+<span class="tag-badge">System Design</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mb-6">
+                        Expert in scaling microservices and cloud infrastructure for high-growth fintech platforms.
+                    </p>
+<div class="grid grid-cols-2 gap-4 py-4 border-t border-outline-variant mb-6">
+<div>
+<p class="font-label-sm text-label-sm text-on-surface-variant uppercase">Experience</p>
+<p class="font-label-md text-label-md text-deep-navy">8 Years</p>
+</div>
+<div>
+<p class="font-label-sm text-label-sm text-on-surface-variant uppercase">Notice Period</p>
+<p class="font-label-md text-label-md text-deep-navy">30 Days</p>
+</div>
+</div>
+</div>
+<button class="btn-primary w-full py-4 rounded-lg flex items-center justify-center gap-2 group">
+<span class="font-label-md text-label-md">Request Full Candidate Profile</span>
+<span class="material-symbols-outlined text-lg transition-transform group-hover:translate-x-1">arrow_forward</span>
+</button>
+</div>
+<!-- Card 2 -->
+<div class="talent-card p-stack-lg rounded-xl flex flex-col h-full border-primary border-2 shadow-xl ring-4 ring-secondary-container/10">
+<div class="mb-6 h-48 overflow-hidden rounded-lg bg-surface-container relative">
+<div class="absolute top-2 right-2 z-10 bg-secondary-container text-on-secondary-container font-label-sm text-label-sm px-2 py-1 rounded shadow-sm">IMMEDIATE HIRE</div>
+<img class="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-500" data-alt="A professional headshot of a seasoned female product leader with a sharp, modern minimalist corporate style. The background features a blurred, high-end collaborative workspace with glass and architectural lines. Lighting is natural yet structured, emphasizing a high-contrast clean design system of deep navies and bright yellows, projecting confidence and product strategy expertise." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDZnfZVTgwFuJzGfEeyqULuu4XcaU5lEy5PmLGz2YdOCWw2eNUdjpJJybfATiSxYeoSYewe6BXrpG1R9W6-WCtsXD8aKEaiQuzyqBwVFEszjVTs8AvLQSTqXBQOhl8Q8SBtPEjCu_4jZed8PIIycZR6stGxw3S-G5XgO_hYLOeBRWOBELUQH3GiIIgia5PcXv-_zeraqUkXw9NZ8WqRKwj46edMG2uxoZCpFqky5lvx3oHpfJHx6Bo9"/>
+</div>
+<div class="flex-grow">
+<h3 class="font-headline-md text-headline-md text-deep-navy mb-2">Full Stack Product Lead</h3>
+<div class="flex flex-wrap gap-2 mb-4">
+<span class="tag-badge">React</span>
+<span class="tag-badge">Node.js</span>
+<span class="tag-badge">Product Strategy</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mb-6">
+                        Seasoned lead with experience building and scaling engineering teams from seed to Series C.
+                    </p>
+<div class="grid grid-cols-2 gap-4 py-4 border-t border-outline-variant mb-6">
+<div>
+<p class="font-label-sm text-label-sm text-on-surface-variant uppercase">Experience</p>
+<p class="font-label-md text-label-md text-deep-navy">10 Years</p>
+</div>
+<div>
+<p class="font-label-sm text-label-sm text-on-surface-variant uppercase">Notice Period</p>
+<p class="font-label-md text-label-md text-deep-navy text-error">Immediate</p>
+</div>
+</div>
+</div>
+<button class="btn-primary w-full py-4 rounded-lg flex items-center justify-center gap-2 group">
+<span class="font-label-md text-label-md">Request Full Candidate Profile</span>
+<span class="material-symbols-outlined text-lg transition-transform group-hover:translate-x-1">arrow_forward</span>
+</button>
+</div>
+<!-- Card 3 -->
+<div class="talent-card p-stack-lg rounded-xl flex flex-col h-full">
+<div class="mb-6 h-48 overflow-hidden rounded-lg bg-surface-container">
+<img class="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-500" data-alt="A striking portrait of a cybersecurity specialist, captured with high-key professional lighting that creates a clean, authoritative minimalist feel. The background hints at a sophisticated network operations center with subtle blue glowing monitors. The overall visual style is sharp and corporate, utilizing a limited palette of deep navy and bright white to communicate security and reliability." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBoA49cgt_3SHYWWlEADjE5pGQJEm3cCBG6f7EMZ8lZ81weNuxO9zUdbOLCWy4vyF8XjJXHgmqnELTaxhI3lZEFPbX6UT4gUHOqg-OO5qvaBl2isuK86RgJw9080vbBHLCPJvUZrlnxzZB_WVs1X_123lFfkFkk3ihlNAGD5buahg6UXAuZRrzFP1kjSk5luDbKf4-d0zNkWQ9q4Au18A2kbewF9zv1DBIrs9gUi5sZpTo_Wg9n4qTP"/>
+</div>
+<div class="flex-grow">
+<h3 class="font-headline-md text-headline-md text-deep-navy mb-2">Cybersecurity Specialist</h3>
+<div class="flex flex-wrap gap-2 mb-4">
+<span class="tag-badge">ISO 27001</span>
+<span class="tag-badge">Ethical Hacking</span>
+<span class="tag-badge">SecOps</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mb-6">
+                        Focused on enterprise security architecture and proactive threat detection for global financial institutions.
+                    </p>
+<div class="grid grid-cols-2 gap-4 py-4 border-t border-outline-variant mb-6">
+<div>
+<p class="font-label-sm text-label-sm text-on-surface-variant uppercase">Experience</p>
+<p class="font-label-md text-label-md text-deep-navy">6 Years</p>
+</div>
+<div>
+<p class="font-label-sm text-label-sm text-on-surface-variant uppercase">Notice Period</p>
+<p class="font-label-md text-label-md text-deep-navy">15 Days</p>
+</div>
+</div>
+</div>
+<button class="btn-primary w-full py-4 rounded-lg flex items-center justify-center gap-2 group">
+<span class="font-label-md text-label-md">Request Full Candidate Profile</span>
+<span class="material-symbols-outlined text-lg transition-transform group-hover:translate-x-1">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- Call to Action Footer -->
+<div class="mt-20 deep-navy rounded-2xl p-margin-desktop text-white relative overflow-hidden">
+<div class="absolute right-0 top-0 w-1/3 h-full opacity-10">
+<span class="material-symbols-outlined text-[300px] absolute -right-20 -top-20">shield_person</span>
+</div>
+<div class="relative z-10">
+<h2 class="font-headline-lg text-headline-lg mb-4">Need a specialized skill set?</h2>
+<p class="font-body-lg text-body-lg mb-8 opacity-80 max-w-lg">Our network extends far beyond this gallery. We have over 500+ pre-vetted executives ready for their next challenge.</p>
+<div class="flex flex-wrap gap-4">
+<button class="btn-primary px-8 py-4 rounded-lg">Speak to a Consultant</button>
+<button class="border border-white/20 hover:bg-white/10 transition-colors px-8 py-4 rounded-lg font-label-md text-label-md">Browse Specialisms</button>
+</div>
+</div>
+</div>
+</main>
+<!-- Footer -->
+<footer class="bg-primary-container text-on-primary-container border-t border-on-primary-fixed-variant">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-stack-lg py-stack-lg px-margin-desktop max-w-container-max mx-auto">
+<div>
+<div class="font-headline-md text-headline-md font-bold text-on-primary-container mb-4">Apex Recruitment Partners</div>
+<p class="font-body-sm text-body-sm opacity-80 mb-6">Precision talent acquisition for high-stakes engineering and executive leadership roles. We connect elite talent with visionary companies.</p>
+<div class="flex gap-4">
+<a class="material-symbols-outlined text-on-primary-container hover:text-secondary-fixed transition-colors" href="#">hub</a>
+<a class="material-symbols-outlined text-on-primary-container hover:text-secondary-fixed transition-colors" href="#">share</a>
+<a class="material-symbols-outlined text-on-primary-container hover:text-secondary-fixed transition-colors" href="#">mail</a>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-stack-md">
+<div class="flex flex-col space-y-2">
+<a class="font-label-sm text-label-sm text-on-primary-container opacity-80 hover:text-secondary-fixed transition-colors" href="#">Privacy Policy</a>
+<a class="font-label-sm text-label-sm text-on-primary-container opacity-80 hover:text-secondary-fixed transition-colors" href="#">Terms of Service</a>
+<a class="font-label-sm text-label-sm text-on-primary-container opacity-80 hover:text-secondary-fixed transition-colors" href="#">Cookie Settings</a>
+</div>
+<div class="flex flex-col space-y-2">
+<a class="font-label-sm text-label-sm text-on-primary-container opacity-80 hover:text-secondary-fixed transition-colors" href="#">LinkedIn</a>
+<a class="font-label-sm text-label-sm text-on-primary-container opacity-80 hover:text-secondary-fixed transition-colors" href="#">Contact</a>
+<div class="mt-4 font-body-sm text-body-sm text-on-primary-container opacity-60">
+                        © 2024 Apex Recruitment Partners. All rights reserved.
+                    </div>
+</div>
+</div>
+</div>
+</footer>
+<script>
+        // Micro-interaction for buttons
+        document.querySelectorAll('button').forEach(button => {
+            button.addEventListener('mousedown', () => {
+                button.style.transform = 'scale(0.98)';
+            });
+            button.addEventListener('mouseup', () => {
+                button.style.transform = 'scale(1)';
+            });
+        });
+    </script>
+</body></html>

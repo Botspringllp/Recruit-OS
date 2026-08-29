@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Partner Ingestion Vault — Shared Mandate #842</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-primary-container": "#7c839b",
+                    "primary-fixed-dim": "#bec6e0",
+                    "secondary-fixed": "#ffe177",
+                    "secondary": "#715d00",
+                    "on-secondary-container": "#6f5c00",
+                    "on-primary": "#ffffff",
+                    "primary-fixed": "#dae2fd",
+                    "on-surface-variant": "#45464d",
+                    "error": "#ba1a1a",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-container-high": "#dce9ff",
+                    "surface": "#f8f9ff",
+                    "secondary-fixed-dim": "#ebc300",
+                    "surface-variant": "#d3e4fe",
+                    "surface-dim": "#cbdbf5",
+                    "primary-container": "#131b2e",
+                    "on-tertiary": "#ffffff",
+                    "on-background": "#0b1c30",
+                    "on-tertiary-container": "#008ebf",
+                    "on-tertiary-fixed": "#001e2c",
+                    "tertiary-fixed-dim": "#7bd0ff",
+                    "outline-variant": "#c6c6cd",
+                    "error-container": "#ffdad6",
+                    "surface-container": "#e5eeff",
+                    "surface-tint": "#565e74",
+                    "primary": "#000000",
+                    "on-tertiary-fixed-variant": "#004c69",
+                    "inverse-on-surface": "#eaf1ff",
+                    "secondary-container": "#fed400",
+                    "on-primary-fixed-variant": "#3f465c",
+                    "surface-bright": "#f8f9ff",
+                    "on-error-container": "#93000a",
+                    "surface-container-highest": "#d3e4fe",
+                    "on-secondary-fixed-variant": "#554500",
+                    "on-secondary-fixed": "#231b00",
+                    "background": "#f8f9ff",
+                    "tertiary-container": "#001e2c",
+                    "inverse-primary": "#bec6e0",
+                    "on-surface": "#0b1c30",
+                    "on-primary-fixed": "#131b2e",
+                    "tertiary": "#000000",
+                    "on-secondary": "#ffffff",
+                    "inverse-surface": "#213145",
+                    "tertiary-fixed": "#c4e7ff",
+                    "surface-container-low": "#eff4ff",
+                    "outline": "#76777d",
+                    "on-error": "#ffffff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "stack-xs": "4px",
+                    "gutter": "24px",
+                    "stack-md": "16px",
+                    "margin-desktop": "32px",
+                    "container-max": "1440px",
+                    "sidebar-width": "280px",
+                    "stack-lg": "24px",
+                    "stack-sm": "8px",
+                    "margin-mobile": "16px"
+            },
+            "fontFamily": {
+                    "headline-md": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "label-md": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "body-md": ["Inter"],
+                    "label-sm": ["Inter"],
+                    "display-lg": ["Inter"],
+                    "body-sm": ["Inter"]
+            },
+            "fontSize": {
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                    "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8f9ff;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .drop-zone-active {
+            border-color: #ffe177;
+            background-color: rgba(255, 225, 119, 0.05);
+        }
+        /* Custom scrollbar for enterprise feel */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="overflow-hidden">
+<!-- Layout Container -->
+<div class="flex h-screen w-full">
+<!-- SideNavBar Component (Mandates Active) -->
+<aside class="fixed left-0 top-0 h-full w-sidebar-width bg-primary-container text-on-primary-container shadow-lg flex flex-col py-stack-lg z-50">
+<div class="px-6 mb-stack-lg">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 bg-secondary-container flex items-center justify-center rounded-lg">
+<span class="material-symbols-outlined text-on-secondary-fixed" style="font-variation-settings: 'FILL' 1;">rocket_launch</span>
+</div>
+<div>
+<h1 class="text-headline-md font-headline-md font-black text-on-primary leading-tight">RecruitPro</h1>
+<p class="text-label-sm font-label-sm opacity-60">Partner Portal</p>
+</div>
+</div>
+</div>
+<nav class="flex-1 space-y-1">
+<!-- Dashboard -->
+<a class="flex items-center gap-3 px-6 py-3 text-on-primary-container hover:bg-on-primary-fixed-variant/10 transition-all group" href="#">
+<span class="material-symbols-outlined text-primary-fixed-dim group-hover:text-secondary-fixed" data-icon="dashboard">dashboard</span>
+<span class="text-label-md font-label-md">Dashboard</span>
+</a>
+<!-- Candidates -->
+<a class="flex items-center gap-3 px-6 py-3 text-on-primary-container hover:bg-on-primary-fixed-variant/10 transition-all group" href="#">
+<span class="material-symbols-outlined text-primary-fixed-dim group-hover:text-secondary-fixed" data-icon="group">group</span>
+<span class="text-label-md font-label-md">Candidates</span>
+</a>
+<!-- Mandates (ACTIVE) -->
+<a class="flex items-center gap-3 px-6 py-3 text-secondary-fixed bg-on-primary-fixed-variant/20 border-l-4 border-secondary-fixed translate-x-1 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="assignment" style="font-variation-settings: 'FILL' 1;">assignment</span>
+<span class="text-label-md font-label-md">Mandates</span>
+</a>
+<!-- Analytics -->
+<a class="flex items-center gap-3 px-6 py-3 text-on-primary-container hover:bg-on-primary-fixed-variant/10 transition-all group" href="#">
+<span class="material-symbols-outlined text-primary-fixed-dim group-hover:text-secondary-fixed" data-icon="insights">insights</span>
+<span class="text-label-md font-label-md">Analytics</span>
+</a>
+<!-- Settings -->
+<a class="flex items-center gap-3 px-6 py-3 text-on-primary-container hover:bg-on-primary-fixed-variant/10 transition-all group" href="#">
+<span class="material-symbols-outlined text-primary-fixed-dim group-hover:text-secondary-fixed" data-icon="settings">settings</span>
+<span class="text-label-md font-label-md">Settings</span>
+</a>
+</nav>
+<div class="px-6 mt-auto">
+<button class="w-full py-4 bg-secondary-container text-on-secondary-fixed font-bold rounded-lg hover:opacity-90 transition-all flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-lg">cloud_upload</span>
+                    Upload New CV
+                </button>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 ml-sidebar-width flex flex-col h-full bg-background overflow-y-auto">
+<!-- TopNavBar Component -->
+<header class="sticky top-0 z-40 bg-primary-container text-on-primary-container shadow-sm border-b border-outline-variant flex justify-between items-center w-full px-margin-desktop py-4 h-20">
+<div class="flex items-center gap-4">
+<h2 class="text-headline-md font-headline-md font-bold text-on-primary tracking-tight">Partner Ingestion Vault — Shared Mandate #842</h2>
+</div>
+<div class="flex items-center gap-6">
+<div class="relative hidden lg:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-primary-fixed-dim text-xl">search</span>
+<input class="bg-on-primary-fixed-variant/20 border-none rounded-full pl-10 pr-4 py-2 text-on-primary placeholder-primary-fixed-dim focus:ring-1 focus:ring-secondary-fixed w-64 text-label-md" placeholder="Search mandates..." type="text"/>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 text-on-primary-container hover:text-secondary-fixed transition-colors">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="p-2 text-on-primary-container hover:text-secondary-fixed transition-colors">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+<button class="p-2 text-on-primary-container hover:text-secondary-fixed transition-colors">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+</button>
+<div class="h-10 w-10 rounded-full border-2 border-secondary-fixed overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Professional headshot of a recruitment manager in a minimalist office setting, soft natural lighting, high-contrast professional look with deep navy and crisp white tones." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAvu1iH7r2FssClXcpeDu2l7Td4NATyExTnS5SLYP8mH2xZMgEO6nPLPfo-QOmhdMqyUWNBVIciQ18Q6Lfdpka3-nLLaPQWZQL-0jmQ1Q3qCRayrRjrSimJNZafdollVGrPXry0ynKi-ukrQBEh_naeBfQJl1MrRIf2_ca440uRkCZdS_vBcIfu22CEe2CxCqG4gE2qStc5Nw4aQBHGzSFY-Yp5F2SKRuSt5jBHtWHFWZKdEwxn4anM"/>
+</div>
+</div>
+</div>
+</header>
+<!-- Page Canvas -->
+<div class="p-stack-lg max-w-container-max mx-auto w-full grid grid-cols-1 xl:grid-cols-12 gap-gutter">
+<!-- Left Column: Ingestion Form -->
+<div class="xl:col-span-5 space-y-gutter">
+<div class="bg-surface-container-lowest border border-outline-variant shadow-sm rounded-xl overflow-hidden">
+<div class="bg-primary-container p-6">
+<h3 class="text-on-primary font-headline-md text-headline-md">Add New Candidate</h3>
+<p class="text-primary-fixed-dim text-body-sm mt-1">Upload CV and provide essential metadata for ingestion.</p>
+</div>
+<div class="p-stack-lg">
+<form class="space-y-stack-lg">
+<!-- CV Upload Area -->
+<div class="relative group">
+<input class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" id="cv-upload" type="file"/>
+<div class="border-2 border-dashed border-outline-variant rounded-xl p-stack-lg flex flex-col items-center justify-center text-center transition-all group-hover:border-secondary-container bg-surface-variant/10" id="drop-zone">
+<div class="w-16 h-16 bg-surface-container-high rounded-full flex items-center justify-center mb-stack-md">
+<span class="material-symbols-outlined text-primary text-3xl">upload_file</span>
+</div>
+<p class="text-on-surface font-label-md">Drop CV here or click to browse</p>
+<p class="text-on-surface-variant text-label-sm mt-1">Supported: PDF, DOCX (Max 10MB)</p>
+</div>
+</div>
+<div class="grid grid-cols-1 gap-stack-md">
+<div>
+<label class="block text-label-md text-on-surface mb-stack-xs">Full Name</label>
+<input class="w-full px-4 py-3 border border-outline-variant rounded-lg focus:ring-2 focus:ring-secondary-fixed/20 focus:border-primary-container outline-none text-body-md transition-all" placeholder="e.g. John Doe" type="text"/>
+</div>
+<div>
+<label class="block text-label-md text-on-surface mb-stack-xs">Email Address</label>
+<input class="w-full px-4 py-3 border border-outline-variant rounded-lg focus:ring-2 focus:ring-secondary-fixed/20 focus:border-primary-container outline-none text-body-md transition-all" placeholder="john.doe@example.com" type="email"/>
+</div>
+<div>
+<label class="block text-label-md text-on-surface mb-stack-xs">Notice Period</label>
+<div class="relative">
+<select class="w-full px-4 py-3 border border-outline-variant rounded-lg appearance-none focus:ring-2 focus:ring-secondary-fixed/20 focus:border-primary-container outline-none text-body-md bg-white cursor-pointer transition-all">
+<option disabled="" selected="" value="">Select duration</option>
+<option>Immediate</option>
+<option>15 Days</option>
+<option>30 Days</option>
+<option>60 Days</option>
+<option>90 Days</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant">expand_more</span>
+</div>
+</div>
+</div>
+<button class="w-full py-4 bg-primary-container text-on-primary font-bold rounded-lg hover:opacity-90 active:scale-95 transition-all flex items-center justify-center gap-2 mt-4 shadow-md" type="submit">
+<span class="material-symbols-outlined">send</span>
+                                    Submit Candidate to Vault
+                                </button>
+</form>
+</div>
+</div>
+<!-- Stats / Mini Bento -->
+<div class="grid grid-cols-2 gap-stack-md">
+<div class="bg-white p-stack-lg border border-outline-variant rounded-xl shadow-sm">
+<p class="text-label-sm text-on-primary-container uppercase tracking-widest">Total Shared</p>
+<p class="text-headline-md font-headline-md text-on-surface mt-1">128</p>
+</div>
+<div class="bg-white p-stack-lg border border-outline-variant rounded-xl shadow-sm">
+<p class="text-label-sm text-on-primary-container uppercase tracking-widest">Pipeline Rate</p>
+<p class="text-headline-md font-headline-md text-on-surface mt-1">84%</p>
+</div>
+</div>
+</div>
+<!-- Right Column: Submission Tracker -->
+<div class="xl:col-span-7 space-y-gutter">
+<div class="bg-surface-container-lowest border border-outline-variant shadow-sm rounded-xl overflow-hidden h-full flex flex-col">
+<div class="p-6 border-b border-outline-variant flex items-center justify-between bg-white">
+<div>
+<h3 class="text-on-surface font-headline-md text-headline-md">Your Submitted Candidates</h3>
+<p class="text-on-surface-variant text-body-sm">Real-time tracking of shared mandate progress.</p>
+</div>
+<button class="p-2 hover:bg-surface-container rounded-full transition-colors">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+<div class="flex-1 overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead class="bg-surface-container-low text-label-md text-on-surface-variant">
+<tr>
+<th class="px-6 py-4 font-semibold uppercase tracking-wider">Candidate</th>
+<th class="px-6 py-4 font-semibold uppercase tracking-wider">Date Submitted</th>
+<th class="px-6 py-4 font-semibold uppercase tracking-wider">Status</th>
+<th class="px-6 py-4"></th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant">
+<!-- Row 1 -->
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="px-6 py-5">
+<div class="flex items-center gap-3">
+<div class="h-10 w-10 bg-primary-container/10 flex items-center justify-center rounded-full text-primary-container font-bold text-label-md">RM</div>
+<div>
+<p class="text-on-surface font-bold text-body-md">Rohan Mehta</p>
+<p class="text-label-sm text-on-surface-variant">Senior Product Designer</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-5">
+<p class="text-body-md text-on-surface">24 Oct 2026</p>
+</td>
+<td class="px-6 py-5">
+<span class="inline-flex items-center px-3 py-1 rounded-full text-label-sm bg-[#F3E8FF] text-[#6B21A8] font-semibold border border-[#D8B4FE]">
+<span class="w-1.5 h-1.5 rounded-full bg-[#9333EA] mr-2"></span>
+                                                Client Interview Scheduled
+                                            </span>
+</td>
+<td class="px-6 py-5 text-right">
+<button class="text-on-surface-variant hover:text-primary transition-colors opacity-0 group-hover:opacity-100">
+<span class="material-symbols-outlined">visibility</span>
+</button>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="px-6 py-5">
+<div class="flex items-center gap-3">
+<div class="h-10 w-10 bg-primary-container/10 flex items-center justify-center rounded-full text-primary-container font-bold text-label-md">SR</div>
+<div>
+<p class="text-on-surface font-bold text-body-md">Siddharth Rao</p>
+<p class="text-label-sm text-on-surface-variant">Frontend Architect</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-5">
+<p class="text-body-md text-on-surface">26 Oct 2026</p>
+</td>
+<td class="px-6 py-5">
+<span class="inline-flex items-center px-3 py-1 rounded-full text-label-sm bg-[#F1F5F9] text-[#475569] font-semibold border border-[#E2E8F0]">
+<span class="w-1.5 h-1.5 rounded-full bg-[#94A3B8] mr-2"></span>
+                                                Under Agency Screening
+                                            </span>
+</td>
+<td class="px-6 py-5 text-right">
+<button class="text-on-surface-variant hover:text-primary transition-colors opacity-0 group-hover:opacity-100">
+<span class="material-symbols-outlined">visibility</span>
+</button>
+</td>
+</tr>
+<!-- Additional Placeholder Row for Design Depth -->
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="px-6 py-5">
+<div class="flex items-center gap-3">
+<div class="h-10 w-10 bg-primary-container/10 flex items-center justify-center rounded-full text-primary-container font-bold text-label-md">AK</div>
+<div>
+<p class="text-on-surface font-bold text-body-md">Anjali Kapoor</p>
+<p class="text-label-sm text-on-surface-variant">Fullstack Dev Lead</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-5">
+<p class="text-body-md text-on-surface">28 Oct 2026</p>
+</td>
+<td class="px-6 py-5">
+<span class="inline-flex items-center px-3 py-1 rounded-full text-label-sm bg-[#DCFCE7] text-[#166534] font-semibold border border-[#BBF7D0]">
+<span class="w-1.5 h-1.5 rounded-full bg-[#22C55E] mr-2"></span>
+                                                Offer Extended
+                                            </span>
+</td>
+<td class="px-6 py-5 text-right">
+<button class="text-on-surface-variant hover:text-primary transition-colors opacity-0 group-hover:opacity-100">
+<span class="material-symbols-outlined">visibility</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="p-4 border-t border-outline-variant bg-white flex justify-between items-center">
+<span class="text-label-sm text-on-surface-variant">Showing 3 of 12 submissions</span>
+<div class="flex gap-2">
+<button class="px-3 py-1 border border-outline-variant rounded hover:bg-surface-container transition-all">Prev</button>
+<button class="px-3 py-1 border border-outline-variant bg-primary-container text-on-primary rounded hover:opacity-90 transition-all">Next</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer Shadow -->
+<footer class="mt-auto px-margin-desktop py-6 text-label-sm text-on-primary-container flex justify-between items-center">
+<span>© 2026 Partner Ingestion Vault. All rights reserved.</span>
+<div class="flex gap-4">
+<a class="hover:text-on-surface" href="#">Data Mandate Policy</a>
+<a class="hover:text-on-surface" href="#">Security Protocol</a>
+</div>
+</footer>
+</main>
+</div>
+<script>
+        // Micro-interactions for Drag and Drop
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('cv-upload');
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.add('drop-zone-active'), false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.remove('drop-zone-active'), false);
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            handleFiles(files);
+        });
+
+        function handleFiles(files) {
+            if(files.length > 0) {
+                dropZone.querySelector('p').innerText = `File Selected: ${files[0].name}`;
+                dropZone.querySelector('.material-symbols-outlined').innerText = 'check_circle';
+                dropZone.querySelector('.material-symbols-outlined').classList.add('text-[#22C55E]');
+                dropZone.querySelector('.material-symbols-outlined').classList.remove('text-primary');
+            }
+        }
+        
+        fileInput.addEventListener('change', (e) => {
+            handleFiles(e.target.files);
+        });
+    </script>
+<div class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+<div class="bg-white rounded-lg shadow-xl w-full max-w-[500px] overflow-hidden">
+<div class="p-6 border-b border-outline-variant flex items-center gap-3">
+<span class="material-symbols-outlined text-error text-2xl">warning</span>
+<h3 class="text-headline-md font-bold text-on-surface">Submission Ownership Check</h3>
+</div>
+<div class="p-6">
+<div class="bg-error-container/30 border-l-4 border-error p-4 rounded">
+<p class="text-on-error-container text-body-md font-medium">
+          Duplicate Blocked: This candidate (vivek@gmail.com) was already submitted for this specific mandate 2 hours ago by another partner. First-touch attribution policy applied.
+        </p>
+</div>
+</div>
+<div class="p-6 bg-surface-container-low flex justify-end">
+<button class="px-6 py-2.5 bg-[#0f172a] text-white font-bold rounded-lg hover:opacity-90 transition-all active:scale-95">
+        Acknowledge
+      </button>
+</div>
+</div>
+</div></body></html>
