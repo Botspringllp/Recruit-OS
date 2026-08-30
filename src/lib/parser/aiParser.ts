@@ -135,9 +135,21 @@ function fallbackStructuralExtraction(rawText: string): AIParsedData {
 }
 
 function extractFallbackName(rawText: string): { firstName: string; lastName: string } {
-  const lines = rawText.split('\n').map(l => l.trim()).filter(Boolean);
+  const lines = rawText
+    .split('\n')
+    .map(l => l.trim())
+    .filter(
+      l =>
+        l.length > 0 &&
+        !/^(xref|pdf|obj|stream|trailer|startxref|endobj|typecatalogpages|flatedecode)/i.test(l) &&
+        !/\b(xref|trailer|startxref|EOF)\b/i.test(l)
+    );
   const firstLine = lines[0] || 'John Doe';
-  const nameParts = firstLine.replace(/[^A-Za-z\s]/g, '').trim().split(/\s+/);
+  const nameParts = firstLine
+    .replace(/[^A-Za-z\s]/g, '')
+    .trim()
+    .split(/\s+/)
+    .filter(p => p.length > 1);
 
   if (nameParts.length >= 2) {
     return { firstName: nameParts[0], lastName: nameParts.slice(1).join(' ') };

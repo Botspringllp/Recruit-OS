@@ -2,7 +2,7 @@ import mammoth from 'mammoth';
 
 /**
  * Extracts raw textual content from uploaded PDF or DOCX file buffer.
- * Performs deep text cleaning to eliminate raw PDF binary artifacts (obj, stream, FlateDecode).
+ * Performs deep text cleaning to eliminate raw PDF binary artifacts (obj, stream, FlateDecode, xref, trailer).
  */
 export async function extractResumeText(
   buffer: Buffer,
@@ -103,18 +103,33 @@ async function parsePdfBuffer(buffer: Buffer): Promise<string> {
   return '';
 }
 
-function sanitizePdfText(text: string): string {
-  if (!text) return '';
-  return text
-    .replace(/%PDF-\d\.\d/g, '')
-    .replace(/\d+\s+\d+\s+obj[\s\S]*?endobj/g, '')
-    .replace(/stream[\s\S]*?endstream/g, '')
-    .replace(/FlateDecode/g, '')
-    .replace(/TypeCatalogPages/g, '')
-    .replace(/<<[\s\S]*?>>/g, '')
-    .replace(/[^\x20-\x7E\n\r\t]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+export function sanitizePdfText(rawText: string): string {
+  if (!rawText) return '';
+
+  let cleaned = rawText;
+
+  // 1. Strip PDF xref tables and trailer blocks
+  cleaned = cleaned.replace(/xref\s*[\r\n]+[\s\S]*?startxref[\s\S]*?EOF/gi, '');
+  cleaned = cleaned.replace(/trailer\s*[\r\n]+[\s\S]*?startxref[\s\S]*?EOF/gi, '');
+  cleaned = cleaned.replace(/startxref[\s\S]*?EOF/gi, '');
+
+  // 2. Strip repeated PDF xref entry lines (e.g. "0000000000 65535 f", "f n f n f n")
+  cleaned = cleaned.replace(/\b\d{10}\s+\d{5}\s+[fn]\b/gi, '');
+  cleaned = cleaned.replace(/\b(f\s+|n\s+){3,}\b/gi, '');
+  cleaned = cleaned.replace(/\b(xref|trailer|startxref|EOF)\b/gi, '');
+
+  // 3. Strip PDF object stream tags
+  cleaned = cleaned.replace(/%PDF-\d\.\d/g, '');
+  cleaned = cleaned.replace(/\d+\s+\d+\s+obj[\s\S]*?endobj/g, '');
+  cleaned = cleaned.replace(/stream[\s\S]*?endstream/g, '');
+  cleaned = cleaned.replace(/(\d+\s+\d+\s+obj|endobj|FlateDecode|TypeCatalogPages)/gi, '');
+  cleaned = cleaned.replace(/<<[\s\S]*?>>/g, '');
+
+  // 4. Normalize excess whitespace & blank lines
+  cleaned = cleaned.replace(/[^\x20-\x7E\n\r\t]/g, ' ');
+  cleaned = cleaned.replace(/[ \t]+/g, ' ').replace(/\n\s*\n+/g, '\n').trim();
+
+  return cleaned;
 }
 
 function extractPdfTextFromStreams(buffer: Buffer): string {
@@ -127,14 +142,14 @@ function extractPdfTextFromStreams(buffer: Buffer): string {
     const tjMatches = block.match(/\((.*?)\)\s*Tj/g) || block.match(/\[(.*?)\]\s*TJ/g) || [];
     for (const match of tjMatches) {
       const cleaned = match.replace(/^[(\[]|[)\\]*(?:Tj|TJ)$/g, '').replace(/\\([()])/g, '$1');
-      if (cleaned.trim() && !cleaned.includes('obj') && !cleaned.includes('stream')) {
+      if (cleaned.trim() && !cleaned.includes('obj') && !cleaned.includes('stream') && !cleaned.includes('xref')) {
         textBlocks.push(cleaned.trim());
       }
     }
   }
 
   if (textBlocks.length > 0) {
-    return textBlocks.join(' ');
+    return sanitizePdfText(textBlocks.join(' '));
   }
 
   // Pure printable ASCII filter fallback
