@@ -2,7 +2,7 @@ import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { uploadToStorage, STORAGE_BUCKETS } from '@/lib/storage';
 import { ParsedCandidate } from '@/lib/parser/types';
-import { DocCategory } from '@prisma/client';
+import { CandidateSource, DocCategory } from '@prisma/client';
 
 export interface ImportCandidateInput {
   agencyId: string;
@@ -37,6 +37,12 @@ export async function importParsedCandidate(
     throw new Error('agencyId is required for tenant isolation.');
   }
 
+  // Validate candidate source enum
+  const sourceStr = (candidateData.source || 'DIRECT_INTAKE').toString().trim();
+  const validSource = Object.values(CandidateSource).includes(sourceStr as CandidateSource)
+    ? (sourceStr as CandidateSource)
+    : CandidateSource.DIRECT_INTAKE;
+
   // 1. Create Candidate Record in Prisma
   const candidate = await prisma.candidateRecord.create({
     data: {
@@ -55,6 +61,7 @@ export async function importParsedCandidate(
       preferredLocations: candidateData.preferredLocations || [],
       primarySkills: candidateData.skills || [],
       sanitizedSummary: candidateData.summary || null,
+      source: validSource,
       assignedRecruiterId: userId || null
     }
   });
