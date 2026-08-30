@@ -53,7 +53,6 @@ export interface ParsedCandidate {
   expectedCtcLpa?: number;
   currentCtcLpa?: number;
   summary?: string;
-  source?: string;
   parsedAt: string;
 }
 

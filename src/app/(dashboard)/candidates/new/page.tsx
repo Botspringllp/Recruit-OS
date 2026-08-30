@@ -268,7 +268,6 @@ function SinglePageCandidateIntake() {
               currentDesignation: formData.currentDesignation || undefined,
               totalExperienceYears: formData.totalExperienceYears ? parseFloat(formData.totalExperienceYears) : undefined,
               currentLocation: formData.currentLocation || undefined,
-              source: formData.source || 'DIRECT_INTAKE',
               noticePeriodDays: formData.noticePeriodDays ? parseInt(formData.noticePeriodDays) : undefined,
               currentCtcLpa: formData.currentCtcLpa ? parseFloat(formData.currentCtcLpa) : undefined,
               expectedCtcLpa: formData.expectedCtcLpa ? parseFloat(formData.expectedCtcLpa) : undefined,
