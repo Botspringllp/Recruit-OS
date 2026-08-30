@@ -6,7 +6,7 @@ import { DeleteCandidateButton } from '@/components/candidates/DeleteCandidateBu
 
 import { getResolvedAgencyId } from '@/lib/agency/resolver';
 
-export const revalidate = 0;
+export const revalidate = 30;
 
 interface CandidatesPageProps {
   searchParams?: {

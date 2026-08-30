@@ -6,7 +6,9 @@ import { PipelineStage, SlaStatus } from '@prisma/client';
 import { SubmissionStageSelector } from '@/components/submissions/SubmissionStageSelector';
 import { calculateSlaStatus } from '@/lib/sla';
 
-export const revalidate = 0;
+import { getResolvedAgencyId } from '@/lib/agency/resolver';
+
+export const revalidate = 30;
 
 interface SubmissionsPageProps {
   searchParams?: {
@@ -21,11 +23,7 @@ export default async function SubmissionsPage({ searchParams }: SubmissionsPageP
   const filterJobId = searchParams?.jobId || '';
   const filterSla = searchParams?.sla || '';
 
-  const demoAgency = await prisma.agency.findFirst({
-    where: { subdomain: 'demo' },
-    select: { id: true }
-  }).catch(() => null);
-  const agencyId = demoAgency?.id;
+  const agencyId = await getResolvedAgencyId();
 
   const whereClause: any = { agencyId };
 
