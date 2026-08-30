@@ -120,40 +120,63 @@ function sanitizeAIParsedData(parsed: any, rawText: string): AIParsedData {
   };
 }
 
-function extractFallbackCandidate(rawText: string): AIParsedData {
-  const lines = rawText
-    .split('\n')
-    .map(l => l.trim())
-    .filter(
-      l =>
-        l.length > 0 &&
-        !/^(xref|pdf|obj|stream|trailer|startxref|endobj|typecatalogpages|flatedecode)/i.test(l) &&
-        !/\b(xref|trailer|startxref|EOF)\b/i.test(l) &&
-        !/@/.test(l) &&
-        !/\d{5,}/.test(l)
-    );
-
-  // Find first line that looks like a human name (e.g. "Alok Ranjan" or "ALOK RANJAN")
-  const nameLine =
-    lines.find(l => /^[A-Z][a-zA-Z.-]+(\s+[A-Z][a-zA-Z.-]+)+$/.test(l)) ||
-    lines.find(l => /^[A-Z\s]{3,40}$/.test(l) && l.includes(' ')) ||
-    lines[0] ||
-    '';
-
-  const cleanNameLine = nameLine.replace(/[^A-Za-z\s.-]/g, '').trim();
-  const nameParts = cleanNameLine.split(/\s+/).filter(Boolean);
-
-  let firstName = '';
-  let lastName = '';
-  if (nameParts.length >= 2) {
-    firstName = nameParts[0];
-    lastName = nameParts.slice(1).join(' ');
-  } else if (nameParts.length === 1) {
-    firstName = nameParts[0];
-    lastName = '';
+export function extractFallbackCandidate(rawText: string): AIParsedData {
+  if (!rawText || typeof rawText !== 'string') {
+    return {
+      firstName: 'Candidate',
+      lastName: '',
+      skills: [],
+      education: [],
+      certifications: [],
+      preferredLocations: [],
+      noticePeriodDays: 60
+    };
   }
 
-  // Skills: match tech skills safely directly from rawText
+  const lines = rawText
+    .split(/[\r\n]+/)
+    .map(l => l.trim())
+    .filter(Boolean);
+
+  // Keywords to skip when identifying candidate name
+  const skipKeywords = /resume|curriculum|vitae|page|email|phone|address|profile|summary|experience|education|skills|contact|objective|xref|pdf|obj|stream|trailer|startxref/i;
+
+  let candidateName = '';
+
+  // Look through top 10 lines for the candidate name
+  for (const line of lines.slice(0, 10)) {
+    // Clean piping/punctuation (e.g. "Alok Ranjan | Full Stack" -> "Alok Ranjan")
+    const cleanLine = line.split(/[|•,\-–]/)[0].trim();
+
+    // Check if line contains 1-4 words, is between 3 and 40 chars, and contains no digits/emails
+    const words = cleanLine.split(/\s+/);
+    if (
+      words.length >= 1 &&
+      words.length <= 4 &&
+      cleanLine.length >= 3 &&
+      cleanLine.length <= 40 &&
+      !skipKeywords.test(cleanLine) &&
+      !cleanLine.includes('@') &&
+      !/\d/.test(cleanLine)
+    ) {
+      candidateName = cleanLine;
+      break;
+    }
+  }
+
+  // Fallback if no candidate name line found
+  if (!candidateName && lines.length > 0) {
+    const cleanFirstLine = lines[0].split(/[|•,\-–]/)[0].trim();
+    if (!cleanFirstLine.includes('@') && !/\d/.test(cleanFirstLine) && cleanFirstLine.length <= 40) {
+      candidateName = cleanFirstLine;
+    }
+  }
+
+  const nameParts = (candidateName || 'Candidate').replace(/[^A-Za-z\s.-]/g, '').trim().split(/\s+/).filter(Boolean);
+  const firstName = nameParts[0] || 'Candidate';
+  const lastName = nameParts.slice(1).join(' ') || '';
+
+  // Extract skills safely from text
   const commonSkills = [
     'React', 'Node.js', 'TypeScript', 'JavaScript', 'Next.js', 'Python', 'Java',
     'PostgreSQL', 'MySQL', 'MongoDB', 'AWS', 'Docker', 'Kubernetes', 'GraphQL',
