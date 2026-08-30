@@ -1,8 +1,9 @@
 import { AIParsedData } from './types';
 
 /**
- * AI Parsing Layer using Gemini API with intelligent structural fallback.
+ * AI Parsing Layer using Gemini API with real text structural fallback.
  * Enforces 6,000 max character rawText truncation and a 6-second AbortController timeout.
+ * Contains ZERO hardcoded dummy mock data (no "John Doe", no fake companies/emails).
  */
 export async function parseWithAI(rawText: string): Promise<AIParsedData> {
   const geminiApiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
@@ -71,22 +72,26 @@ ${truncatedText}`
       }
     } catch (error: any) {
       clearTimeout(timeoutId);
-      console.warn('Gemini API call bypassed or timed out, using fast structural extractor fallback:', error.message || error);
+      console.warn('Gemini API call bypassed or timed out, using real text structural extractor fallback:', error.message || error);
     }
   }
 
-  // Fallback structural parser when Gemini API key is unavailable or times out
-  return fallbackStructuralExtraction(truncatedText);
+  // Fallback structural parser extracting REAL candidate data directly from text
+  return extractFallbackCandidate(truncatedText);
 }
 
 function sanitizeAIParsedData(parsed: any, rawText: string): AIParsedData {
+  const fallback = extractFallbackCandidate(rawText);
+
   return {
-    firstName: String(parsed.firstName || '').trim() || extractFallbackName(rawText).firstName,
-    lastName: String(parsed.lastName || '').trim() || extractFallbackName(rawText).lastName,
-    currentDesignation: parsed.currentDesignation ? String(parsed.currentDesignation).trim() : undefined,
+    firstName: String(parsed.firstName || '').trim() || fallback.firstName,
+    lastName: String(parsed.lastName || '').trim() || fallback.lastName,
+    currentDesignation: parsed.currentDesignation ? String(parsed.currentDesignation).trim() : fallback.currentDesignation,
     currentCompany: parsed.currentCompany ? String(parsed.currentCompany).trim() : undefined,
     totalExperienceYears: typeof parsed.totalExperienceYears === 'number' ? parsed.totalExperienceYears : undefined,
-    skills: Array.isArray(parsed.skills) ? parsed.skills.map((s: any) => String(s).trim()).filter(Boolean) : [],
+    skills: Array.isArray(parsed.skills) && parsed.skills.length > 0
+      ? parsed.skills.map((s: any) => String(s).trim()).filter(Boolean)
+      : fallback.skills,
     education: Array.isArray(parsed.education)
       ? parsed.education.map((e: any) => ({
           degree: e.degree ? String(e.degree).trim() : undefined,
@@ -104,37 +109,11 @@ function sanitizeAIParsedData(parsed: any, rawText: string): AIParsedData {
     noticePeriodDays: typeof parsed.noticePeriodDays === 'number' ? parsed.noticePeriodDays : 60,
     expectedCtcLpa: typeof parsed.expectedCtcLpa === 'number' ? parsed.expectedCtcLpa : undefined,
     currentCtcLpa: typeof parsed.currentCtcLpa === 'number' ? parsed.currentCtcLpa : undefined,
-    summary: parsed.summary ? String(parsed.summary).trim() : undefined
+    summary: parsed.summary ? String(parsed.summary).trim() : fallback.summary
   };
 }
 
-function fallbackStructuralExtraction(rawText: string): AIParsedData {
-  const name = extractFallbackName(rawText);
-  const skills = extractFallbackSkills(rawText);
-  const designation = extractFallbackDesignation(rawText);
-  const company = extractFallbackCompany(rawText);
-
-  return {
-    firstName: name.firstName,
-    lastName: name.lastName,
-    currentDesignation: designation,
-    currentCompany: company,
-    totalExperienceYears: undefined,
-    skills: skills,
-    education: [
-      { degree: 'Bachelor of Technology / Computer Science', institution: 'University', year: '2020' }
-    ],
-    certifications: ['AWS Certified Solutions Architect', 'Certified Scrum Master'],
-    currentLocation: 'Bangalore, India',
-    preferredLocations: ['Bangalore', 'Remote', 'Mumbai'],
-    noticePeriodDays: 60,
-    expectedCtcLpa: 24,
-    currentCtcLpa: 18,
-    summary: rawText.slice(0, 300).replace(/\s+/g, ' ').trim()
-  };
-}
-
-function extractFallbackName(rawText: string): { firstName: string; lastName: string } {
+function extractFallbackCandidate(rawText: string): AIParsedData {
   const lines = rawText
     .split('\n')
     .map(l => l.trim())
@@ -142,59 +121,75 @@ function extractFallbackName(rawText: string): { firstName: string; lastName: st
       l =>
         l.length > 0 &&
         !/^(xref|pdf|obj|stream|trailer|startxref|endobj|typecatalogpages|flatedecode)/i.test(l) &&
-        !/\b(xref|trailer|startxref|EOF)\b/i.test(l)
+        !/\b(xref|trailer|startxref|EOF)\b/i.test(l) &&
+        !/@/.test(l) &&
+        !/\d{5,}/.test(l)
     );
-  const firstLine = lines[0] || 'John Doe';
-  const nameParts = firstLine
-    .replace(/[^A-Za-z\s]/g, '')
-    .trim()
-    .split(/\s+/)
-    .filter(p => p.length > 1);
 
+  // Find first line that looks like a human name (e.g. "Alok Ranjan" or "ALOK RANJAN")
+  const nameLine =
+    lines.find(l => /^[A-Z][a-zA-Z.-]+(\s+[A-Z][a-zA-Z.-]+)+$/.test(l)) ||
+    lines.find(l => /^[A-Z\s]{3,40}$/.test(l) && l.includes(' ')) ||
+    lines[0] ||
+    '';
+
+  const cleanNameLine = nameLine.replace(/[^A-Za-z\s.-]/g, '').trim();
+  const nameParts = cleanNameLine.split(/\s+/).filter(Boolean);
+
+  let firstName = '';
+  let lastName = '';
   if (nameParts.length >= 2) {
-    return { firstName: nameParts[0], lastName: nameParts.slice(1).join(' ') };
+    firstName = nameParts[0];
+    lastName = nameParts.slice(1).join(' ');
+  } else if (nameParts.length === 1) {
+    firstName = nameParts[0];
+    lastName = '';
   }
-  if (nameParts.length === 1 && nameParts[0]) {
-    return { firstName: nameParts[0], lastName: 'Candidate' };
-  }
-  return { firstName: 'John', lastName: 'Doe' };
-}
 
-function extractFallbackSkills(rawText: string): string[] {
+  // Skills: match tech skills directly from rawText
   const commonSkills = [
-    'React', 'Node.js', 'TypeScript', 'Next.js', 'Python', 'Java',
-    'PostgreSQL', 'AWS', 'Docker', 'Kubernetes', 'GraphQL', 'TailwindCSS',
-    'SQL', 'MongoDB', 'Git', 'Agile', 'System Design', 'REST API'
+    'React', 'Node.js', 'TypeScript', 'JavaScript', 'Next.js', 'Python', 'Java',
+    'PostgreSQL', 'MySQL', 'MongoDB', 'AWS', 'Docker', 'Kubernetes', 'GraphQL',
+    'TailwindCSS', 'Tailwind', 'CSS', 'HTML', 'SQL', 'Git', 'Agile', 'Redux',
+    'Express', 'REST API', 'Microservices', 'System Design', 'C++', 'C#', '.NET',
+    'Flutter', 'React Native', 'Vue.js', 'Angular', 'DevOps', 'CI/CD', 'Linux'
   ];
 
   const foundSkills = commonSkills.filter(skill =>
     new RegExp(`\\b${skill.replace('.', '\\.')}\\b`, 'i').test(rawText)
   );
 
-  return foundSkills.length > 0 ? foundSkills : ['React', 'Node.js', 'TypeScript', 'PostgreSQL'];
-}
-
-function extractFallbackDesignation(rawText: string): string {
+  // Designation: match common job titles from rawText
   const titles = [
-    'Senior Full Stack Engineer', 'Software Development Engineer', 'Lead Cloud Architect',
-    'Frontend Developer', 'Backend Developer', 'DevOps Engineer', 'Product Manager'
+    'Senior Full Stack Engineer', 'Full Stack Developer', 'Software Development Engineer',
+    'Software Engineer', 'Senior Software Engineer', 'Frontend Developer', 'Backend Developer',
+    'Lead Cloud Architect', 'DevOps Engineer', 'Data Scientist', 'Product Manager', 'System Administrator'
   ];
 
+  let currentDesignation: string | undefined;
   for (const title of titles) {
-    if (new RegExp(title, 'i').test(rawText)) {
-      return title;
+    if (new RegExp(`\\b${title}\\b`, 'i').test(rawText)) {
+      currentDesignation = title;
+      break;
     }
   }
 
-  return 'Senior Software Engineer';
-}
+  const summary = rawText.slice(0, 300).replace(/\s+/g, ' ').trim();
 
-function extractFallbackCompany(rawText: string): string {
-  const companies = ['Acme Corp', 'Tech Solutions', 'Infosys', 'TCS', 'Wipro', 'Amazon', 'Microsoft', 'Google'];
-  for (const comp of companies) {
-    if (new RegExp(comp, 'i').test(rawText)) {
-      return comp;
-    }
-  }
-  return 'Enterprise Technology Solutions';
+  return {
+    firstName,
+    lastName,
+    currentDesignation,
+    currentCompany: undefined,
+    totalExperienceYears: undefined,
+    skills: foundSkills,
+    education: [],
+    certifications: [],
+    currentLocation: undefined,
+    preferredLocations: [],
+    noticePeriodDays: 60,
+    expectedCtcLpa: undefined,
+    currentCtcLpa: undefined,
+    summary: summary || undefined
+  };
 }
