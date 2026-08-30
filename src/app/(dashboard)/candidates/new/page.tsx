@@ -15,15 +15,12 @@ import {
   Building,
   Briefcase,
   MapPin,
-  Clock,
-  DollarSign,
   X,
   ExternalLink,
   Loader2,
   Zap,
   Save,
   Layers,
-  FileCode,
   Award
 } from 'lucide-react';
 import { createCandidateAction } from '@/app/actions/candidates';
@@ -124,7 +121,7 @@ function SinglePageCandidateIntake() {
   // Run AI Resume Parsing Pipeline
   const startParsing = async () => {
     if (!file) {
-      setErrorMsg('Please select or drop a resume file first.');
+      setErrorMsg('Please select or drag & drop a resume file first.');
       return;
     }
 
@@ -166,17 +163,26 @@ function SinglePageCandidateIntake() {
 
       clearInterval(progressTimer);
 
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Resume parsing failed.');
+      const contentType = res.headers.get('content-type') || '';
+      let resultData: any = {};
+
+      if (contentType.includes('application/json')) {
+        resultData = await res.json();
+      } else {
+        const rawText = await res.text();
+        console.error('Non-JSON response received from parse endpoint:', rawText);
+        throw new Error(`Server returned status ${res.status}. Could not process resume file.`);
       }
 
-      const result = await res.json();
+      if (!res.ok) {
+        throw new Error(resultData.error || `Resume parsing failed with status ${res.status}`);
+      }
+
       setParsingProgress(100);
       setProgressText('5. Preparing Candidate Profile...');
 
-      const parsed: ParsedCandidate = result.parsedCandidate;
-      setDuplicateMatch(result.duplicateMatch);
+      const parsed: ParsedCandidate = resultData.parsedCandidate;
+      setDuplicateMatch(resultData.duplicateMatch);
 
       // Auto-Populate Form Fields below
       setFormData(prev => ({
@@ -200,7 +206,7 @@ function SinglePageCandidateIntake() {
       setIsParsing(false);
       setParsingCompleted(true);
 
-      if (result.duplicateMatch) {
+      if (resultData.duplicateMatch) {
         setShowDuplicateModal(true);
       }
     } catch (err: any) {
@@ -248,7 +254,7 @@ function SinglePageCandidateIntake() {
 
     try {
       if (file && fileBase64) {
-        // Submit via resume import confirm pipeline to store resume document in Supabase Storage
+        // Submit via resume import confirm API route
         const confirmRes = await fetch('/api/candidates/import/confirm', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -275,9 +281,19 @@ function SinglePageCandidateIntake() {
           })
         });
 
+        const contentType = confirmRes.headers.get('content-type') || '';
+        let confirmData: any = {};
+
+        if (contentType.includes('application/json')) {
+          confirmData = await confirmRes.json();
+        } else {
+          const rawText = await confirmRes.text();
+          console.error('Non-JSON response received from confirm endpoint:', rawText);
+          throw new Error(`Server returned status ${confirmRes.status}. Failed to save candidate record.`);
+        }
+
         if (!confirmRes.ok) {
-          const errData = await confirmRes.json();
-          throw new Error(errData.error || 'Failed to save candidate record.');
+          throw new Error(confirmData.error || `Saving candidate failed with status ${confirmRes.status}`);
         }
 
         router.push('/candidates');
@@ -329,7 +345,7 @@ function SinglePageCandidateIntake() {
         <button
           type="button"
           onClick={() => router.push('/candidates')}
-          className="px-4 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-extrabold rounded-xl transition-all flex items-center gap-2"
+          className="px-4 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-extrabold rounded-xl transition-all flex items-center gap-2 cursor-pointer"
         >
           <ArrowLeft className="h-4 w-4" /> Back to Repository
         </button>
@@ -388,7 +404,7 @@ function SinglePageCandidateIntake() {
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="px-4 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-800 font-extrabold text-xs rounded-xl transition-all shadow-xs"
+                className="px-4 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-800 font-extrabold text-xs rounded-xl transition-all shadow-xs cursor-pointer"
               >
                 {file ? `Change File (${file.name})` : 'Select File'}
               </button>
@@ -397,7 +413,7 @@ function SinglePageCandidateIntake() {
                 type="button"
                 onClick={startParsing}
                 disabled={isParsing}
-                className="px-5 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-500 text-slate-950 font-black text-xs shadow-md shadow-amber-400/20 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                className="px-5 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-500 text-slate-950 font-black text-xs shadow-md shadow-amber-400/20 flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer"
               >
                 {isParsing ? (
                   <Loader2 className="h-4 w-4 animate-spin text-slate-950" />
@@ -609,7 +625,7 @@ function SinglePageCandidateIntake() {
               <select
                 value={formData.source}
                 onChange={e => handleInputChange('source', e.target.value)}
-                className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 font-bold focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all"
+                className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 font-bold focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all cursor-pointer"
               >
                 <option value="DIRECT_INTAKE">Direct Intake</option>
                 <option value="LINKEDIN">LinkedIn</option>
@@ -619,7 +635,7 @@ function SinglePageCandidateIntake() {
               </select>
             </div>
 
-            {/* SKILLS TAXONOMY TAGS (AUTOPARSABLE OR CUSTOM) */}
+            {/* SKILLS TAXONOMY TAGS */}
             {(formData.skills && formData.skills.length > 0) || parsingCompleted ? (
               <div className="space-y-2 md:col-span-2 pt-2 border-t border-slate-100">
                 <label className="text-slate-900 font-extrabold uppercase tracking-wider text-[11px] block">
@@ -655,7 +671,7 @@ function SinglePageCandidateIntake() {
                   <button
                     type="button"
                     onClick={handleSkillAdd}
-                    className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl"
+                    className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl cursor-pointer"
                   >
                     Add Tag
                   </button>
@@ -670,7 +686,7 @@ function SinglePageCandidateIntake() {
             <button
               type="button"
               onClick={() => router.push('/candidates')}
-              className="px-5 py-2.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-extrabold transition flex items-center gap-2"
+              className="px-5 py-2.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-extrabold transition flex items-center gap-2 cursor-pointer"
             >
               <X className="h-4 w-4" />
               Cancel
@@ -736,7 +752,7 @@ function SinglePageCandidateIntake() {
               <button
                 type="button"
                 onClick={() => router.push(`/candidates/${duplicateMatch.id}`)}
-                className="px-4 py-2.5 bg-white border border-amber-300 hover:bg-amber-50 text-amber-900 text-xs font-extrabold rounded-xl transition flex items-center justify-center gap-1.5"
+                className="px-4 py-2.5 bg-white border border-amber-300 hover:bg-amber-50 text-amber-900 text-xs font-extrabold rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <ExternalLink className="h-4 w-4" />
                 Open Existing Candidate
@@ -745,7 +761,7 @@ function SinglePageCandidateIntake() {
               <button
                 type="button"
                 onClick={() => setShowDuplicateModal(false)}
-                className="px-5 py-2.5 bg-amber-400 hover:bg-amber-500 text-slate-950 text-xs font-black rounded-xl transition shadow-xs"
+                className="px-5 py-2.5 bg-amber-400 hover:bg-amber-500 text-slate-950 text-xs font-black rounded-xl transition shadow-xs cursor-pointer"
               >
                 Continue Import
               </button>
@@ -756,7 +772,7 @@ function SinglePageCandidateIntake() {
                   setShowDuplicateModal(false);
                   setFile(null);
                 }}
-                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-extrabold rounded-xl transition"
+                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-extrabold rounded-xl transition cursor-pointer"
               >
                 Cancel
               </button>

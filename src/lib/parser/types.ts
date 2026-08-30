@@ -4,6 +4,7 @@ export interface RegexParsedData {
   linkedinUrl?: string;
   githubUrl?: string;
   experienceYears?: number;
+  noticePeriodDays?: number;
 }
 
 export interface AIParsedData {
@@ -55,13 +56,13 @@ export interface ParsedCandidate {
 
 export interface DuplicateCandidateMatch {
   id: string;
-  firstName: string;
-  lastName: string;
+  firstName?: string;
+  lastName?: string;
   email: string;
   phone: string;
-  ownershipStatus: string;
-  createdAt: string;
-  matchedOn: 'email' | 'phone' | 'linkedin';
+  ownershipStatus?: string;
+  createdAt?: string;
+  matchedOn: 'EMAIL' | 'PHONE' | 'LINKEDIN' | 'email' | 'phone' | 'linkedin';
 }
 
 export interface ParseResumeResult {

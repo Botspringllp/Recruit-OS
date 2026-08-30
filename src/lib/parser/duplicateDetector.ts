@@ -17,7 +17,6 @@ export async function checkForDuplicateCandidate(
   }
 
   if (parsedCandidate.phone) {
-    // Strip non-digit characters to compare phone numbers reliably
     const cleanPhone = parsedCandidate.phone.replace(/\D/g, '');
     if (cleanPhone.length >= 8) {
       OR_CONDITIONS.push({ phone: { contains: cleanPhone.slice(-10) } });
@@ -49,14 +48,17 @@ export async function checkForDuplicateCandidate(
     return null;
   }
 
-  let matchedOn: 'email' | 'phone' | 'linkedin' = 'email';
+  let matchedOn: 'EMAIL' | 'PHONE' | 'email' | 'phone' = 'EMAIL';
   if (
     parsedCandidate.email &&
     existingCandidate.email.toLowerCase() === parsedCandidate.email.toLowerCase()
   ) {
-    matchedOn = 'email';
-  } else if (parsedCandidate.phone && existingCandidate.phone.includes(parsedCandidate.phone.replace(/\D/g, '').slice(-8))) {
-    matchedOn = 'phone';
+    matchedOn = 'EMAIL';
+  } else if (
+    parsedCandidate.phone &&
+    existingCandidate.phone.includes(parsedCandidate.phone.replace(/\D/g, '').slice(-8))
+  ) {
+    matchedOn = 'PHONE';
   }
 
   return {

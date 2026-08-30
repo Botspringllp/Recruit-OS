@@ -10,7 +10,6 @@ export function extractWithRegex(rawText: string): RegexParsedData {
   const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g;
   const emailMatches = rawText.match(emailRegex);
   if (emailMatches && emailMatches.length > 0) {
-    // Pick first valid email match
     result.email = emailMatches[0].toLowerCase().trim();
   }
 
@@ -18,7 +17,6 @@ export function extractWithRegex(rawText: string): RegexParsedData {
   const phoneRegex = /(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}|\+?\d{10,12}/g;
   const phoneMatches = rawText.match(phoneRegex);
   if (phoneMatches && phoneMatches.length > 0) {
-    // Filter matches that look like legitimate phone numbers
     const validPhone = phoneMatches.find(p => p.replace(/\D/g, '').length >= 10);
     if (validPhone) {
       result.phone = validPhone.trim();
@@ -47,8 +45,19 @@ export function extractWithRegex(rawText: string): RegexParsedData {
     result.githubUrl = url;
   }
 
-  // 5. Experience Years Extraction
-  // Pattern matches: "5 years of experience", "4.5 yrs exp", "6+ Years", "Total Experience: 8 Years"
+  // 5. Notice Period Extraction
+  const noticeRegex = /(\d{1,3})\s*(?:days?|months?)\s*(?:notice\s*period|notice)/gi;
+  const noticeMatch = noticeRegex.exec(rawText);
+  if (noticeMatch) {
+    const num = parseInt(noticeMatch[1], 10);
+    if (!isNaN(num) && num > 0 && num <= 180) {
+      result.noticePeriodDays = num;
+    }
+  } else if (/immediate\s*(?:joiner|joining)/i.test(rawText)) {
+    result.noticePeriodDays = 0;
+  }
+
+  // 6. Experience Years Extraction
   const expRegex = /(\d+(?:\.\d+)?)\s*(?:\+)?\s*(?:years?|yrs?)\s*(?:of)?\s*(?:experience|exp)?/gi;
   let expMatch: RegExpExecArray | null;
   let maxYears = 0;

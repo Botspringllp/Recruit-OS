@@ -1,11 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { parseResumeBuffer } from '@/lib/parser';
 import { updateSession } from '@/lib/supabase/middleware';
+import { getResolvedAgencyId } from '@/lib/agency/resolver';
 
 export async function POST(request: NextRequest) {
   try {
-    const { user } = await updateSession(request);
-    const agencyId = request.headers.get('x-agency-id') || user?.user_metadata?.agency_id || 'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d';
+    let user: any = null;
+    try {
+      const sessionResult = await updateSession(request);
+      user = sessionResult?.user || null;
+    } catch (e) {
+      console.warn('Supabase session fetch bypassed in parse route:', e);
+    }
+
+    const agencyId = await getResolvedAgencyId(request, user);
     const userId = user?.id;
 
     const formData = await request.formData();

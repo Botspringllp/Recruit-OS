@@ -1,11 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { importParsedCandidate } from '@/lib/candidates/service';
 import { updateSession } from '@/lib/supabase/middleware';
+import { getResolvedAgencyId } from '@/lib/agency/resolver';
 
 export async function POST(request: NextRequest) {
   try {
-    const { user } = await updateSession(request);
-    const agencyId = request.headers.get('x-agency-id') || user?.user_metadata?.agency_id || 'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d';
+    let user: any = null;
+    try {
+      const sessionResult = await updateSession(request);
+      user = sessionResult?.user || null;
+    } catch (e) {
+      console.warn('Supabase session fetch bypassed in confirm route:', e);
+    }
+
+    const agencyId = await getResolvedAgencyId(request, user);
     const userId = user?.id;
 
     const body = await request.json();
@@ -13,7 +22,7 @@ export async function POST(request: NextRequest) {
 
     if (!candidateData || !candidateData.email || !candidateData.phone) {
       return NextResponse.json(
-        { error: 'Invalid candidate data payload. First Name, Last Name, Email, and Phone are required.' },
+        { error: 'Invalid candidate data payload. Email and Phone Number are required.' },
         { status: 400 }
       );
     }
@@ -32,6 +41,9 @@ export async function POST(request: NextRequest) {
       fileName: fileName || 'uploaded_resume.pdf',
       mimeType: mimeType || 'application/pdf'
     });
+
+    revalidatePath('/candidates');
+    revalidatePath('/cockpit');
 
     return NextResponse.json({
       success: true,
