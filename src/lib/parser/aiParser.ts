@@ -1,6 +1,13 @@
 import { AIParsedData } from './types';
 
 /**
+ * Safe Regex Escaper Helper to prevent regex syntax errors for C++, C#, etc.
+ */
+function escapeRegExp(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
  * AI Parsing Layer using Gemini API with real text structural fallback.
  * Enforces 6,000 max character rawText truncation and a 6-second AbortController timeout.
  * Contains ZERO hardcoded dummy mock data (no "John Doe", no fake companies/emails).
@@ -146,7 +153,7 @@ function extractFallbackCandidate(rawText: string): AIParsedData {
     lastName = '';
   }
 
-  // Skills: match tech skills directly from rawText
+  // Skills: match tech skills safely directly from rawText
   const commonSkills = [
     'React', 'Node.js', 'TypeScript', 'JavaScript', 'Next.js', 'Python', 'Java',
     'PostgreSQL', 'MySQL', 'MongoDB', 'AWS', 'Docker', 'Kubernetes', 'GraphQL',
@@ -155,9 +162,23 @@ function extractFallbackCandidate(rawText: string): AIParsedData {
     'Flutter', 'React Native', 'Vue.js', 'Angular', 'DevOps', 'CI/CD', 'Linux'
   ];
 
-  const foundSkills = commonSkills.filter(skill =>
-    new RegExp(`\\b${skill.replace('.', '\\.')}\\b`, 'i').test(rawText)
-  );
+  const lowerRawText = rawText.toLowerCase();
+  const foundSkills = commonSkills.filter(skill => {
+    const lowerSkill = skill.toLowerCase();
+
+    // Direct text match for skills with regex special characters (C++, C#, .NET)
+    if (lowerSkill === 'c++' || lowerSkill === 'c#' || lowerSkill === '.net') {
+      return lowerRawText.includes(lowerSkill);
+    }
+
+    // Safe regex boundary match for standard words
+    try {
+      const escaped = escapeRegExp(skill);
+      return new RegExp(`\\b${escaped}\\b`, 'i').test(rawText);
+    } catch (e) {
+      return lowerRawText.includes(lowerSkill);
+    }
+  });
 
   // Designation: match common job titles from rawText
   const titles = [
