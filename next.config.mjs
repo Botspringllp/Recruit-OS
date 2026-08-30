@@ -37,6 +37,7 @@ const nextConfig = {
     serverActions: {
       allowedOrigins: ['localhost:3000', '*.recruitos.com', '*.vercel.app'],
     },
+    serverComponentsExternalPackages: ['pdf-parse'],
   },
 };
 
