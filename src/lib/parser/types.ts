@@ -10,6 +10,8 @@ export interface RegexParsedData {
 export interface AIParsedData {
   firstName: string;
   lastName: string;
+  email?: string;
+  phone?: string;
   currentDesignation?: string;
   currentCompany?: string;
   totalExperienceYears?: number;

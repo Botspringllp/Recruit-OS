@@ -11,10 +11,10 @@ export function mergeParsedOutputs(
   aiData: AIParsedData
 ): ParsedCandidate {
   // 1. Email Priority: Deterministic Regex wins, else AI, else empty string
-  const email = regexData.email || '';
+  const email = regexData.email || aiData.email || '';
 
   // 2. Phone Priority: Deterministic Regex wins, else AI, else empty string
-  const phone = regexData.phone || '';
+  const phone = regexData.phone || aiData.phone || '';
 
   // 3. LinkedIn Priority: Deterministic Regex wins
   const linkedinUrl = regexData.linkedinUrl || undefined;
