@@ -2,17 +2,23 @@ import { AIParsedData } from './types';
 
 /**
  * AI Parsing Layer using Gemini API with intelligent structural fallback.
+ * Enforces 6,000 max character rawText truncation and a 6-second AbortController timeout.
  */
 export async function parseWithAI(rawText: string): Promise<AIParsedData> {
   const geminiApiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+  const truncatedText = rawText.slice(0, 6000);
 
   if (geminiApiKey) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 6000);
+
     try {
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
           body: JSON.stringify({
             contents: [
               {
@@ -39,7 +45,7 @@ Return JSON adhering to this exact schema:
 }
 
 Resume Text:
-${rawText.slice(0, 8000)}`
+${truncatedText}`
                   }
                 ]
               }
@@ -52,22 +58,25 @@ ${rawText.slice(0, 8000)}`
         }
       );
 
+      clearTimeout(timeoutId);
+
       if (response.ok) {
         const data = await response.json();
         const jsonText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
         if (jsonText) {
           const cleanedJson = jsonText.replace(/```json/g, '').replace(/```/g, '').trim();
           const parsed = JSON.parse(cleanedJson);
-          return sanitizeAIParsedData(parsed, rawText);
+          return sanitizeAIParsedData(parsed, truncatedText);
         }
       }
-    } catch (error) {
-      console.warn('Gemini API call failed, using intelligent structural extractor fallback:', error);
+    } catch (error: any) {
+      clearTimeout(timeoutId);
+      console.warn('Gemini API call bypassed or timed out, using fast structural extractor fallback:', error.message || error);
     }
   }
 
-  // Fallback structural parser when Gemini API key is unavailable or fails
-  return fallbackStructuralExtraction(rawText);
+  // Fallback structural parser when Gemini API key is unavailable or times out
+  return fallbackStructuralExtraction(truncatedText);
 }
 
 function sanitizeAIParsedData(parsed: any, rawText: string): AIParsedData {
