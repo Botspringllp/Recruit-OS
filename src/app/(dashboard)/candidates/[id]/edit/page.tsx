@@ -37,13 +37,13 @@ export default async function CandidateEditPage({ params }: CandidateEditPagePro
   return (
     <div className="space-y-6 pb-12">
       {/* Header */}
-      <div className="border-b border-slate-800/80 pb-5">
-        <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2.5">
-          <Edit3 className="h-6 w-6 text-brand-400" />
+      <div className="border-b border-slate-200 pb-5">
+        <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
+          <Edit3 className="h-6 w-6 text-amber-500" />
           Edit Candidate Profile
         </h1>
-        <p className="text-xs text-slate-400 mt-1">
-          Update information for <span className="text-white font-semibold">{candidate.firstName} {candidate.lastName}</span>
+        <p className="text-xs font-semibold text-slate-500 mt-1">
+          Update information for <span className="text-slate-900 font-bold">{candidate.firstName} {candidate.lastName}</span>
         </p>
       </div>
 
