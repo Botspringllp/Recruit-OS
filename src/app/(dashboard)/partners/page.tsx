@@ -7,7 +7,7 @@ import ShareMandateModalWrapper from '@/components/partners/ShareMandateModalWra
 
 import { getResolvedAgencyId } from '@/lib/agency/resolver';
 
-export const revalidate = 30;
+export const revalidate = 0;
 
 export default async function PartnersPage() {
   const agencyId = await getResolvedAgencyId();

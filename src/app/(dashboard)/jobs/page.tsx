@@ -4,9 +4,7 @@ import { Briefcase, Search, Filter, Plus, Building2, Users, ArrowUpRight, Chevro
 import { prisma } from '@/lib/prisma';
 import { MandateStatus } from '@prisma/client';
 
-import { getResolvedAgencyId } from '@/lib/agency/resolver';
-
-export const revalidate = 30;
+export const revalidate = 0;
 
 interface JobsPageProps {
   searchParams?: {
@@ -25,7 +23,11 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
   const pageSize = 10;
   const skip = (currentPage - 1) * pageSize;
 
-  const agencyId = await getResolvedAgencyId();
+  const demoAgency = await prisma.agency.findFirst({
+    where: { subdomain: 'demo' },
+    select: { id: true }
+  }).catch(() => null);
+  const agencyId = demoAgency?.id;
 
   const whereClause: any = { agencyId };
 
@@ -56,7 +58,7 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
       take: pageSize,
       include: {
         client: { select: { companyName: true } },
-        _count: { select: { submissions: true } }
+        submissions: { select: { id: true } }
       }
     }).catch(() => [])
   ]);
@@ -173,7 +175,7 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
                     <span className="text-[10px] text-slate-500 block uppercase font-bold">Submissions</span>
                     <span className="font-extrabold text-slate-900 flex items-center gap-1">
                       <Users className="h-3.5 w-3.5 text-amber-600" />
-                      {job._count?.submissions || 0} Candidates
+                      {job.submissions.length} Candidates
                     </span>
                   </div>
                   <div>
