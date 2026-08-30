@@ -13,11 +13,14 @@ export function extractWithRegex(rawText: string): RegexParsedData {
     result.email = emailMatches[0].toLowerCase().trim();
   }
 
-  // 2. Phone Number Extraction (supports Indian +91 & International formats)
-  const phoneRegex = /(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}|\+?\d{10,12}/g;
+  // 2. Phone Number Extraction (supports Indian 5-5, 10-digit, +91 & International formats)
+  const phoneRegex = /(?:\+?\d{1,3}[-.\s]?)?\(?\d{2,5}\)?[-.\s]?\d{3,5}[-.\s]?\d{3,5}|\+?\d{10,12}/g;
   const phoneMatches = rawText.match(phoneRegex);
   if (phoneMatches && phoneMatches.length > 0) {
-    const validPhone = phoneMatches.find(p => p.replace(/\D/g, '').length >= 10);
+    const validPhone = phoneMatches.find(p => {
+      const digits = p.replace(/\D/g, '');
+      return digits.length >= 10 && digits.length <= 13;
+    });
     if (validPhone) {
       result.phone = validPhone.trim();
     }

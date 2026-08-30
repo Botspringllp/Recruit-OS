@@ -94,8 +94,8 @@ function sanitizeAIParsedData(parsed: any, rawText: string): AIParsedData {
     firstName: String(parsed.firstName || '').trim() || fallback.firstName,
     lastName: String(parsed.lastName || '').trim() || fallback.lastName,
     currentDesignation: parsed.currentDesignation ? String(parsed.currentDesignation).trim() : fallback.currentDesignation,
-    currentCompany: parsed.currentCompany ? String(parsed.currentCompany).trim() : undefined,
-    totalExperienceYears: typeof parsed.totalExperienceYears === 'number' ? parsed.totalExperienceYears : undefined,
+    currentCompany: parsed.currentCompany ? String(parsed.currentCompany).trim() : fallback.currentCompany,
+    totalExperienceYears: typeof parsed.totalExperienceYears === 'number' ? parsed.totalExperienceYears : fallback.totalExperienceYears,
     skills: Array.isArray(parsed.skills) && parsed.skills.length > 0
       ? parsed.skills.map((s: any) => String(s).trim()).filter(Boolean)
       : fallback.skills,
@@ -109,7 +109,7 @@ function sanitizeAIParsedData(parsed: any, rawText: string): AIParsedData {
     certifications: Array.isArray(parsed.certifications)
       ? parsed.certifications.map((c: any) => String(c).trim()).filter(Boolean)
       : [],
-    currentLocation: parsed.currentLocation ? String(parsed.currentLocation).trim() : undefined,
+    currentLocation: parsed.currentLocation ? String(parsed.currentLocation).trim() : fallback.currentLocation,
     preferredLocations: Array.isArray(parsed.preferredLocations)
       ? parsed.preferredLocations.map((l: any) => String(l).trim()).filter(Boolean)
       : [],
@@ -218,18 +218,52 @@ export function extractFallbackCandidate(rawText: string): AIParsedData {
     }
   }
 
+  // Location extraction matching major tech hubs
+  const locations = [
+    'Bengaluru', 'Bangalore', 'Mumbai', 'Delhi', 'NCR', 'Gurugram', 'Gurgaon',
+    'Noida', 'Hyderabad', 'Pune', 'Chennai', 'Kolkata', 'Ahmedabad', 'San Francisco',
+    'New York', 'London', 'Singapore'
+  ];
+  let currentLocation: string | undefined;
+  for (const loc of locations) {
+    if (new RegExp(`\\b${loc}\\b`, 'i').test(rawText)) {
+      currentLocation = loc;
+      break;
+    }
+  }
+
+  // Experience Years structural extraction
+  let totalExperienceYears: number | undefined;
+  const expMatch = rawText.match(/(\d+(?:\.\d+)?)\s*(?:\+)?\s*(?:years?|yrs?)/i);
+  if (expMatch) {
+    const yrs = parseFloat(expMatch[1]);
+    if (!isNaN(yrs) && yrs > 0 && yrs <= 45) {
+      totalExperienceYears = yrs;
+    }
+  }
+
+  // Company structural extraction
+  let currentCompany: string | undefined;
+  const companyMatch = rawText.match(/(?:at|company[:\s]+|working\s+at)\s+([A-Za-z0-9\s,.&]+?)(?=\n|,|\.|$)/i);
+  if (companyMatch) {
+    const comp = companyMatch[1].trim();
+    if (comp.length >= 2 && comp.length <= 40) {
+      currentCompany = comp;
+    }
+  }
+
   const summary = rawText.slice(0, 300).replace(/\s+/g, ' ').trim();
 
   return {
     firstName,
     lastName,
     currentDesignation,
-    currentCompany: undefined,
-    totalExperienceYears: undefined,
+    currentCompany,
+    totalExperienceYears,
     skills: foundSkills,
     education: [],
     certifications: [],
-    currentLocation: undefined,
+    currentLocation,
     preferredLocations: [],
     noticePeriodDays: 60,
     expectedCtcLpa: undefined,
