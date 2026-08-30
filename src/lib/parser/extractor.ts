@@ -1,4 +1,18 @@
 import mammoth from 'mammoth';
+import path from 'path';
+
+let workerConfigured = false;
+function ensurePdfWorkerConfigured() {
+  if (workerConfigured) return;
+  try {
+    const { PDFParse } = require('pdf-parse');
+    const workerPath = path.join(process.cwd(), 'node_modules', 'pdf-parse', 'dist', 'worker', 'pdf.worker.mjs');
+    PDFParse.setWorker(workerPath);
+    workerConfigured = true;
+  } catch (e) {
+    console.warn('PDF_WORKER_SETUP_FAILED:', e instanceof Error ? e.message : e);
+  }
+}
 
 /**
  * Extracts raw textual content from uploaded PDF or DOCX file buffer.
@@ -66,6 +80,7 @@ export async function extractResumeText(
 }
 
 async function parsePdfBuffer(buffer: Buffer): Promise<string> {
+  ensurePdfWorkerConfigured();
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const pdfModule = require('pdf-parse');
 
