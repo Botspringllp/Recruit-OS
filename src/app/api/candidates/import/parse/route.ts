@@ -39,6 +39,8 @@ export async function POST(request: NextRequest) {
       userId
     );
 
+    console.log('RAW_TEXT_DEBUG:', JSON.stringify(parseResult.rawText));
+
     return NextResponse.json({
       success: true,
       agencyId,
