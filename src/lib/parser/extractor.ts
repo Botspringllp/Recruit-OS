@@ -24,20 +24,25 @@ export async function extractResumeText(
     let extractedText = '';
     try {
       extractedText = await parsePdfBuffer(buffer);
+      console.log('EXTRACTION_STAGE', { stage: 'parsePdfBuffer', length: extractedText.length });
     } catch (error: any) {
       console.warn('PDF Primary Extractor Warning:', error.message);
     }
 
     // Clean PDF extracted text
     let cleanedText = sanitizePdfText(extractedText);
+    console.log('EXTRACTION_STAGE', { stage: 'sanitizePdfText', length: cleanedText.length });
 
     // If cleaned text is too short (< 30 chars) or contains binary markers, use stream text extractor
     if (cleanedText.length < 30 || cleanedText.includes('%PDF-') || cleanedText.includes('FlateDecode')) {
       const rawFallback = extractPdfTextFromStreams(buffer);
+      console.log('EXTRACTION_STAGE', { stage: 'extractPdfTextFromStreams', length: rawFallback.length });
       if (rawFallback.length > cleanedText.length) {
         cleanedText = rawFallback;
       }
     }
+
+    console.log('EXTRACTION_STAGE', { stage: 'finalResult', length: cleanedText.length });
 
     if (cleanedText.length > 0) {
       return cleanedText;
@@ -66,8 +71,12 @@ async function parsePdfBuffer(buffer: Buffer): Promise<string> {
 
   // 1. Direct function export (pdf-parse v1)
   if (typeof pdfModule === 'function') {
-    const res = await pdfModule(buffer);
-    if (res?.text) return res.text;
+    try {
+      const res = await pdfModule(buffer);
+      if (res?.text) return res.text;
+    } catch (e: any) {
+      console.warn('PDF_PARSE_STEP_FAILED (v1 function):', e instanceof Error ? e.message : e);
+    }
   }
 
   // 2. Default function export
@@ -75,8 +84,8 @@ async function parsePdfBuffer(buffer: Buffer): Promise<string> {
     try {
       const res = await pdfModule.default(buffer);
       if (res?.text) return res.text;
-    } catch (e) {
-      // Continue
+    } catch (e: any) {
+      console.warn('PDF_PARSE_STEP_FAILED (default function):', e instanceof Error ? e.message : e);
     }
   }
 
@@ -96,8 +105,8 @@ async function parsePdfBuffer(buffer: Buffer): Promise<string> {
           return textResult.pages.map((p: any) => p.text || '').join('\n');
         }
       }
-    } catch (e) {
-      // Continue to fallback
+    } catch (e: any) {
+      console.warn('PDF_PARSE_STEP_FAILED (v2 PDFParse class):', e instanceof Error ? e.message : e);
     }
   }
 
@@ -128,7 +137,7 @@ export function sanitizePdfText(rawText: string): string {
 
   // 4. Preserve line breaks while stripping non-printable characters
   cleaned = cleaned.replace(/[^\x20-\x7E\n\r\t]/g, ' ');
-  
+
   // Normalize horizontal spaces line by line to maintain multi-line document layout
   cleaned = cleaned
     .split(/\r?\n/)
