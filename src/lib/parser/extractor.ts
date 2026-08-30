@@ -1,5 +1,6 @@
 import mammoth from 'mammoth';
 import path from 'path';
+import { pathToFileURL } from 'url';
 
 let workerConfigured = false;
 function ensurePdfWorkerConfigured() {
@@ -7,7 +8,8 @@ function ensurePdfWorkerConfigured() {
   try {
     const { PDFParse } = require('pdf-parse');
     const workerPath = path.join(process.cwd(), 'node_modules', 'pdf-parse', 'dist', 'worker', 'pdf.worker.mjs');
-    PDFParse.setWorker(workerPath);
+    const workerUrl = pathToFileURL(workerPath).href;
+    PDFParse.setWorker(workerUrl);
     workerConfigured = true;
   } catch (e) {
     console.warn('PDF_WORKER_SETUP_FAILED:', e instanceof Error ? e.message : e);
