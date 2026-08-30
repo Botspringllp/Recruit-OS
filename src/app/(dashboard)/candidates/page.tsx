@@ -4,6 +4,8 @@ import { Users, Search, Plus, ArrowUpRight, ChevronLeft, ChevronRight, Edit3, Sp
 import { prisma } from '@/lib/prisma';
 import { DeleteCandidateButton } from '@/components/candidates/DeleteCandidateButton';
 
+import { getResolvedAgencyId } from '@/lib/agency/resolver';
+
 export const revalidate = 0;
 
 interface CandidatesPageProps {
@@ -19,11 +21,7 @@ export default async function CandidatesPage({ searchParams }: CandidatesPagePro
   const pageSize = 10;
   const skip = (currentPage - 1) * pageSize;
 
-  const demoAgency = await prisma.agency.findFirst({
-    where: { subdomain: 'demo' },
-    select: { id: true }
-  }).catch(() => null);
-  const agencyId = demoAgency?.id;
+  const agencyId = await getResolvedAgencyId();
 
   const whereClause: any = {
     agencyId,
