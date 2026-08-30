@@ -9,4 +9,4 @@
  *   - Set to `false` for production deployment:
  *     Restores persistent session auto-login (Login once ➔ Persistent Session ➔ Auto-Dashboard).
  */
-export const TESTING_MODE = true;
+export const TESTING_MODE = false;

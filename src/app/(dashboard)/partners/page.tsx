@@ -5,63 +5,77 @@ import { prisma } from '@/lib/prisma';
 import PartnerPayoutTracker from '@/components/partners/PartnerPayoutTracker';
 import ShareMandateModalWrapper from '@/components/partners/ShareMandateModalWrapper';
 
+import { getResolvedAgencyId } from '@/lib/agency/resolver';
+
 export const revalidate = 0;
 
 export default async function PartnersPage() {
-  const demoAgency = await prisma.agency.findFirst({
-    where: { subdomain: 'demo' },
-    select: { id: true }
-  }).catch(() => null);
-  const agencyId = demoAgency?.id || 'adaa404d-0ce3-4b72-9981-882a8f31a2af';
+  const agencyId = await getResolvedAgencyId();
 
-  // Fetch Partner Agencies
-  const partners = await (prisma as any).partnerAgency.findMany({
-    where: { agencyId },
-    orderBy: { createdAt: 'desc' },
-    include: {
-      _count: { select: { shares: true, splits: true } }
-    }
-  }).catch(() => []);
+  // Fetch all partner data in parallel
+  const [rawPartners, rawPartnerShares, jobs, rawLedgers, partnerPlacementsCount] = await Promise.all([
+    (prisma as any).partnerAgency.findMany({
+      where: { agencyId },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        _count: { select: { shares: true, splits: true } }
+      }
+    }).catch(() => []),
 
-  // Fetch Shared Mandates
-  const partnerShares = await (prisma as any).partnerMandateShare.findMany({
-    where: { agencyId },
-    orderBy: { createdAt: 'desc' },
-    take: 15,
-    include: {
-      job: { select: { title: true, client: { select: { companyName: true } } } },
-      partnerAgency: { select: { name: true } }
-    }
-  }).catch(() => []);
+    (prisma as any).partnerMandateShare.findMany({
+      where: { agencyId },
+      orderBy: { createdAt: 'desc' },
+      take: 15,
+      include: {
+        job: { select: { title: true, client: { select: { companyName: true } } } },
+        partnerAgency: { select: { name: true } }
+      }
+    }).catch(() => []),
 
-  // Fetch Active Job Mandates for Share Modal
-  const jobs = await (prisma as any).jobMandate.findMany({
-    where: { agencyId, status: { in: ['OPEN', 'ACTIVE'] } },
-    select: { id: true, title: true }
-  }).catch(() => []);
+    (prisma as any).jobMandate.findMany({
+      where: { agencyId, status: { in: ['OPEN', 'ACTIVE'] } },
+      select: { id: true, title: true }
+    }).catch(() => []),
 
-  // Fetch Split Ledger Payouts
-  const ledgers = await (prisma as any).partnerSplitLedger.findMany({
-    where: { agencyId },
-    orderBy: { createdAt: 'desc' },
-    include: {
-      partnerAgency: { select: { name: true } },
-      submission: {
-        select: {
-          candidate: { select: { firstName: true, lastName: true } },
-          job: { select: { title: true } }
+    (prisma as any).partnerSplitLedger.findMany({
+      where: { agencyId },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        partnerAgency: { select: { name: true } },
+        submission: {
+          select: {
+            candidate: { select: { firstName: true, lastName: true } },
+            job: { select: { title: true } }
+          }
         }
       }
-    }
-  }).catch(() => []);
+    }).catch(() => []),
 
-  // KPI Calculations
+    prisma.partnerCandidateSubmission.count({
+      where: { agencyId }
+    }).catch(() => 0)
+  ]);
+
+  const partners = rawPartners.map((p: any) => ({
+    ...p,
+    defaultSplitPercentage: p.defaultSplitPercentage ? Number(p.defaultSplitPercentage) : 50
+  }));
+
+  const partnerShares = rawPartnerShares.map((s: any) => ({
+    ...s,
+    splitPercentage: s.splitPercentage ? Number(s.splitPercentage) : 50
+  }));
+
+  const ledgers = rawLedgers.map((l: any) => ({
+    ...l,
+    totalFeeAmount: l.totalFeeAmount ? Number(l.totalFeeAmount) : 0,
+    agencyShareAmount: l.agencyShareAmount ? Number(l.agencyShareAmount) : 0,
+    partnerAgencyShare: l.partnerAgencyShare ? Number(l.partnerAgencyShare) : 0,
+    splitPercentage: l.splitPercentage ? Number(l.splitPercentage) : 0
+  }));
+
   const activePartnersCount = (partners as any[]).filter((p: any) => p.isActive).length;
   const sharedMandatesCount = (partnerShares as any[]).length;
-
-  const partnerPlacementsCount = await prisma.partnerCandidateSubmission.count({
-    where: { agencyId }
-  }).catch(() => 0);
 
   const outstandingPayoutsSum = (ledgers as any[])
     .filter((l: any) => l.payoutStatus !== 'PAID')
