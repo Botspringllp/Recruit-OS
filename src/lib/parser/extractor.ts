@@ -2,7 +2,8 @@ import mammoth from 'mammoth';
 
 /**
  * Extracts raw textual content from uploaded PDF or DOCX file buffer.
- * Performs deep text cleaning to eliminate raw PDF binary artifacts (obj, stream, FlateDecode, xref, trailer).
+ * Performs deep text cleaning to eliminate raw PDF binary artifacts (obj, stream, FlateDecode, xref, trailer)
+ * while preserving multi-line structure for accurate field extraction.
  */
 export async function extractResumeText(
   buffer: Buffer,
@@ -125,9 +126,15 @@ export function sanitizePdfText(rawText: string): string {
   cleaned = cleaned.replace(/(\d+\s+\d+\s+obj|endobj|FlateDecode|TypeCatalogPages)/gi, '');
   cleaned = cleaned.replace(/<<[\s\S]*?>>/g, '');
 
-  // 4. Normalize excess whitespace & blank lines
+  // 4. Preserve line breaks while stripping non-printable characters
   cleaned = cleaned.replace(/[^\x20-\x7E\n\r\t]/g, ' ');
-  cleaned = cleaned.replace(/[ \t]+/g, ' ').replace(/\n\s*\n+/g, '\n').trim();
+  
+  // Normalize horizontal spaces line by line to maintain multi-line document layout
+  cleaned = cleaned
+    .split(/\r?\n/)
+    .map(line => line.replace(/[ \t]+/g, ' ').trim())
+    .filter(Boolean)
+    .join('\n');
 
   return cleaned;
 }
@@ -149,7 +156,7 @@ function extractPdfTextFromStreams(buffer: Buffer): string {
   }
 
   if (textBlocks.length > 0) {
-    return sanitizePdfText(textBlocks.join(' '));
+    return sanitizePdfText(textBlocks.join('\n'));
   }
 
   // Pure printable ASCII filter fallback
