@@ -21,10 +21,12 @@ function formatFileSize(bytes: number): string {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 }
 
-import { getResolvedAgencyId } from '@/lib/agency/resolver';
-
 export default async function CandidateDetailPage({ params }: CandidateDetailPageProps) {
-  const agencyId = await getResolvedAgencyId();
+  const demoAgency = await prisma.agency.findFirst({
+    where: { subdomain: 'demo' },
+    select: { id: true }
+  }).catch(() => null);
+  const agencyId = demoAgency?.id;
 
   const candidate = await prisma.candidateRecord.findFirst({
     where: {
