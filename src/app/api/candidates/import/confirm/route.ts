@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     }
 
     const agencyId = await getResolvedAgencyId(request, user);
-    const userId = user?.id;
+    const userId = user?.email || user?.id;
 
     const body = await request.json();
     const { candidateData, fileName, mimeType, fileBase64 } = body;

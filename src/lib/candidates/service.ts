@@ -37,6 +37,34 @@ export async function importParsedCandidate(
     throw new Error('agencyId is required for tenant isolation.');
   }
 
+  // Resolve a valid assigned recruiter ID in Prisma User table to prevent FK constraint violations
+  let validAssignedRecruiterId: string | null = null;
+  if (userId) {
+    const isUuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(userId);
+    const matchedUser = await prisma.user.findFirst({
+      where: {
+        agencyId,
+        ...(isUuid
+          ? { OR: [{ id: userId }, { email: userId }] }
+          : { email: userId })
+      },
+      select: { id: true }
+    });
+    if (matchedUser) {
+      validAssignedRecruiterId = matchedUser.id;
+    }
+  }
+
+  if (!validAssignedRecruiterId) {
+    const fallbackUser = await prisma.user.findFirst({
+      where: { agencyId, isActive: true },
+      select: { id: true }
+    });
+    if (fallbackUser) {
+      validAssignedRecruiterId = fallbackUser.id;
+    }
+  }
+
   // 1. Create Candidate Record in Prisma
   const candidate = await prisma.candidateRecord.create({
     data: {
@@ -55,7 +83,7 @@ export async function importParsedCandidate(
       preferredLocations: candidateData.preferredLocations || [],
       primarySkills: candidateData.skills || [],
       sanitizedSummary: candidateData.summary || null,
-      assignedRecruiterId: userId || null
+      assignedRecruiterId: validAssignedRecruiterId
     }
   });
 
