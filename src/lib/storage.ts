@@ -21,10 +21,13 @@ export const STORAGE_BUCKETS = {
 
 export type StorageBucket = (typeof STORAGE_BUCKETS)[keyof typeof STORAGE_BUCKETS];
 
+let bucketsEnsured = false;
+
 /**
  * Ensures required storage buckets exist in Supabase.
  */
 export async function ensureStorageBucketsExist(): Promise<void> {
+  if (bucketsEnsured) return;
   const buckets = Object.values(STORAGE_BUCKETS);
 
   for (const bucketName of buckets) {
@@ -40,6 +43,7 @@ export async function ensureStorageBucketsExist(): Promise<void> {
       // Ignore if bucket already exists
     }
   }
+  bucketsEnsured = true;
 }
 
 export interface UploadFileOptions {
