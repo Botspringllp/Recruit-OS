@@ -4,6 +4,9 @@ import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { DocumentUploadForm } from '@/components/compliance/DocumentUploadForm';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default async function EditDocumentPage({
   params
 }: {

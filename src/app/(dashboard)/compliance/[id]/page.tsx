@@ -5,6 +5,9 @@ import { prisma } from '@/lib/prisma';
 import { ComplianceStatusDropdown } from '@/components/compliance/ComplianceStatusDropdown';
 import { CandidateComplianceTimeline } from '@/components/compliance/CandidateComplianceTimeline';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default async function DocumentDetailPage({
   params
 }: {
