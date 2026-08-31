@@ -5,11 +5,14 @@ import { TESTING_MODE } from '@/lib/config';
 export async function middleware(request: NextRequest) {
   const { pathname, hostname } = request.nextUrl;
 
-  // Static assets and internal Next.js requests bypass middleware
+  // Static assets, internal Next.js requests, and prefetch calls bypass heavy middleware session calls
+  const isPrefetch = request.headers.get('next-router-prefetch') || request.headers.get('purpose') === 'prefetch';
+
   if (
     pathname.startsWith('/_next') ||
     pathname.startsWith('/api') ||
-    pathname.includes('.')
+    pathname.includes('.') ||
+    isPrefetch
   ) {
     return NextResponse.next();
   }
