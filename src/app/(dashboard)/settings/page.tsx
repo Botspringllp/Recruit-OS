@@ -1,5 +1,6 @@
 import React from 'react';
-import { Settings, Building, Save } from 'lucide-react';
+import Link from 'next/link';
+import { Settings, Building, Save, Users, ArrowRight } from 'lucide-react';
 import { prisma } from '@/lib/prisma';
 
 export const revalidate = 0;
@@ -11,29 +12,49 @@ export default async function SettingsPage() {
   }).catch(() => null);
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-6 pb-12 text-slate-900">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-5">
         <div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
-            <Settings className="h-6 w-6 text-indigo-600" />
+            <Settings className="h-6 w-6 text-amber-500" />
             Agency Settings
           </h1>
           <p className="text-xs font-semibold text-slate-600 mt-1">
-            Organization branding, portal domains & security preferences
+            Organization branding, portal domains & team access control
           </p>
         </div>
 
-        <button className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-extrabold transition-all duration-200 flex items-center gap-2 shadow-md shadow-indigo-600/20 interactive-hover self-start sm:self-auto">
+        <button className="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-extrabold transition-all duration-200 flex items-center gap-2 shadow-md shadow-amber-500/20 self-start sm:self-auto">
           <Save className="h-4 w-4" />
-          Save Changes
+          <span>Save Changes</span>
         </button>
       </div>
 
+      {/* User & Team Management Link Card */}
+      <div className="bg-white rounded-2xl border border-amber-200 shadow-sm p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+            <Users className="h-5 w-5 text-amber-500" />
+            User & Team Management
+          </h2>
+          <p className="text-xs font-semibold text-slate-600">
+            Manage agency team members, role assignments, reporting managers & feature permissions
+          </p>
+        </div>
+        <Link
+          href="/settings/users"
+          className="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-xs rounded-xl transition-all shadow-md shadow-amber-500/20 flex items-center gap-2"
+        >
+          <span>Manage Team Users</span>
+          <ArrowRight className="h-4 w-4" />
+        </Link>
+      </div>
+
       {/* Agency Details */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm shadow-slate-200/50 p-6 space-y-6">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-6">
         <h2 className="text-sm font-black text-slate-900 flex items-center gap-2">
-          <Building className="h-4 w-4 text-indigo-600" />
+          <Building className="h-4 w-4 text-amber-500" />
           Organization Profile
         </h2>
 
@@ -54,7 +75,7 @@ export default async function SettingsPage() {
               type="text"
               readOnly
               defaultValue={demoAgency?.subdomain || 'demo'}
-              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-indigo-700 font-extrabold focus:outline-none"
+              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-amber-700 font-extrabold focus:outline-none"
             />
           </div>
 

@@ -1,0 +1,384 @@
+'use server';
+
+import { revalidatePath } from 'next/cache';
+import { prisma } from '@/lib/prisma';
+import { UserRole, UserStatus } from '@prisma/client';
+import { getResolvedAgencyId } from '@/lib/agency/resolver';
+import { logger, logEvent } from '@/lib/logger';
+
+export type UserFormData = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: UserRole;
+  status: UserStatus;
+  managerId?: string | null;
+  permissions?: string[]; // Array of strings like "candidate.view" or "job.create"
+};
+
+export type ActionResult<T = any> = {
+  success: boolean;
+  data?: T;
+  error?: string;
+  errors?: Record<string, string>;
+};
+
+import { AVAILABLE_PERMISSIONS } from '@/lib/permissions';
+
+export async function getAvailablePermissionsAction() {
+  return AVAILABLE_PERMISSIONS;
+}
+
+/**
+ * Parses "resource.action" string into { resource, action }
+ */
+function parsePermission(permStr: string) {
+  const parts = permStr.split('.');
+  if (parts.length >= 2) {
+    return { resource: parts[0], action: parts.slice(1).join('.') };
+  }
+  return { resource: permStr, action: 'access' };
+}
+
+/**
+ * Get all users for the agency with KPI metrics.
+ */
+export async function getUsersAction(agencyIdInput?: string): Promise<ActionResult<{
+  users: any[];
+  kpis: {
+    totalUsers: number;
+    activeUsers: number;
+    invitedUsers: number;
+    disabledUsers: number;
+  };
+}>> {
+  try {
+    const agencyId = agencyIdInput || await getResolvedAgencyId();
+
+    const users = await prisma.user.findMany({
+      where: {
+        agencyId,
+        deletedAt: null
+      },
+      include: {
+        manager: {
+          select: { id: true, firstName: true, lastName: true, email: true }
+        },
+        permissions: {
+          select: { resource: true, action: true }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    const kpis = {
+      totalUsers: users.length,
+      activeUsers: users.filter(u => u.status === 'ACTIVE' && u.isActive).length,
+      invitedUsers: users.filter(u => u.status === 'INVITED').length,
+      disabledUsers: users.filter(u => u.status === 'INACTIVE' || u.status === 'SUSPENDED' || !u.isActive).length
+    };
+
+    return {
+      success: true,
+      data: {
+        users,
+        kpis
+      }
+    };
+  } catch (error: any) {
+    logger.error({ event: 'GET_USERS_FAILED', error: error.message }, 'Failed to fetch users');
+    return { success: false, error: error.message || 'Failed to fetch users' };
+  }
+}
+
+/**
+ * Get single user by ID with agency scoping.
+ */
+export async function getUserByIdAction(userId: string, agencyIdInput?: string): Promise<ActionResult<any>> {
+  try {
+    const agencyId = agencyIdInput || await getResolvedAgencyId();
+
+    const user = await prisma.user.findFirst({
+      where: {
+        id: userId,
+        agencyId,
+        deletedAt: null
+      },
+      include: {
+        manager: {
+          select: { id: true, firstName: true, lastName: true, email: true }
+        },
+        directReports: {
+          where: { deletedAt: null },
+          select: { id: true, firstName: true, lastName: true, email: true, role: true, status: true }
+        },
+        permissions: {
+          select: { id: true, resource: true, action: true }
+        }
+      }
+    });
+
+    if (!user) {
+      return { success: false, error: 'User not found or access denied.' };
+    }
+
+    return { success: true, data: user };
+  } catch (error: any) {
+    logger.error({ event: 'GET_USER_BY_ID_FAILED', userId, error: error.message }, 'Failed to fetch user');
+    return { success: false, error: error.message || 'Failed to fetch user' };
+  }
+}
+
+/**
+ * Create a new user inside the agency with permission assignment.
+ */
+export async function createUserAction(payload: UserFormData, agencyIdInput?: string): Promise<ActionResult<{ userId: string }>> {
+  try {
+    const agencyId = agencyIdInput || await getResolvedAgencyId();
+
+    const firstName = (payload.firstName || '').trim();
+    const lastName = (payload.lastName || '').trim();
+    const email = (payload.email || '').trim().toLowerCase();
+    const role = payload.role || UserRole.RECRUITER;
+    const status = payload.status || UserStatus.ACTIVE;
+    const managerId = payload.managerId || null;
+    const permissions = payload.permissions || [];
+
+    const errors: Record<string, string> = {};
+    if (!firstName) errors.firstName = 'First name is required';
+    if (!lastName) errors.lastName = 'Last name is required';
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      errors.email = 'Valid email is required';
+    }
+
+    // Security check: AGENCY_OWNER cannot create MASTER_OWNER
+    if (role === UserRole.MASTER_OWNER) {
+      errors.role = 'Only platform super-administrators can assign MASTER_OWNER role';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      return { success: false, errors };
+    }
+
+    // Check duplicate email
+    const existingUser = await prisma.user.findFirst({
+      where: { email, agencyId }
+    });
+
+    if (existingUser) {
+      return { success: false, error: 'A user with this email already exists in this agency.' };
+    }
+
+    // Verify manager belongs to same agency
+    if (managerId) {
+      const validManager = await prisma.user.findFirst({
+        where: { id: managerId, agencyId, deletedAt: null }
+      });
+      if (!validManager) {
+        return { success: false, error: 'Assigned manager not found in this agency.' };
+      }
+    }
+
+    // Create User record
+    const newUser = await prisma.user.create({
+      data: {
+        agencyId,
+        firstName,
+        lastName,
+        email,
+        passwordHash: '$2b$10$UnassignedDummyHashForAgencyUser',
+        role,
+        status,
+        isActive: status === UserStatus.ACTIVE || status === UserStatus.INVITED,
+        managerId: managerId || null
+      }
+    });
+
+    // Create UserRoleAssignment row
+    await prisma.userRoleAssignment.create({
+      data: {
+        agencyId,
+        userId: newUser.id,
+        roleName: role
+      }
+    }).catch(() => null);
+
+    // Create UserPermission rows
+    if (permissions.length > 0) {
+      const permissionRows = permissions.map(p => {
+        const { resource, action } = parsePermission(p);
+        return {
+          userId: newUser.id,
+          resource,
+          action
+        };
+      });
+
+      await prisma.userPermission.createMany({
+        data: permissionRows,
+        skipDuplicates: true
+      });
+    }
+
+    // Audit Log: USER_CREATED
+    logger.info({
+      event: 'USER_CREATED',
+      userId: newUser.id,
+      agencyId,
+      email: newUser.email,
+      role: newUser.role,
+      status: newUser.status
+    }, `👤 [User Created] ${newUser.firstName} ${newUser.lastName} (${newUser.email}) - Role: ${newUser.role}`);
+
+    revalidatePath('/settings/users');
+    return { success: true, data: { userId: newUser.id } };
+  } catch (error: any) {
+    logger.error({ event: 'CREATE_USER_FAILED', error: error.message }, 'Failed to create user');
+    return { success: false, error: error.message || 'Failed to create user' };
+  }
+}
+
+/**
+ * Update existing user record and permissions.
+ */
+export async function updateUserAction(userId: string, payload: UserFormData, agencyIdInput?: string): Promise<ActionResult<{ userId: string }>> {
+  try {
+    const agencyId = agencyIdInput || await getResolvedAgencyId();
+
+    // Verify existing user in same agency
+    const existingUser = await prisma.user.findFirst({
+      where: { id: userId, agencyId, deletedAt: null }
+    });
+
+    if (!existingUser) {
+      return { success: false, error: 'User not found or access denied.' };
+    }
+
+    // Security check: cannot modify MASTER_OWNER
+    if (existingUser.role === UserRole.MASTER_OWNER) {
+      return { success: false, error: 'Master Owner records cannot be modified via Agency Settings.' };
+    }
+
+    const firstName = (payload.firstName || existingUser.firstName).trim();
+    const lastName = (payload.lastName || existingUser.lastName).trim();
+    const email = (payload.email || existingUser.email).trim().toLowerCase();
+    const role = payload.role || existingUser.role;
+    const status = payload.status || existingUser.status;
+    const managerId = payload.managerId !== undefined ? payload.managerId : existingUser.managerId;
+    const permissions = payload.permissions;
+
+    if (role === UserRole.MASTER_OWNER) {
+      return { success: false, error: 'Cannot elevate agency user to MASTER_OWNER.' };
+    }
+
+    // Prevent user from managing self as manager
+    if (managerId && managerId === userId) {
+      return { success: false, error: 'User cannot be assigned as their own manager.' };
+    }
+
+    // Update User
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        firstName,
+        lastName,
+        email,
+        role,
+        status,
+        isActive: status === UserStatus.ACTIVE || status === UserStatus.INVITED,
+        managerId: managerId || null,
+        updatedAt: new Date()
+      }
+    });
+
+    // Update UserRoleAssignment
+    await prisma.userRoleAssignment.upsert({
+      where: {
+        ux_user_roles_user_role: { userId, roleName: role }
+      },
+      update: { roleName: role },
+      create: { agencyId, userId, roleName: role }
+    }).catch(() => null);
+
+    // Update Permissions if supplied
+    if (permissions !== undefined) {
+      await prisma.userPermission.deleteMany({
+        where: { userId }
+      });
+
+      if (permissions.length > 0) {
+        const permissionRows = permissions.map(p => {
+          const { resource, action } = parsePermission(p);
+          return { userId, resource, action };
+        });
+
+        await prisma.userPermission.createMany({
+          data: permissionRows,
+          skipDuplicates: true
+        });
+      }
+    }
+
+    // Audit Log: USER_UPDATED
+    logger.info({
+      event: 'USER_UPDATED',
+      userId,
+      agencyId,
+      email,
+      role,
+      status
+    }, `👤 [User Updated] ${firstName} ${lastName} (${email}) - Role: ${role}`);
+
+    revalidatePath('/settings/users');
+    revalidatePath(`/settings/users/${userId}`);
+    return { success: true, data: { userId } };
+  } catch (error: any) {
+    logger.error({ event: 'UPDATE_USER_FAILED', userId, error: error.message }, 'Failed to update user');
+    return { success: false, error: error.message || 'Failed to update user' };
+  }
+}
+
+/**
+ * Disable user (set status to INACTIVE and isActive to false).
+ */
+export async function disableUserAction(userId: string, agencyIdInput?: string): Promise<ActionResult<{ userId: string }>> {
+  try {
+    const agencyId = agencyIdInput || await getResolvedAgencyId();
+
+    const existingUser = await prisma.user.findFirst({
+      where: { id: userId, agencyId, deletedAt: null }
+    });
+
+    if (!existingUser) {
+      return { success: false, error: 'User not found or access denied.' };
+    }
+
+    if (existingUser.role === UserRole.MASTER_OWNER) {
+      return { success: false, error: 'Cannot disable MASTER_OWNER user account.' };
+    }
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        status: UserStatus.INACTIVE,
+        isActive: false,
+        updatedAt: new Date()
+      }
+    });
+
+    // Audit Log: USER_DISABLED
+    logger.info({
+      event: 'USER_DISABLED',
+      userId,
+      agencyId,
+      email: existingUser.email
+    }, `👤 [User Disabled] ${existingUser.firstName} ${existingUser.lastName} (${existingUser.email})`);
+
+    revalidatePath('/settings/users');
+    revalidatePath(`/settings/users/${userId}`);
+    return { success: true, data: { userId } };
+  } catch (error: any) {
+    logger.error({ event: 'DISABLE_USER_FAILED', userId, error: error.message }, 'Failed to disable user');
+    return { success: false, error: error.message || 'Failed to disable user' };
+  }
+}
