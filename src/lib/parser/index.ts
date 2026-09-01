@@ -38,11 +38,11 @@ export async function parseResumeBuffer(
   // 2. Deterministic Regex Parsing
   const regexData = extractWithRegex(rawText);
 
-  // 3. AI LLM Extraction
-  const aiData = await parseWithAI(rawText);
+  // 3. AI LLM Extraction (with fileName context for accurate name resolution)
+  const aiData = await parseWithAI(rawText, fileName);
 
   // 4. Merge Engine Synthesis
-  const parsedCandidate = mergeParsedOutputs(regexData, aiData);
+  const parsedCandidate = mergeParsedOutputs(regexData, aiData, fileName);
 
   logger.info({
     event: 'RESUME_PARSED',

@@ -10,9 +10,8 @@ function escapeRegExp(str: string): string {
 /**
  * AI Parsing Layer using Gemini API with real text structural fallback.
  * Enforces 6,000 max character rawText truncation and a 6-second AbortController timeout.
- * Contains ZERO hardcoded dummy mock data (no "John Doe", no fake companies/emails).
  */
-export async function parseWithAI(rawText: string): Promise<AIParsedData> {
+export async function parseWithAI(rawText: string, fileName?: string): Promise<AIParsedData> {
   const geminiApiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
   const truncatedText = rawText.slice(0, 6000);
 
@@ -74,7 +73,7 @@ ${truncatedText}`
         if (jsonText) {
           const cleanedJson = jsonText.replace(/```json/g, '').replace(/```/g, '').trim();
           const parsed = JSON.parse(cleanedJson);
-          return sanitizeAIParsedData(parsed, truncatedText);
+          return sanitizeAIParsedData(parsed, truncatedText, fileName);
         }
       }
     } catch (error: any) {
@@ -83,12 +82,12 @@ ${truncatedText}`
     }
   }
 
-  // Fallback structural parser extracting REAL candidate data directly from text
-  return extractFallbackCandidate(truncatedText);
+  // Fallback structural parser extracting REAL candidate data directly from text & fileName
+  return extractFallbackCandidate(truncatedText, fileName);
 }
 
-function sanitizeAIParsedData(parsed: any, rawText: string): AIParsedData {
-  const fallback = extractFallbackCandidate(rawText);
+function sanitizeAIParsedData(parsed: any, rawText: string, fileName?: string): AIParsedData {
+  const fallback = extractFallbackCandidate(rawText, fileName);
 
   return {
     firstName: String(parsed.firstName || '').trim() || fallback.firstName,
@@ -120,63 +119,55 @@ function sanitizeAIParsedData(parsed: any, rawText: string): AIParsedData {
   };
 }
 
-export function extractFallbackCandidate(rawText: string): AIParsedData {
-  if (!rawText || typeof rawText !== 'string') {
-    return {
-      firstName: 'Candidate',
-      lastName: '',
-      skills: [],
-      education: [],
-      certifications: [],
-      preferredLocations: [],
-      noticePeriodDays: 60
-    };
-  }
-
-  const lines = rawText
-    .split(/[\r\n]+/)
-    .map(l => l.trim())
-    .filter(Boolean);
-
-  // Keywords to skip when identifying candidate name
-  const skipKeywords = /resume|curriculum|vitae|page|email|phone|address|profile|summary|experience|education|skills|contact|objective|xref|pdf|obj|stream|trailer|startxref/i;
-
+export function extractFallbackCandidate(rawText: string, fileName?: string): AIParsedData {
   let candidateName = '';
 
-  // Look through top 10 lines for the candidate name
-  for (const line of lines.slice(0, 10)) {
-    // Clean piping/punctuation (e.g. "Alok Ranjan | Full Stack" -> "Alok Ranjan")
-    const cleanLine = line.split(/[|•,\-–]/)[0].trim();
+  if (rawText && typeof rawText === 'string') {
+    const lines = rawText
+      .split(/[\r\n]+/)
+      .map(l => l.trim())
+      .filter(Boolean);
 
-    // Check if line contains 1-4 words, is between 3 and 40 chars, and contains no digits/emails
-    const words = cleanLine.split(/\s+/);
-    if (
-      words.length >= 1 &&
-      words.length <= 4 &&
-      cleanLine.length >= 3 &&
-      cleanLine.length <= 40 &&
-      !skipKeywords.test(cleanLine) &&
-      !cleanLine.includes('@') &&
-      !/\d/.test(cleanLine)
-    ) {
-      candidateName = cleanLine;
-      break;
+    const skipKeywords = /resume|curriculum|vitae|page|email|phone|address|profile|summary|experience|education|skills|contact|objective|xref|pdf|obj|stream|trailer|startxref|github|linkedin/i;
+
+    // Scan top 15 lines for candidate full name
+    for (const line of lines.slice(0, 15)) {
+      const cleanLine = line.split(/[|•,\-–]/)[0].trim();
+      if (cleanLine.includes('@') || cleanLine.includes('http') || cleanLine.includes('www.') || /\d/.test(cleanLine)) {
+        continue; // Skip emails, URLs, and numeric strings
+      }
+
+      const words = cleanLine.split(/\s+/).filter(w => /^[A-Za-z]+$/.test(w));
+      if (
+        words.length >= 1 &&
+        words.length <= 4 &&
+        cleanLine.length >= 3 &&
+        cleanLine.length <= 40 &&
+        !skipKeywords.test(cleanLine)
+      ) {
+        candidateName = words.map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+        break;
+      }
     }
   }
 
-  // Fallback if no candidate name line found
-  if (!candidateName && lines.length > 0) {
-    const cleanFirstLine = lines[0].split(/[|•,\-–]/)[0].trim();
-    if (!cleanFirstLine.includes('@') && !/\d/.test(cleanFirstLine) && cleanFirstLine.length <= 40) {
-      candidateName = cleanFirstLine;
+  // Fallback to fileName name extraction if text scan yielded no clean name
+  if (!candidateName && fileName) {
+    let cleanFile = fileName.replace(/\.(pdf|docx|doc)$/i, '');
+    cleanFile = cleanFile.replace(/[\(\[\{]\d+[\)\]\}]/g, '');
+    cleanFile = cleanFile.replace(/[_-]?(original|resume|cv|final|latest|updated|draft|copy|v\d+)[_-]?/gi, ' ');
+    cleanFile = cleanFile.replace(/[_-]+/g, ' ').trim();
+    const fileWords = cleanFile.split(/\s+/).filter(w => /^[A-Za-z]+$/.test(w));
+    if (fileWords.length >= 1 && fileWords.length <= 4) {
+      candidateName = fileWords.map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
     }
   }
 
-  const nameParts = (candidateName || 'Candidate').replace(/[^A-Za-z\s.-]/g, '').trim().split(/\s+/).filter(Boolean);
+  const nameParts = (candidateName || 'Candidate').split(/\s+/).filter(Boolean);
   const firstName = nameParts[0] || 'Candidate';
   const lastName = nameParts.slice(1).join(' ') || '';
 
-  // Extract skills safely from text
+  // Extract skills safely from rawText
   const commonSkills = [
     'React', 'Node.js', 'TypeScript', 'JavaScript', 'Next.js', 'Python', 'Java',
     'PostgreSQL', 'MySQL', 'MongoDB', 'AWS', 'Docker', 'Kubernetes', 'GraphQL',
@@ -185,25 +176,23 @@ export function extractFallbackCandidate(rawText: string): AIParsedData {
     'Flutter', 'React Native', 'Vue.js', 'Angular', 'DevOps', 'CI/CD', 'Linux'
   ];
 
-  const lowerRawText = rawText.toLowerCase();
+  const lowerRawText = (rawText || '').toLowerCase();
   const foundSkills = commonSkills.filter(skill => {
     const lowerSkill = skill.toLowerCase();
 
-    // Direct text match for skills with regex special characters (C++, C#, .NET)
     if (lowerSkill === 'c++' || lowerSkill === 'c#' || lowerSkill === '.net') {
       return lowerRawText.includes(lowerSkill);
     }
 
-    // Safe regex boundary match for standard words
     try {
       const escaped = escapeRegExp(skill);
-      return new RegExp(`\\b${escaped}\\b`, 'i').test(rawText);
+      return new RegExp(`\\b${escaped}\\b`, 'i').test(rawText || '');
     } catch (e) {
       return lowerRawText.includes(lowerSkill);
     }
   });
 
-  // Designation: match common job titles from rawText
+  // Designation matching
   const titles = [
     'Senior Full Stack Engineer', 'Full Stack Developer', 'Software Development Engineer',
     'Software Engineer', 'Senior Software Engineer', 'Frontend Developer', 'Backend Developer',
@@ -212,13 +201,13 @@ export function extractFallbackCandidate(rawText: string): AIParsedData {
 
   let currentDesignation: string | undefined;
   for (const title of titles) {
-    if (new RegExp(`\\b${title}\\b`, 'i').test(rawText)) {
+    if (new RegExp(`\\b${title}\\b`, 'i').test(rawText || '')) {
       currentDesignation = title;
       break;
     }
   }
 
-  // Location extraction matching major tech hubs
+  // Location matching
   const locations = [
     'Bengaluru', 'Bangalore', 'Mumbai', 'Delhi', 'NCR', 'Gurugram', 'Gurgaon',
     'Noida', 'Hyderabad', 'Pune', 'Chennai', 'Kolkata', 'Ahmedabad', 'San Francisco',
@@ -226,15 +215,15 @@ export function extractFallbackCandidate(rawText: string): AIParsedData {
   ];
   let currentLocation: string | undefined;
   for (const loc of locations) {
-    if (new RegExp(`\\b${loc}\\b`, 'i').test(rawText)) {
+    if (new RegExp(`\\b${loc}\\b`, 'i').test(rawText || '')) {
       currentLocation = loc;
       break;
     }
   }
 
-  // Experience Years structural extraction
+  // Total Experience Extraction
   let totalExperienceYears: number | undefined;
-  const expMatch = rawText.match(/(\d+(?:\.\d+)?)\s*(?:\+)?\s*(?:years?|yrs?)/i);
+  const expMatch = (rawText || '').match(/(\d+(?:\.\d+)?)\s*(?:\+)?\s*(?:years?|yrs?)/i);
   if (expMatch) {
     const yrs = parseFloat(expMatch[1]);
     if (!isNaN(yrs) && yrs > 0 && yrs <= 45) {
@@ -242,9 +231,9 @@ export function extractFallbackCandidate(rawText: string): AIParsedData {
     }
   }
 
-  // Company structural extraction
+  // Company Extraction
   let currentCompany: string | undefined;
-  const companyMatch = rawText.match(/(?:at|company[:\s]+|working\s+at)\s+([A-Za-z0-9\s,.&]+?)(?=\n|,|\.|$)/i);
+  const companyMatch = (rawText || '').match(/(?:at|company[:\s]+|working\s+at)\s+([A-Za-z0-9\s,.&]+?)(?=\n|,|\.|$)/i);
   if (companyMatch) {
     const comp = companyMatch[1].trim();
     if (comp.length >= 2 && comp.length <= 40) {
@@ -252,7 +241,7 @@ export function extractFallbackCandidate(rawText: string): AIParsedData {
     }
   }
 
-  const summary = rawText.slice(0, 300).replace(/\s+/g, ' ').trim();
+  const summary = (rawText || '').slice(0, 300).replace(/\s+/g, ' ').trim();
 
   return {
     firstName,
