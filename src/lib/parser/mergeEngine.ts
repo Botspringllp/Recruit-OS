@@ -4,6 +4,7 @@ import { RegexParsedData, AIParsedData, ParsedCandidate } from './types';
  * Merge Engine that synthesizes deterministic Regex extraction output
  * and AI LLM structured parsing output adhering to strict business priority rules.
  * High-precision fields (Regex Email/Phone/URLs) override AI predictions.
+ * ZERO hardcoded dummy mock values (no "candidate@example.com", no "+91-9876543210").
  */
 export function mergeParsedOutputs(
   regexData: RegexParsedData,
@@ -40,22 +41,8 @@ export function mergeParsedOutputs(
   const education = aiData.education || [];
   const certifications = aiData.certifications || [];
 
-  let firstName = (aiData.firstName || '').trim();
-  let lastName = (aiData.lastName || '').trim();
-
-  // Fallback: If name was not detected from top lines, attempt extraction from email address
-  if ((!firstName || firstName === 'Candidate') && email.includes('@')) {
-    const handle = email.split('@')[0]; // e.g. "sarah.sharma" or "rahul_verma"
-    const parts = handle.split(/[._-]/).filter(Boolean);
-    if (parts.length >= 1) {
-      firstName = parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
-    }
-    if (parts.length >= 2) {
-      lastName = parts.slice(1).map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
-    }
-  }
-
-  if (!firstName) firstName = 'Candidate';
+  const firstName = aiData.firstName || '';
+  const lastName = aiData.lastName || '';
 
   return {
     firstName,
