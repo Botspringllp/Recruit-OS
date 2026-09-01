@@ -18,8 +18,7 @@ function ensurePdfWorkerConfigured() {
 
 /**
  * Extracts raw textual content from uploaded PDF or DOCX file buffer.
- * Performs deep text cleaning to eliminate raw PDF binary artifacts (obj, stream, FlateDecode, xref, trailer)
- * while preserving multi-line structure for accurate field extraction.
+ * Performs safe text cleaning without destroying extracted candidate details.
  */
 export async function extractResumeText(
   buffer: Buffer,
@@ -45,12 +44,12 @@ export async function extractResumeText(
       console.warn('PDF Primary Extractor Warning:', error.message);
     }
 
-    // Clean PDF extracted text
+    // Clean PDF extracted text safely
     let cleanedText = sanitizePdfText(extractedText);
     console.log('EXTRACTION_STAGE', { stage: 'sanitizePdfText', length: cleanedText.length });
 
-    // If cleaned text is too short (< 30 chars) or contains binary markers, use stream text extractor
-    if (cleanedText.length < 30 || cleanedText.includes('%PDF-') || cleanedText.includes('FlateDecode')) {
+    // If cleaned text is too short (< 20 chars), use stream text extractor fallback
+    if (cleanedText.length < 20) {
       const rawFallback = extractPdfTextFromStreams(buffer);
       console.log('EXTRACTION_STAGE', { stage: 'extractPdfTextFromStreams', length: rawFallback.length });
       if (rawFallback.length > cleanedText.length) {
@@ -111,16 +110,11 @@ async function parsePdfBuffer(buffer: Buffer): Promise<string> {
   if (typeof PDFParseClass === 'function') {
     try {
       const parser = new PDFParseClass({ data: new Uint8Array(buffer) });
-      if (typeof parser.load === 'function') {
-        await parser.load();
-      }
-      if (typeof parser.getText === 'function') {
-        const textResult = await parser.getText();
-        if (typeof textResult === 'string') return textResult;
-        if (textResult?.text) return textResult.text;
-        if (Array.isArray(textResult?.pages)) {
-          return textResult.pages.map((p: any) => p.text || '').join('\n');
-        }
+      const textResult = await parser.getText();
+      if (typeof textResult === 'string') return textResult;
+      if (textResult?.text) return textResult.text;
+      if (Array.isArray(textResult?.pages)) {
+        return textResult.pages.map((p: any) => p.text || '').join('\n');
       }
     } catch (e: any) {
       console.warn('PDF_PARSE_STEP_FAILED (v2 PDFParse class):', e instanceof Error ? e.message : e);
@@ -135,27 +129,18 @@ export function sanitizePdfText(rawText: string): string {
 
   let cleaned = rawText;
 
-  // 1. Strip PDF xref tables and trailer blocks
-  cleaned = cleaned.replace(/xref\s*[\r\n]+[\s\S]*?startxref[\s\S]*?EOF/gi, '');
-  cleaned = cleaned.replace(/trailer\s*[\r\n]+[\s\S]*?startxref[\s\S]*?EOF/gi, '');
-  cleaned = cleaned.replace(/startxref[\s\S]*?EOF/gi, '');
+  // 1. Strip PDF header, trailer, and xref markers line-by-line
+  cleaned = cleaned.replace(/^%PDF-\d\.\d$/gm, '');
+  cleaned = cleaned.replace(/^xref$/gm, '');
+  cleaned = cleaned.replace(/^trailer$/gm, '');
+  cleaned = cleaned.replace(/^startxref$/gm, '');
+  cleaned = cleaned.replace(/^%%EOF$/gm, '');
+  cleaned = cleaned.replace(/\b\d{10}\s+\d{5}\s+[fn]\b/g, '');
 
-  // 2. Strip repeated PDF xref entry lines (e.g. "0000000000 65535 f", "f n f n f n")
-  cleaned = cleaned.replace(/\b\d{10}\s+\d{5}\s+[fn]\b/gi, '');
-  cleaned = cleaned.replace(/\b(f\s+|n\s+){3,}\b/gi, '');
-  cleaned = cleaned.replace(/\b(xref|trailer|startxref|EOF)\b/gi, '');
-
-  // 3. Strip PDF object stream tags
-  cleaned = cleaned.replace(/%PDF-\d\.\d/g, '');
-  cleaned = cleaned.replace(/\d+\s+\d+\s+obj[\s\S]*?endobj/g, '');
-  cleaned = cleaned.replace(/stream[\s\S]*?endstream/g, '');
-  cleaned = cleaned.replace(/(\d+\s+\d+\s+obj|endobj|FlateDecode|TypeCatalogPages)/gi, '');
-  cleaned = cleaned.replace(/<<[\s\S]*?>>/g, '');
-
-  // 4. Preserve line breaks while stripping non-printable characters
+  // 2. Remove non-printable ASCII control characters (keep space, tab, newlines)
   cleaned = cleaned.replace(/[^\x20-\x7E\n\r\t]/g, ' ');
 
-  // Normalize horizontal spaces line by line to maintain multi-line document layout
+  // 3. Normalize horizontal whitespace line by line
   cleaned = cleaned
     .split(/\r?\n/)
     .map(line => line.replace(/[ \t]+/g, ' ').trim())
