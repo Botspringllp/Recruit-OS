@@ -73,13 +73,15 @@
                                └─────────────────────────┘
 ```
 
-- **Framework**: Next.js 14 (App Router, Server Components & Server Actions)
-- **Language**: TypeScript 5.0 (Strict mode enabled)
-- **Styling**: Tailwind CSS + Custom High-Contrast Executive Theme (`globals.css`)
-- **Database**: PostgreSQL (Supabase) accessed via Prisma ORM
-- **Security**: Multi-tenant isolation (`agencyId` scoping) & Zod startup environment validation (`src/env.ts`)
-- **File Storage**: Supabase Cloud Storage (Tenant-isolated `resumes`, `compliance-docs`, `offer-documents` buckets)
-- **Observability**: Pino Structured Logging Infrastructure (`src/lib/logger.ts`)
+- **Frontend Framework**: **Next.js 14** (App Router for SSR & dynamic routing), **React 18**, **TypeScript 5.0** (Strict Mode)
+- **UI & Design System**: **Tailwind CSS**, Custom Executive White & Amber/Yellow Theme (`#F59E0B`), **Lucide React Icons**
+- **Backend & Server Actions**: **Next.js 14 Server Actions** & API Routes, **Node.js**
+- **Database & ORM**: **PostgreSQL** hosted on **Supabase** (Location: **Mumbai `ap-south-1` Region**), **Prisma ORM (v5)** with PgBouncer connection pooling (`DATABASE_URL` & `DIRECT_URL`)
+- **Multi-Tenancy & Security**: Strict **Tenant Isolation via `agencyId`**, Zod environment validation (`src/env.ts`)
+- **Auth & Cloud Storage**: **Supabase Auth**, **Supabase Storage Buckets** (`resumes`, `compliance-docs`, `offer-documents`)
+- **Resume Parsing Engine**: `pdf-parse` (PDF extraction), `mammoth` (Word/DOCX extraction), Structured JSON extraction pipeline
+- **Observability**: **Pino Structured Logging Infrastructure** (`src/lib/logger.ts`)
+- **Deployment & Hosting**: **Vercel** (Serverless Web App Deployment), **Supabase Cloud** (`ap-south-1` Mumbai DB)
 
 ---
 
