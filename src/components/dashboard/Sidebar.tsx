@@ -14,22 +14,36 @@ import {
   Award,
   X
 } from 'lucide-react';
-import { UserRoleType, NavigationItem } from '@/types/dashboard';
+import { UserRoleType } from '@/types/dashboard';
+
+export interface NavigationItem {
+  id: string;
+  label: string;
+  href: string;
+  icon: string;
+  rolesAllowed: string[];
+  requiredPermission?: string;
+  badgeCount?: number;
+  badgeVariant?: 'amber' | 'blue' | 'emerald';
+}
 
 interface SidebarProps {
-  userRole: UserRoleType;
+  userRole: UserRoleType | string;
   isOpenMobile: boolean;
   onCloseMobile: () => void;
   slaWarningCount?: number;
+  userPermissions?: string[];
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
   userRole,
   isOpenMobile,
   onCloseMobile,
-  slaWarningCount = 3
+  slaWarningCount = 3,
+  userPermissions = []
 }) => {
   const pathname = usePathname() || '/cockpit';
+  const roleStr = String(userRole || 'RECRUITER').toUpperCase();
 
   const navigationItems: NavigationItem[] = [
     {
@@ -37,35 +51,39 @@ export const Sidebar: React.FC<SidebarProps> = ({
       label: 'Recruiter Cockpit',
       href: '/cockpit',
       icon: 'LayoutDashboard',
-      rolesAllowed: ['AGENCY_FOUNDER', 'RECRUITER', 'FINANCE_ADMIN']
+      rolesAllowed: ['MASTER_OWNER', 'AGENCY_OWNER', 'AGENCY_FOUNDER', 'RECRUITER', 'FINANCE_MANAGER', 'FINANCE_ADMIN', 'COMPLIANCE_OFFICER', 'INTERVIEW_COORDINATOR']
     },
     {
       id: 'candidates',
       label: 'Candidate Repository',
       href: '/candidates',
       icon: 'Users',
-      rolesAllowed: ['AGENCY_FOUNDER', 'RECRUITER']
+      rolesAllowed: ['MASTER_OWNER', 'AGENCY_OWNER', 'AGENCY_FOUNDER', 'RECRUITER'],
+      requiredPermission: 'candidate.view'
     },
     {
       id: 'jobs',
       label: 'Job Mandates',
       href: '/jobs',
       icon: 'Briefcase',
-      rolesAllowed: ['AGENCY_FOUNDER', 'RECRUITER']
+      rolesAllowed: ['MASTER_OWNER', 'AGENCY_OWNER', 'AGENCY_FOUNDER', 'RECRUITER'],
+      requiredPermission: 'job.view'
     },
     {
       id: 'interviews',
       label: 'Interviews & Prep',
       href: '/interviews',
       icon: 'CalendarDays',
-      rolesAllowed: ['AGENCY_FOUNDER', 'RECRUITER']
+      rolesAllowed: ['MASTER_OWNER', 'AGENCY_OWNER', 'AGENCY_FOUNDER', 'RECRUITER', 'INTERVIEW_COORDINATOR'],
+      requiredPermission: 'interview.view'
     },
     {
       id: 'offers',
       label: 'Offer Management',
       href: '/offers',
       icon: 'Award',
-      rolesAllowed: ['AGENCY_FOUNDER', 'RECRUITER']
+      rolesAllowed: ['MASTER_OWNER', 'AGENCY_OWNER', 'AGENCY_FOUNDER', 'RECRUITER'],
+      requiredPermission: 'offer.view'
     },
     {
       id: 'compliance',
@@ -74,32 +92,55 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: 'ShieldCheck',
       badgeCount: slaWarningCount,
       badgeVariant: 'amber',
-      rolesAllowed: ['AGENCY_FOUNDER', 'RECRUITER']
+      rolesAllowed: ['MASTER_OWNER', 'AGENCY_OWNER', 'AGENCY_FOUNDER', 'COMPLIANCE_OFFICER'],
+      requiredPermission: 'compliance.view'
     },
     {
       id: 'partners',
       label: 'Partner Co-Broker',
       href: '/partners',
       icon: 'Handshake',
-      rolesAllowed: ['AGENCY_FOUNDER', 'RECRUITER', 'PARTNER_RECRUITER']
+      rolesAllowed: ['MASTER_OWNER', 'AGENCY_OWNER', 'AGENCY_FOUNDER', 'RECRUITER', 'PARTNER_RECRUITER'],
+      requiredPermission: 'partner.view'
     },
     {
       id: 'finance',
       label: 'Finance & Invoices',
       href: '/finance',
       icon: 'Receipt',
-      rolesAllowed: ['AGENCY_FOUNDER', 'FINANCE_ADMIN']
+      rolesAllowed: ['MASTER_OWNER', 'AGENCY_OWNER', 'AGENCY_FOUNDER', 'FINANCE_MANAGER', 'FINANCE_ADMIN'],
+      requiredPermission: 'finance.view'
     },
     {
       id: 'settings',
       label: 'Agency Settings',
-      href: '/settings',
+      href: '/settings/users',
       icon: 'Settings',
-      rolesAllowed: ['AGENCY_FOUNDER']
+      rolesAllowed: ['MASTER_OWNER', 'AGENCY_OWNER', 'AGENCY_FOUNDER'],
+      requiredPermission: 'user.manage'
     }
   ];
 
-  const filteredNav = navigationItems.filter(item => item.rolesAllowed.includes(userRole));
+  // RBAC Filtering Logic: Master Owner & Agency Owner see all items. Others check rolesAllowed & requiredPermission.
+  const filteredNav = navigationItems.filter(item => {
+    if (roleStr === 'MASTER_OWNER' || roleStr === 'AGENCY_OWNER' || roleStr === 'AGENCY_FOUNDER') {
+      return true;
+    }
+
+    const isRoleAllowed = item.rolesAllowed.includes(roleStr);
+    if (!isRoleAllowed) return false;
+
+    if (userPermissions.length > 0 && item.requiredPermission) {
+      const [res, act] = item.requiredPermission.split('.');
+      return userPermissions.some(p => {
+        if (p === '*' || p === item.requiredPermission) return true;
+        if (p.endsWith('.*') && p.slice(0, -2) === res) return true;
+        return false;
+      });
+    }
+
+    return true;
+  });
 
   const renderIcon = (iconName: string) => {
     switch (iconName) {
@@ -140,7 +181,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           isOpenMobile ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        {/* Brand Header with Direct Custom Logo (No background or round container) */}
+        {/* Brand Header */}
         <div className="h-16 px-6 flex items-center justify-between border-b border-slate-800/80">
           <a href="/cockpit" className="flex items-center gap-2.5 group">
             <img
@@ -173,7 +214,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
 
           {filteredNav.map(item => {
-            const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+            const isActive = pathname === item.href || (item.href !== '/cockpit' && pathname.startsWith(item.href));
 
             return (
               <a
@@ -204,14 +245,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
           })}
         </div>
 
-        {/* Footer Tenant Shield Indicator */}
+        {/* Footer Tenant & RBAC Shield */}
         <div className="p-3.5 m-3 rounded-2xl bg-slate-900/90 border border-slate-800">
           <div className="flex items-center gap-2 text-xs text-emerald-400 font-extrabold mb-1">
             <ShieldCheck className="h-4 w-4 shrink-0" />
-            <span>Tenant Isolated</span>
+            <span>RBAC Protected</span>
           </div>
           <p className="text-[10px] text-slate-400 leading-normal">
-            PostgreSQL RLS boundary active & validated.
+            Role: <span className="text-amber-400 font-bold">{roleStr}</span> • Multi-Tenant Isolated.
           </p>
         </div>
       </aside>

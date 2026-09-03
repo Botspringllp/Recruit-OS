@@ -1,5 +1,8 @@
 import React from 'react';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
+import { getCurrentUser, hasPermission } from '@/lib/rbac';
+import { logger } from '@/lib/logger';
 import { Handshake, Share2, Plus, Building2, Users, DollarSign } from 'lucide-react';
 import { prisma } from '@/lib/prisma';
 import PartnerPayoutTracker from '@/components/partners/PartnerPayoutTracker';
@@ -8,13 +11,24 @@ import ShareMandateModalWrapper from '@/components/partners/ShareMandateModalWra
 export const revalidate = 0;
 
 export default async function PartnersPage() {
+  const currentUser = await getCurrentUser();
+  if (!hasPermission(currentUser, 'partner.view')) {
+    logger.warn({
+      event: 'ACCESS_DENIED_PAGE_REDIRECT',
+      userId: currentUser?.id || 'ANONYMOUS',
+      agencyId: currentUser?.agencyId || 'GLOBAL',
+      page: '/partners',
+      requiredPermission: 'partner.view'
+    }, '🚫 [ACCESS_DENIED] Unauthorized page access redirected to /403');
+    redirect('/403');
+  }
+
   const demoAgency = await prisma.agency.findFirst({
     where: { subdomain: 'demo' },
     select: { id: true }
   }).catch(() => null);
   const agencyId = demoAgency?.id || 'adaa404d-0ce3-4b72-9981-882a8f31a2af';
 
-  // Fetch Partner Agencies
   const partners = await (prisma as any).partnerAgency.findMany({
     where: { agencyId },
     orderBy: { createdAt: 'desc' },
@@ -23,7 +37,6 @@ export default async function PartnersPage() {
     }
   }).catch(() => []);
 
-  // Fetch Shared Mandates
   const partnerShares = await (prisma as any).partnerMandateShare.findMany({
     where: { agencyId },
     orderBy: { createdAt: 'desc' },
@@ -34,13 +47,11 @@ export default async function PartnersPage() {
     }
   }).catch(() => []);
 
-  // Fetch Active Job Mandates for Share Modal
   const jobs = await (prisma as any).jobMandate.findMany({
     where: { agencyId, status: { in: ['OPEN', 'ACTIVE'] } },
     select: { id: true, title: true }
   }).catch(() => []);
 
-  // Fetch Split Ledger Payouts
   const ledgers = await (prisma as any).partnerSplitLedger.findMany({
     where: { agencyId },
     orderBy: { createdAt: 'desc' },
@@ -55,7 +66,6 @@ export default async function PartnersPage() {
     }
   }).catch(() => []);
 
-  // KPI Calculations
   const activePartnersCount = (partners as any[]).filter((p: any) => p.isActive).length;
   const sharedMandatesCount = (partnerShares as any[]).length;
 
@@ -69,7 +79,6 @@ export default async function PartnersPage() {
 
   return (
     <div className="space-y-6 pb-12">
-      {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-5">
         <div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
@@ -94,7 +103,6 @@ export default async function PartnersPage() {
         </div>
       </div>
 
-      {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm shadow-slate-200/50 space-y-1 hover:shadow-md hover:border-indigo-400 transition-all duration-200">
           <div className="flex items-center justify-between text-xs font-extrabold text-slate-500 uppercase tracking-wider">
@@ -135,7 +143,6 @@ export default async function PartnersPage() {
         </div>
       </div>
 
-      {/* Partner Directory Table */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm shadow-slate-200/50 p-5 space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-black text-slate-900 flex items-center gap-2">
@@ -218,7 +225,6 @@ export default async function PartnersPage() {
         </div>
       </div>
 
-      {/* Active Shared Mandates Table */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm shadow-slate-200/50 p-5 space-y-4">
         <h2 className="text-sm font-black text-slate-900 flex items-center gap-2">
           <Share2 className="h-4 w-4 text-indigo-600" />
@@ -260,7 +266,6 @@ export default async function PartnersPage() {
         </div>
       </div>
 
-      {/* Revenue Split & Payout Ledger Component */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm shadow-slate-200/50 p-5">
         <PartnerPayoutTracker ledgers={ledgers as any[]} />
       </div>

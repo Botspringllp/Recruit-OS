@@ -1,6 +1,9 @@
 import React from 'react';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
+import { getCurrentUser, hasPermission } from '@/lib/rbac';
+import { logger } from '@/lib/logger';
 import { ComplianceKpiCards } from '@/components/compliance/ComplianceKpiCards';
 import { ComplianceStatusDropdown } from '@/components/compliance/ComplianceStatusDropdown';
 
@@ -17,6 +20,18 @@ export default async function ComplianceDashboardPage({
 }: {
   searchParams: SearchParams;
 }) {
+  const currentUser = await getCurrentUser();
+  if (!hasPermission(currentUser, 'compliance.view')) {
+    logger.warn({
+      event: 'ACCESS_DENIED_PAGE_REDIRECT',
+      userId: currentUser?.id || 'ANONYMOUS',
+      agencyId: currentUser?.agencyId || 'GLOBAL',
+      page: '/compliance',
+      requiredPermission: 'compliance.view'
+    }, '🚫 [ACCESS_DENIED] Unauthorized page access redirected to /403');
+    redirect('/403');
+  }
+
   const agency = await prisma.agency.findFirst({
     where: { subdomain: 'demo' },
     select: { id: true }
@@ -111,7 +126,6 @@ export default async function ComplianceDashboardPage({
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-200 pb-5">
         <div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
@@ -136,7 +150,6 @@ export default async function ComplianceDashboardPage({
         </div>
       </div>
 
-      {/* KPI Cards */}
       <ComplianceKpiCards
         totalDocs={totalDocs}
         pendingCount={pendingCount}
@@ -146,7 +159,6 @@ export default async function ComplianceDashboardPage({
         blockedCandidatesCount={blockedCandidatesCount}
       />
 
-      {/* Alerts Section if expired docs exist */}
       {expiredCount > 0 && (
         <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 flex items-center justify-between shadow-2xs">
           <div className="flex items-center gap-3">
@@ -167,10 +179,8 @@ export default async function ComplianceDashboardPage({
         </div>
       )}
 
-      {/* Filter Toolbar */}
       <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm shadow-slate-200/50">
         <form method="GET" action="/compliance" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-          {/* Search Input */}
           <div>
             <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-wider mb-1">
               Search Document / Candidate
@@ -184,7 +194,6 @@ export default async function ComplianceDashboardPage({
             />
           </div>
 
-          {/* Category Filter */}
           <div>
             <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-wider mb-1">
               Category
@@ -209,7 +218,6 @@ export default async function ComplianceDashboardPage({
             </select>
           </div>
 
-          {/* Status Filter */}
           <div>
             <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-wider mb-1">
               Status
@@ -229,7 +237,6 @@ export default async function ComplianceDashboardPage({
             </select>
           </div>
 
-          {/* Candidate Filter */}
           <div>
             <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-wider mb-1">
               Candidate
@@ -248,7 +255,6 @@ export default async function ComplianceDashboardPage({
             </select>
           </div>
 
-          {/* Submit */}
           <div className="flex items-end gap-2">
             <button
               type="submit"
@@ -266,7 +272,6 @@ export default async function ComplianceDashboardPage({
         </form>
       </div>
 
-      {/* Documents Data Table */}
       <div className="bg-white border border-slate-200 rounded-2xl shadow-sm shadow-slate-200/50 overflow-hidden">
         <div className="p-4 border-b border-slate-200 flex items-center justify-between">
           <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
@@ -302,7 +307,6 @@ export default async function ComplianceDashboardPage({
 
                   return (
                     <tr key={doc.id} className="hover:bg-slate-50 transition-colors">
-                      {/* Candidate */}
                       <td className="p-4 font-extrabold text-slate-900">
                         {doc.candidate ? (
                           <Link
@@ -317,29 +321,24 @@ export default async function ComplianceDashboardPage({
                         )}
                       </td>
 
-                      {/* Category */}
                       <td className="p-4">
                         <span className="px-2.5 py-1 bg-slate-100 text-slate-800 font-mono text-[10px] font-bold rounded-md border border-slate-300">
                           {(doc.documentCategory || 'RESUME').replace(/_/g, ' ')}
                         </span>
                       </td>
 
-                      {/* Document Name */}
                       <td className="p-4">
                         <div className="flex items-center gap-2">
                           <span className="text-slate-900 font-bold">{doc.fileName || 'document.pdf'}</span>
                         </div>
                       </td>
 
-                      {/* Status Dropdown */}
                       <td className="p-4">
                         <ComplianceStatusDropdown docId={doc.id} currentStatus={doc.status} />
                       </td>
 
-                      {/* Uploaded */}
                       <td className="p-4 text-slate-700 font-semibold">{new Date(doc.createdAt).toLocaleDateString()}</td>
 
-                      {/* Expiry */}
                       <td className="p-4 text-slate-700 font-semibold">
                         {doc.expiryDate ? (
                           <span
@@ -356,7 +355,6 @@ export default async function ComplianceDashboardPage({
                         )}
                       </td>
 
-                      {/* Actions */}
                       <td className="p-4 text-right">
                         <div className="flex items-center justify-end gap-2">
                           <Link
@@ -381,7 +379,6 @@ export default async function ComplianceDashboardPage({
           </table>
         </div>
 
-        {/* Pagination */}
         {totalPages > 1 && (
           <div className="p-4 border-t border-slate-200 flex items-center justify-between font-bold text-xs">
             <span className="text-slate-600">

@@ -1,6 +1,7 @@
 import React from 'react';
 import { DashboardShell } from '@/components/dashboard/DashboardShell';
 import { TenantContextType, UserContextType } from '@/types/dashboard';
+import { getCurrentUser, getCurrentUserPermissions } from '@/lib/rbac';
 
 export const metadata = {
   title: 'Recruiter Cockpit - RecruitOS',
@@ -12,9 +13,10 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Resolved Server Context (Mock fallback for Phase RC-01.A layout verification)
+  const dbUser = await getCurrentUser();
+
   const tenantContext: TenantContextType = {
-    agencyId: 'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d',
+    agencyId: dbUser?.agencyId || 'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d',
     agencyName: 'Apex Executive Search',
     subdomain: 'apex',
     subscriptionTier: 'ENTERPRISE',
@@ -23,15 +25,17 @@ export default async function DashboardLayout({
   };
 
   const userContext: UserContextType = {
-    userId: 'u1v2w3x4-y5z6-7a8b-9c0d-1e2f3a4b5c6d',
-    email: 'sarah.sharma@apexrecruitment.com',
-    firstName: 'Sarah',
-    lastName: 'Sharma',
-    role: 'AGENCY_FOUNDER',
+    userId: dbUser?.id || 'u1v2w3x4-y5z6-7a8b-9c0d-1e2f3a4b5c6d',
+    email: dbUser?.email || 'sarah.sharma@apexrecruitment.com',
+    firstName: dbUser?.firstName || 'Sarah',
+    lastName: dbUser?.lastName || 'Sharma',
+    role: (dbUser?.role as any) || 'AGENCY_FOUNDER',
   };
 
+  const userPermissions = getCurrentUserPermissions(dbUser);
+
   return (
-    <DashboardShell tenant={tenantContext} user={userContext}>
+    <DashboardShell tenant={tenantContext} user={userContext} userPermissions={userPermissions}>
       {children}
     </DashboardShell>
   );

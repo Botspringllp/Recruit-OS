@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { logEvent } from '@/lib/logger';
+import { requirePermission } from '@/lib/rbac';
 
 async function getDemoAgencyId(): Promise<string> {
   const agency = await prisma.agency.findFirst({
@@ -25,8 +26,9 @@ export type FinanceActionResult = {
 };
 
 // Automatic Invoice Generation when Offer status becomes JOINED
-export async function autoGenerateInvoiceForOffer(offerId: string): Promise<FinanceActionResult> {
+export async function autoGenerateInvoiceForOffer(offerId: string, userOverride?: any): Promise<FinanceActionResult> {
   try {
+    await requirePermission('finance.edit', userOverride);
     const agencyId = await getDemoAgencyId();
 
     const offer = await prisma.jobOfferAudit.findFirst({
@@ -52,7 +54,6 @@ export async function autoGenerateInvoiceForOffer(offerId: string): Promise<Fina
       return { success: false, error: 'Mandate client association missing.' };
     }
 
-    // Check if an invoice already exists for this offer audit
     const existing = await prisma.invoiceRecord.findFirst({
       where: { auditId: offer.id, agencyId }
     });
@@ -61,7 +62,6 @@ export async function autoGenerateInvoiceForOffer(offerId: string): Promise<Fina
       return { success: true, invoiceId: existing.id };
     }
 
-    // Calculate Base Fee: Offered Total CTC * Fee Percentage
     const totalCtc = offer.totalOfferedCtc
       ? parseFloat(offer.totalOfferedCtc.toString())
       : (offer.offeredFixedCtc ? parseFloat(offer.offeredFixedCtc.toString()) : 0) +
@@ -73,19 +73,16 @@ export async function autoGenerateInvoiceForOffer(offerId: string): Promise<Fina
           ? parseFloat(offer.submission.job.client.standardFeePercentage.toString())
           : 8.33);
 
-    // Offered CTC is in LPA (e.g. 24.50 LPA = 24,50,000 INR)
     const annualCtcAmount = totalCtc > 100 ? totalCtc : totalCtc * 100000;
     const baseFeeAmount = (annualCtcAmount * feePercentage) / 100;
     const gstPercentage = 18.0;
     const gstAmount = (baseFeeAmount * gstPercentage) / 100;
     const totalInvoiceAmount = baseFeeAmount + gstAmount;
 
-    // Generate unique invoice number: INV-YYYYMMDD-XXXX
     const invoiceCount = await prisma.invoiceRecord.count({ where: { agencyId } });
     const yearStr = new Date().getFullYear();
     const invoiceNumber = `INV-${yearStr}-${String(invoiceCount + 1).padStart(4, '0')}`;
 
-    // Calculate Due Date (Default payment terms: client paymentTermsDays or 30 days)
     const paymentTermsDays = offer.submission.job.client?.paymentTermsDays || 30;
     const joiningDate = offer.joiningDate ? new Date(offer.joiningDate) : new Date();
     const dueDate = new Date(joiningDate.getTime() + paymentTermsDays * 24 * 60 * 60 * 1000);
@@ -130,8 +127,9 @@ export async function autoGenerateInvoiceForOffer(offerId: string): Promise<Fina
   }
 }
 
-export async function createInvoiceAction(prevState: any, formData: FormData): Promise<FinanceActionResult> {
+export async function createInvoiceAction(prevState: any, formData: FormData, userOverride?: any): Promise<FinanceActionResult> {
   try {
+    await requirePermission('finance.edit', userOverride);
     const agencyId = await getDemoAgencyId();
 
     const clientId = (formData.get('clientId') as string || '').trim();
@@ -198,13 +196,13 @@ export async function createInvoiceAction(prevState: any, formData: FormData): P
 
     return { success: true, invoiceId: invoice.id };
   } catch (err: any) {
-    console.error('Error creating invoice:', err);
     return { success: false, error: err.message || 'Failed to create invoice' };
   }
 }
 
-export async function updateInvoiceAction(invoiceId: string, formData: FormData): Promise<FinanceActionResult> {
+export async function updateInvoiceAction(invoiceId: string, formData: FormData, userOverride?: any): Promise<FinanceActionResult> {
   try {
+    await requirePermission('finance.edit', userOverride);
     const agencyId = await getDemoAgencyId();
 
     const baseFeeAmountRaw = (formData.get('baseFeeAmount') as string || '').trim();
@@ -273,13 +271,13 @@ export async function updateInvoiceAction(invoiceId: string, formData: FormData)
 
     return { success: true, invoiceId };
   } catch (err: any) {
-    console.error('Error updating invoice:', err);
     return { success: false, error: err.message || 'Failed to update invoice' };
   }
 }
 
-export async function updateInvoiceStatusAction(invoiceId: string, newStatus: string): Promise<FinanceActionResult> {
+export async function updateInvoiceStatusAction(invoiceId: string, newStatus: string, userOverride?: any): Promise<FinanceActionResult> {
   try {
+    await requirePermission('finance.edit', userOverride);
     const agencyId = await getDemoAgencyId();
 
     const existing = await prisma.invoiceRecord.findFirst({
@@ -307,13 +305,13 @@ export async function updateInvoiceStatusAction(invoiceId: string, newStatus: st
 
     return { success: true, invoiceId };
   } catch (err: any) {
-    console.error('Error updating invoice status:', err);
     return { success: false, error: err.message || 'Failed to update invoice status' };
   }
 }
 
-export async function recordPaymentAction(invoiceId: string, formData: FormData): Promise<FinanceActionResult> {
+export async function recordPaymentAction(invoiceId: string, formData: FormData, userOverride?: any): Promise<FinanceActionResult> {
   try {
+    await requirePermission('finance.edit', userOverride);
     const agencyId = await getDemoAgencyId();
 
     const paymentAmountRaw = (formData.get('paymentAmount') as string || '').trim();

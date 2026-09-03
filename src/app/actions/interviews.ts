@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { InterviewType, InterviewMode, PipelineStage, SlaStatus } from '@prisma/client';
+import { requirePermission } from '@/lib/rbac';
 
 async function getDemoAgencyId(): Promise<string> {
   const agency = await prisma.agency.findFirst({
@@ -22,8 +23,9 @@ export type InterviewActionResult = {
   errors?: Record<string, string>;
 };
 
-export async function createInterviewAction(prevState: any, formData: FormData): Promise<InterviewActionResult> {
+export async function createInterviewAction(prevState: any, formData: FormData, userOverride?: any): Promise<InterviewActionResult> {
   try {
+    await requirePermission('interview.schedule', userOverride);
     const agencyId = await getDemoAgencyId();
 
     const submissionId = (formData.get('submissionId') as string || '').trim();
@@ -68,7 +70,6 @@ export async function createInterviewAction(prevState: any, formData: FormData):
       return { success: false, errors };
     }
 
-    // Verify submission exists & belongs to tenant
     const submission = await prisma.candidateSubmission.findFirst({
       where: { id: submissionId, agencyId },
       select: { id: true, candidateId: true, jobId: true, stage: true }
@@ -78,7 +79,6 @@ export async function createInterviewAction(prevState: any, formData: FormData):
       return { success: false, error: 'Candidate submission record not found or access denied.' };
     }
 
-    // Map UI values to Enums
     const roundType = roundTypeRaw as InterviewType;
     const mode = modeRaw as InterviewMode;
 
@@ -96,7 +96,6 @@ export async function createInterviewAction(prevState: any, formData: FormData):
       }
     });
 
-    // Automated Pipeline Transition: Move submission stage to INTERVIEW_SCHEDULED
     if (submission.stage !== PipelineStage.INTERVIEW_SCHEDULED) {
       await prisma.candidateSubmission.update({
         where: { id: submissionId },
@@ -125,16 +124,17 @@ export async function createInterviewAction(prevState: any, formData: FormData):
 
     return { success: true, interviewId: newInterview.id };
   } catch (err: any) {
-    console.error('Error creating interview schedule:', err);
     return { success: false, error: err.message || 'Failed to schedule interview' };
   }
 }
 
 export async function updateInterviewAction(
   interviewId: string,
-  formData: FormData
+  formData: FormData,
+  userOverride?: any
 ): Promise<InterviewActionResult> {
   try {
+    await requirePermission('interview.edit', userOverride);
     const agencyId = await getDemoAgencyId();
 
     const scheduledAtRaw = (formData.get('scheduledAt') as string || '').trim();
@@ -201,7 +201,6 @@ export async function updateInterviewAction(
 
     return { success: true, interviewId };
   } catch (err: any) {
-    console.error('Error updating interview schedule:', err);
     return { success: false, error: err.message || 'Failed to update interview' };
   }
 }
@@ -209,9 +208,11 @@ export async function updateInterviewAction(
 export async function rescheduleInterviewAction(
   interviewId: string,
   newScheduledAtIso: string,
-  rescheduleReason?: string
+  rescheduleReason?: string,
+  userOverride?: any
 ): Promise<InterviewActionResult> {
   try {
+    await requirePermission('interview.edit', userOverride);
     const agencyId = await getDemoAgencyId();
 
     const existing = await prisma.interviewSchedule.findFirst({
@@ -246,7 +247,6 @@ export async function rescheduleInterviewAction(
 
     return { success: true, interviewId };
   } catch (err: any) {
-    console.error('Error rescheduling interview:', err);
     return { success: false, error: err.message || 'Failed to reschedule interview' };
   }
 }
@@ -254,9 +254,11 @@ export async function rescheduleInterviewAction(
 export async function updateInterviewStatusAction(
   interviewId: string,
   newStatus: string,
-  outcome?: 'PASS' | 'FAIL' | 'HOLD'
+  outcome?: 'PASS' | 'FAIL' | 'HOLD',
+  userOverride?: any
 ): Promise<InterviewActionResult> {
   try {
+    await requirePermission('interview.edit', userOverride);
     const agencyId = await getDemoAgencyId();
 
     const existing = await prisma.interviewSchedule.findFirst({
@@ -276,7 +278,6 @@ export async function updateInterviewStatusAction(
       }
     });
 
-    // Pipeline integration on COMPLETED status
     if (newStatus === 'COMPLETED' && outcome) {
       const submissionId = existing.submissionId;
       const currentStage = existing.submission.stage;
@@ -318,7 +319,6 @@ export async function updateInterviewStatusAction(
 
     return { success: true, interviewId };
   } catch (err: any) {
-    console.error('Error updating interview status:', err);
     return { success: false, error: err.message || 'Failed to update interview status' };
   }
 }

@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { PipelineStage, SlaStatus } from '@prisma/client';
 import { calculateSlaStatus } from '@/lib/sla';
+import { requirePermission } from '@/lib/rbac';
 
 async function getDemoAgencyId(): Promise<string> {
   const agency = await prisma.agency.findFirst({
@@ -23,8 +24,9 @@ export type SubmissionActionResult = {
   errors?: Record<string, string>;
 };
 
-export async function createSubmissionAction(prevState: any, formData: FormData): Promise<SubmissionActionResult> {
+export async function createSubmissionAction(prevState: any, formData: FormData, userOverride?: any): Promise<SubmissionActionResult> {
   try {
+    await requirePermission('submission.create', userOverride);
     const agencyId = await getDemoAgencyId();
 
     const candidateId = (formData.get('candidateId') as string || '').trim();
@@ -39,7 +41,6 @@ export async function createSubmissionAction(prevState: any, formData: FormData)
       return { success: false, errors };
     }
 
-    // Check duplicate submission for same candidate and mandate
     const existing = await prisma.candidateSubmission.findFirst({
       where: { agencyId, jobId, candidateId }
     });
@@ -61,7 +62,6 @@ export async function createSubmissionAction(prevState: any, formData: FormData)
       }
     });
 
-    // Create initial SLA log activity entry
     await prisma.pipelineSlaLog.create({
       data: {
         agencyId,
@@ -77,16 +77,17 @@ export async function createSubmissionAction(prevState: any, formData: FormData)
     revalidatePath(`/jobs/${jobId}`);
     return { success: true, submissionId: newSubmission.id };
   } catch (err: any) {
-    console.error('Error creating submission:', err);
     return { success: false, error: err.message || 'Failed to submit candidate to mandate' };
   }
 }
 
 export async function updateSubmissionStageAction(
   submissionId: string,
-  newStage: PipelineStage
+  newStage: PipelineStage,
+  userOverride?: any
 ): Promise<SubmissionActionResult> {
   try {
+    await requirePermission('submission.edit', userOverride);
     const agencyId = await getDemoAgencyId();
 
     const existing = await prisma.candidateSubmission.findFirst({
@@ -109,7 +110,6 @@ export async function updateSubmissionStageAction(
       }
     });
 
-    // Log stage change activity in PipelineSlaLog
     await prisma.pipelineSlaLog.create({
       data: {
         agencyId,
@@ -125,7 +125,6 @@ export async function updateSubmissionStageAction(
     revalidatePath(`/submissions/${submissionId}`);
     return { success: true, submissionId };
   } catch (err: any) {
-    console.error('Error updating submission stage:', err);
     return { success: false, error: err.message || 'Failed to update pipeline stage' };
   }
 }

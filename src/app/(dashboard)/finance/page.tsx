@@ -1,6 +1,9 @@
 import React from 'react';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
+import { getCurrentUser, hasPermission } from '@/lib/rbac';
+import { logger } from '@/lib/logger';
 import { RevenueSummaryCards } from '@/components/finance/RevenueSummaryCards';
 import { InvoiceStatusDropdown } from '@/components/finance/InvoiceStatusDropdown';
 import { Receipt, Plus, Search, Filter, ArrowUpDown, Building, ExternalLink } from 'lucide-react';
@@ -18,6 +21,18 @@ interface FinancePageProps {
 }
 
 export default async function FinancePage({ searchParams }: FinancePageProps) {
+  const currentUser = await getCurrentUser();
+  if (!hasPermission(currentUser, 'finance.view')) {
+    logger.warn({
+      event: 'ACCESS_DENIED_PAGE_REDIRECT',
+      userId: currentUser?.id || 'ANONYMOUS',
+      agencyId: currentUser?.agencyId || 'GLOBAL',
+      page: '/finance',
+      requiredPermission: 'finance.view'
+    }, '🚫 [ACCESS_DENIED] Unauthorized page access redirected to /403');
+    redirect('/403');
+  }
+
   const demoAgency = await prisma.agency.findFirst({
     where: { subdomain: 'demo' },
     select: { id: true }
@@ -39,7 +54,6 @@ export default async function FinancePage({ searchParams }: FinancePageProps) {
     );
   }
 
-  // --- AUTOMATIC OVERDUE DETECTION ENGINE ---
   await prisma.invoiceRecord.updateMany({
     where: {
       agencyId,
@@ -50,7 +64,6 @@ export default async function FinancePage({ searchParams }: FinancePageProps) {
     data: { invoiceStatus: 'OVERDUE' }
   }).catch((e) => console.error('Error running overdue engine:', e));
 
-  // --- LIVE REVENUE KPI CALCULATIONS ---
   const allInvoices = await prisma.invoiceRecord.findMany({
     where: { agencyId, invoiceStatus: { not: 'CANCELLED' } },
     select: {
@@ -125,7 +138,6 @@ export default async function FinancePage({ searchParams }: FinancePageProps) {
 
   return (
     <div className="space-y-6 pb-12 font-sans">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-5">
         <div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
@@ -146,13 +158,10 @@ export default async function FinancePage({ searchParams }: FinancePageProps) {
         </Link>
       </div>
 
-      {/* Live Revenue Summary KPI Cards */}
       <RevenueSummaryCards stats={stats} />
 
-      {/* Filter & Search Bar */}
       <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm space-y-4">
         <form method="GET" className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
-          {/* Search Input */}
           <div className="relative md:col-span-2">
             <Search className="absolute left-3.5 top-2.5 h-4 w-4 text-amber-500" />
             <input
@@ -164,7 +173,6 @@ export default async function FinancePage({ searchParams }: FinancePageProps) {
             />
           </div>
 
-          {/* Status Filter */}
           <div className="relative">
             <Filter className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-500" />
             <select
@@ -183,7 +191,6 @@ export default async function FinancePage({ searchParams }: FinancePageProps) {
             </select>
           </div>
 
-          {/* Client Filter */}
           <div className="relative">
             <Building className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-500" />
             <select
@@ -200,7 +207,6 @@ export default async function FinancePage({ searchParams }: FinancePageProps) {
             </select>
           </div>
 
-          {/* Sorting */}
           <div className="relative">
             <ArrowUpDown className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-500" />
             <select
@@ -217,7 +223,6 @@ export default async function FinancePage({ searchParams }: FinancePageProps) {
         </form>
       </div>
 
-      {/* Invoices List Table */}
       <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="p-4 border-b border-slate-200 flex items-center justify-between">
           <h2 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
@@ -268,7 +273,6 @@ export default async function FinancePage({ searchParams }: FinancePageProps) {
                     </div>
                   </div>
 
-                  {/* Financial Breakdown & Actions */}
                   <div className="flex items-center justify-between md:justify-end gap-6 text-xs">
                     <div className="text-right">
                       <div className="font-black text-slate-900 text-sm">
@@ -303,7 +307,6 @@ export default async function FinancePage({ searchParams }: FinancePageProps) {
           </div>
         )}
 
-        {/* Server-Side Pagination Controls */}
         {totalPages > 1 && (
           <div className="p-4 border-t border-slate-200 flex items-center justify-between text-xs font-bold">
             <Link

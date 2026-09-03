@@ -6,6 +6,7 @@ import { PipelineStage, SlaStatus, Prisma } from '@prisma/client';
 import { autoGenerateInvoiceForOffer } from '@/app/actions/finance';
 import { checkCandidateComplianceGateAction } from '@/app/actions/compliance';
 import { logEvent } from '@/lib/logger';
+import { requirePermission } from '@/lib/rbac';
 
 async function getDemoAgencyId(): Promise<string> {
   const agency = await prisma.agency.findFirst({
@@ -26,8 +27,9 @@ export type OfferActionResult = {
   errors?: Record<string, string>;
 };
 
-export async function createOfferAction(prevState: any, formData: FormData): Promise<OfferActionResult> {
+export async function createOfferAction(prevState: any, formData: FormData, userOverride?: any): Promise<OfferActionResult> {
   try {
+    await requirePermission('offer.create', userOverride);
     const agencyId = await getDemoAgencyId();
 
     const submissionId = (formData.get('submissionId') as string || '').trim();
@@ -84,7 +86,6 @@ export async function createOfferAction(prevState: any, formData: FormData): Pro
       return { success: false, errors };
     }
 
-    // Verify submission exists & belongs to agency tenant
     const submission = await prisma.candidateSubmission.findFirst({
       where: { id: submissionId, agencyId },
       select: { id: true, stage: true, candidateId: true, jobId: true }
@@ -99,7 +100,6 @@ export async function createOfferAction(prevState: any, formData: FormData): Pro
     const variableDecimal = new Prisma.Decimal(offeredVariableCtc.toFixed(2));
     const buyoutDecimal = new Prisma.Decimal(noticeBuyout.toFixed(2));
 
-    // Check if an offer already exists for this submission
     const existingOffer = await prisma.jobOfferAudit.findFirst({
       where: { submissionId, agencyId }
     });
@@ -136,7 +136,6 @@ export async function createOfferAction(prevState: any, formData: FormData): Pro
       });
     }
 
-    // Pipeline integration: Ensure candidate submission stage is at least OFFER_EXTENDED
     if (submission.stage !== PipelineStage.OFFER_EXTENDED && submission.stage !== PipelineStage.JOINED) {
       await prisma.candidateSubmission.update({
         where: { id: submissionId },
@@ -165,16 +164,17 @@ export async function createOfferAction(prevState: any, formData: FormData): Pro
 
     return { success: true, offerId: offer.id };
   } catch (err: any) {
-    console.error('Error creating job offer:', err);
     return { success: false, error: err.message || 'Failed to create job offer' };
   }
 }
 
 export async function updateOfferAction(
   offerId: string,
-  formData: FormData
+  formData: FormData,
+  userOverride?: any
 ): Promise<OfferActionResult> {
   try {
+    await requirePermission('offer.create', userOverride);
     const agencyId = await getDemoAgencyId();
 
     const offeredFixedCtcRaw = (formData.get('offeredFixedCtc') as string || '').trim();
@@ -244,7 +244,6 @@ export async function updateOfferAction(
       }
     });
 
-    // If updated status is JOINED, update candidate submission stage to JOINED and auto-generate placement invoice
     if (status === 'JOINED') {
       const submission = await prisma.candidateSubmission.findUnique({
         where: { id: existing.submissionId }
@@ -271,7 +270,7 @@ export async function updateOfferAction(
         }).catch((e) => console.error('Error writing SLA log on offer join:', e));
       }
 
-      await autoGenerateInvoiceForOffer(offerId).catch((e) =>
+      await autoGenerateInvoiceForOffer(offerId, userOverride).catch((e) =>
         console.error('Error auto generating placement invoice:', e)
       );
     }
@@ -283,16 +282,17 @@ export async function updateOfferAction(
 
     return { success: true, offerId };
   } catch (err: any) {
-    console.error('Error updating offer:', err);
     return { success: false, error: err.message || 'Failed to update offer' };
   }
 }
 
 export async function updateOfferStatusAction(
   offerId: string,
-  newStatus: string
+  newStatus: string,
+  userOverride?: any
 ): Promise<OfferActionResult> {
   try {
+    await requirePermission('offer.approve', userOverride);
     const agencyId = await getDemoAgencyId();
 
     const existing = await prisma.jobOfferAudit.findFirst({
@@ -304,9 +304,8 @@ export async function updateOfferStatusAction(
       return { success: false, error: 'Offer record not found or access denied.' };
     }
 
-    // Enforcement: Check Candidate Compliance Gate before transitioning to JOINED
     if (newStatus === 'JOINED' && existing.submission) {
-      const complianceGate = await checkCandidateComplianceGateAction(existing.submission.candidateId);
+      const complianceGate = await checkCandidateComplianceGateAction(existing.submission.candidateId, userOverride);
       if (!complianceGate.isCompliant && complianceGate.missingDocs && complianceGate.missingDocs.length > 0) {
         return {
           success: false,
@@ -323,7 +322,6 @@ export async function updateOfferStatusAction(
     const submissionId = existing.submissionId;
     const currentStage = existing.submission.stage;
 
-    // Automatic Pipeline Integration on Offer Status Change
     if (newStatus === 'JOINED') {
       if (currentStage !== PipelineStage.JOINED) {
         await prisma.candidateSubmission.update({
@@ -376,7 +374,6 @@ export async function updateOfferStatusAction(
 
     return { success: true, offerId };
   } catch (err: any) {
-    console.error('Error updating offer status:', err);
     return { success: false, error: err.message || 'Failed to update offer status' };
   }
 }

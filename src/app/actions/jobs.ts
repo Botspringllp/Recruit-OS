@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { MandateStatus } from '@prisma/client';
+import { requirePermission } from '@/lib/rbac';
 
 async function getDemoAgencyId(): Promise<string> {
   const agency = await prisma.agency.findFirst({
@@ -22,8 +23,9 @@ export type JobActionResult = {
   errors?: Record<string, string>;
 };
 
-export async function createJobMandateAction(prevState: any, formData: FormData): Promise<JobActionResult> {
+export async function createJobMandateAction(prevState: any, formData: FormData, userOverride?: any): Promise<JobActionResult> {
   try {
+    await requirePermission('job.create', userOverride);
     const agencyId = await getDemoAgencyId();
 
     const title = (formData.get('title') as string || '').trim();
@@ -104,13 +106,13 @@ export async function createJobMandateAction(prevState: any, formData: FormData)
     revalidatePath('/jobs');
     return { success: true, jobId: newJob.id };
   } catch (err: any) {
-    console.error('Error creating job mandate:', err);
     return { success: false, error: err.message || 'Failed to create job mandate' };
   }
 }
 
-export async function updateJobMandateAction(jobId: string, prevState: any, formData: FormData): Promise<JobActionResult> {
+export async function updateJobMandateAction(jobId: string, prevState: any, formData: FormData, userOverride?: any): Promise<JobActionResult> {
   try {
+    await requirePermission('job.edit', userOverride);
     const agencyId = await getDemoAgencyId();
 
     const title = (formData.get('title') as string || '').trim();
@@ -171,7 +173,6 @@ export async function updateJobMandateAction(jobId: string, prevState: any, form
       return { success: false, errors };
     }
 
-    // Verify tenant ownership
     const existing = await prisma.jobMandate.findFirst({
       where: { id: jobId, agencyId }
     });
@@ -202,13 +203,13 @@ export async function updateJobMandateAction(jobId: string, prevState: any, form
     revalidatePath(`/jobs/${jobId}`);
     return { success: true, jobId };
   } catch (err: any) {
-    console.error('Error updating job mandate:', err);
     return { success: false, error: err.message || 'Failed to update job mandate' };
   }
 }
 
-export async function updateJobStatusAction(jobId: string, newStatus: MandateStatus): Promise<JobActionResult> {
+export async function updateJobStatusAction(jobId: string, newStatus: MandateStatus, userOverride?: any): Promise<JobActionResult> {
   try {
+    await requirePermission('job.edit', userOverride);
     const agencyId = await getDemoAgencyId();
 
     const existing = await prisma.jobMandate.findFirst({
@@ -219,7 +220,6 @@ export async function updateJobStatusAction(jobId: string, newStatus: MandateSta
       return { success: false, error: 'Job mandate record not found or access denied.' };
     }
 
-    // Soft close workflow update
     await prisma.jobMandate.update({
       where: { id: jobId },
       data: {
@@ -232,7 +232,6 @@ export async function updateJobStatusAction(jobId: string, newStatus: MandateSta
     revalidatePath(`/jobs/${jobId}`);
     return { success: true, jobId };
   } catch (err: any) {
-    console.error('Error updating job status:', err);
     return { success: false, error: err.message || 'Failed to update status transition' };
   }
 }

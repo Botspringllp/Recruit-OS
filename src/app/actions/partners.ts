@@ -3,6 +3,7 @@
 import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import crypto from 'crypto';
+import { requirePermission } from '@/lib/rbac';
 
 async function getDemoAgencyId(): Promise<string> {
   const agency = await prisma.agency.findFirst({
@@ -12,8 +13,9 @@ async function getDemoAgencyId(): Promise<string> {
   return agency?.id || 'adaa404d-0ce3-4b72-9981-882a8f31a2af';
 }
 
-export async function createPartnerAction(formData: FormData) {
+export async function createPartnerAction(formData: FormData, userOverride?: any) {
   try {
+    await requirePermission('partner.manage', userOverride);
     const agencyId = await getDemoAgencyId();
     const name = formData.get('name') as string;
     const contactPerson = formData.get('contactPerson') as string || null;
@@ -42,13 +44,13 @@ export async function createPartnerAction(formData: FormData) {
     revalidatePath('/partners');
     return { success: true, partner };
   } catch (error: any) {
-    console.error('Failed to create partner agency:', error);
     return { success: false, error: error.message || 'Failed to create partner agency' };
   }
 }
 
-export async function updatePartnerAction(id: string, formData: FormData) {
+export async function updatePartnerAction(id: string, formData: FormData, userOverride?: any) {
   try {
+    await requirePermission('partner.manage', userOverride);
     const agencyId = await getDemoAgencyId();
     const name = formData.get('name') as string;
     const contactPerson = formData.get('contactPerson') as string || null;
@@ -80,13 +82,13 @@ export async function updatePartnerAction(id: string, formData: FormData) {
     revalidatePath(`/partners/${id}`);
     return { success: true, count: partner.count };
   } catch (error: any) {
-    console.error('Failed to update partner agency:', error);
     return { success: false, error: error.message || 'Failed to update partner agency' };
   }
 }
 
-export async function shareMandateAction(formData: FormData) {
+export async function shareMandateAction(formData: FormData, userOverride?: any) {
   try {
+    await requirePermission('partner.manage', userOverride);
     const agencyId = await getDemoAgencyId();
     const jobId = formData.get('jobId') as string;
     const partnerAgencyId = formData.get('partnerAgencyId') as string || null;
@@ -133,13 +135,13 @@ export async function shareMandateAction(formData: FormData) {
     revalidatePath(`/jobs/${jobId}`);
     return { success: true, share };
   } catch (error: any) {
-    console.error('Failed to share mandate:', error);
     return { success: false, error: error.message || 'Failed to share mandate' };
   }
 }
 
-export async function createPartnerSubmissionAction(formData: FormData) {
+export async function createPartnerSubmissionAction(formData: FormData, userOverride?: any) {
   try {
+    await requirePermission('partner.view', userOverride);
     const agencyId = await getDemoAgencyId();
     const shareId = formData.get('shareId') as string;
     const fullName = formData.get('fullName') as string;
@@ -163,7 +165,6 @@ export async function createPartnerSubmissionAction(formData: FormData) {
       return { success: false, error: 'Shared mandate not found or inactive' };
     }
 
-    // Check existing candidate or create
     let candidate = await (prisma as any).candidateRecord.findFirst({
       where: { agencyId, email: email.trim().toLowerCase() }
     });
@@ -189,7 +190,6 @@ export async function createPartnerSubmissionAction(formData: FormData) {
       });
     }
 
-    // Check duplicate submission
     const existingSubmission = await (prisma as any).candidateSubmission.findFirst({
       where: { agencyId, jobId: share.jobId, candidateId: candidate.id }
     });
@@ -198,7 +198,6 @@ export async function createPartnerSubmissionAction(formData: FormData) {
       return { success: false, error: 'Candidate has already been submitted for this mandate' };
     }
 
-    // Create Candidate Submission
     const submission = await (prisma as any).candidateSubmission.create({
       data: {
         agencyId,
@@ -208,7 +207,6 @@ export async function createPartnerSubmissionAction(formData: FormData) {
       }
     });
 
-    // Create Partner Candidate Submission link
     const partnerSubmission = await (prisma as any).partnerCandidateSubmission.create({
       data: {
         agencyId,
@@ -221,13 +219,13 @@ export async function createPartnerSubmissionAction(formData: FormData) {
     revalidatePath(`/jobs/${share.jobId}`);
     return { success: true, submission, partnerSubmission };
   } catch (error: any) {
-    console.error('Failed to create partner candidate submission:', error);
     return { success: false, error: error.message || 'Failed to submit candidate via partner' };
   }
 }
 
-export async function updatePartnerPayoutStatusAction(ledgerId: string, payoutStatus: string) {
+export async function updatePartnerPayoutStatusAction(ledgerId: string, payoutStatus: string, userOverride?: any) {
   try {
+    await requirePermission('partner.manage', userOverride);
     const agencyId = await getDemoAgencyId();
 
     const validStatuses = ['PENDING', 'APPROVED', 'PAID'];
@@ -246,7 +244,6 @@ export async function updatePartnerPayoutStatusAction(ledgerId: string, payoutSt
     revalidatePath('/partners');
     return { success: true, count: updated.count };
   } catch (error: any) {
-    console.error('Failed to update partner payout status:', error);
     return { success: false, error: error.message || 'Failed to update partner payout status' };
   }
 }

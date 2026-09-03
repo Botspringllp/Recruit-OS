@@ -5,6 +5,8 @@ import { prisma } from '@/lib/prisma';
 import { UserRole, UserStatus } from '@prisma/client';
 import { getResolvedAgencyId } from '@/lib/agency/resolver';
 import { logger, logEvent } from '@/lib/logger';
+import { requirePermission } from '@/lib/rbac';
+import { AVAILABLE_PERMISSIONS } from '@/lib/permissions';
 
 export type UserFormData = {
   firstName: string;
@@ -13,7 +15,7 @@ export type UserFormData = {
   role: UserRole;
   status: UserStatus;
   managerId?: string | null;
-  permissions?: string[]; // Array of strings like "candidate.view" or "job.create"
+  permissions?: string[];
 };
 
 export type ActionResult<T = any> = {
@@ -23,15 +25,10 @@ export type ActionResult<T = any> = {
   errors?: Record<string, string>;
 };
 
-import { AVAILABLE_PERMISSIONS } from '@/lib/permissions';
-
 export async function getAvailablePermissionsAction() {
   return AVAILABLE_PERMISSIONS;
 }
 
-/**
- * Parses "resource.action" string into { resource, action }
- */
 function parsePermission(permStr: string) {
   const parts = permStr.split('.');
   if (parts.length >= 2) {
@@ -40,10 +37,7 @@ function parsePermission(permStr: string) {
   return { resource: permStr, action: 'access' };
 }
 
-/**
- * Get all users for the agency with KPI metrics.
- */
-export async function getUsersAction(agencyIdInput?: string): Promise<ActionResult<{
+export async function getUsersAction(agencyIdInput?: string, userOverride?: any): Promise<ActionResult<{
   users: any[];
   kpis: {
     totalUsers: number;
@@ -53,6 +47,7 @@ export async function getUsersAction(agencyIdInput?: string): Promise<ActionResu
   };
 }>> {
   try {
+    await requirePermission('user.manage', userOverride);
     const agencyId = agencyIdInput || await getResolvedAgencyId();
 
     const users = await prisma.user.findMany({
@@ -91,11 +86,9 @@ export async function getUsersAction(agencyIdInput?: string): Promise<ActionResu
   }
 }
 
-/**
- * Get single user by ID with agency scoping.
- */
-export async function getUserByIdAction(userId: string, agencyIdInput?: string): Promise<ActionResult<any>> {
+export async function getUserByIdAction(userId: string, agencyIdInput?: string, userOverride?: any): Promise<ActionResult<any>> {
   try {
+    await requirePermission('user.manage', userOverride);
     const agencyId = agencyIdInput || await getResolvedAgencyId();
 
     const user = await prisma.user.findFirst({
@@ -129,11 +122,9 @@ export async function getUserByIdAction(userId: string, agencyIdInput?: string):
   }
 }
 
-/**
- * Create a new user inside the agency with permission assignment.
- */
-export async function createUserAction(payload: UserFormData, agencyIdInput?: string): Promise<ActionResult<{ userId: string }>> {
+export async function createUserAction(payload: UserFormData, agencyIdInput?: string, userOverride?: any): Promise<ActionResult<{ userId: string }>> {
   try {
+    await requirePermission('user.manage', userOverride);
     const agencyId = agencyIdInput || await getResolvedAgencyId();
 
     const firstName = (payload.firstName || '').trim();
@@ -151,7 +142,6 @@ export async function createUserAction(payload: UserFormData, agencyIdInput?: st
       errors.email = 'Valid email is required';
     }
 
-    // Security check: AGENCY_OWNER cannot create MASTER_OWNER
     if (role === UserRole.MASTER_OWNER) {
       errors.role = 'Only platform super-administrators can assign MASTER_OWNER role';
     }
@@ -160,7 +150,6 @@ export async function createUserAction(payload: UserFormData, agencyIdInput?: st
       return { success: false, errors };
     }
 
-    // Check duplicate email
     const existingUser = await prisma.user.findFirst({
       where: { email, agencyId }
     });
@@ -169,7 +158,6 @@ export async function createUserAction(payload: UserFormData, agencyIdInput?: st
       return { success: false, error: 'A user with this email already exists in this agency.' };
     }
 
-    // Verify manager belongs to same agency
     if (managerId) {
       const validManager = await prisma.user.findFirst({
         where: { id: managerId, agencyId, deletedAt: null }
@@ -179,7 +167,6 @@ export async function createUserAction(payload: UserFormData, agencyIdInput?: st
       }
     }
 
-    // Create User record
     const newUser = await prisma.user.create({
       data: {
         agencyId,
@@ -194,7 +181,6 @@ export async function createUserAction(payload: UserFormData, agencyIdInput?: st
       }
     });
 
-    // Create UserRoleAssignment row
     await prisma.userRoleAssignment.create({
       data: {
         agencyId,
@@ -203,7 +189,6 @@ export async function createUserAction(payload: UserFormData, agencyIdInput?: st
       }
     }).catch(() => null);
 
-    // Create UserPermission rows
     if (permissions.length > 0) {
       const permissionRows = permissions.map(p => {
         const { resource, action } = parsePermission(p);
@@ -220,7 +205,6 @@ export async function createUserAction(payload: UserFormData, agencyIdInput?: st
       });
     }
 
-    // Audit Log: USER_CREATED
     logger.info({
       event: 'USER_CREATED',
       userId: newUser.id,
@@ -238,14 +222,11 @@ export async function createUserAction(payload: UserFormData, agencyIdInput?: st
   }
 }
 
-/**
- * Update existing user record and permissions.
- */
-export async function updateUserAction(userId: string, payload: UserFormData, agencyIdInput?: string): Promise<ActionResult<{ userId: string }>> {
+export async function updateUserAction(userId: string, payload: UserFormData, agencyIdInput?: string, userOverride?: any): Promise<ActionResult<{ userId: string }>> {
   try {
+    await requirePermission('user.manage', userOverride);
     const agencyId = agencyIdInput || await getResolvedAgencyId();
 
-    // Verify existing user in same agency
     const existingUser = await prisma.user.findFirst({
       where: { id: userId, agencyId, deletedAt: null }
     });
@@ -254,7 +235,6 @@ export async function updateUserAction(userId: string, payload: UserFormData, ag
       return { success: false, error: 'User not found or access denied.' };
     }
 
-    // Security check: cannot modify MASTER_OWNER
     if (existingUser.role === UserRole.MASTER_OWNER) {
       return { success: false, error: 'Master Owner records cannot be modified via Agency Settings.' };
     }
@@ -271,12 +251,10 @@ export async function updateUserAction(userId: string, payload: UserFormData, ag
       return { success: false, error: 'Cannot elevate agency user to MASTER_OWNER.' };
     }
 
-    // Prevent user from managing self as manager
     if (managerId && managerId === userId) {
       return { success: false, error: 'User cannot be assigned as their own manager.' };
     }
 
-    // Update User
     await prisma.user.update({
       where: { id: userId },
       data: {
@@ -291,7 +269,6 @@ export async function updateUserAction(userId: string, payload: UserFormData, ag
       }
     });
 
-    // Update UserRoleAssignment
     await prisma.userRoleAssignment.upsert({
       where: {
         ux_user_roles_user_role: { userId, roleName: role }
@@ -300,7 +277,6 @@ export async function updateUserAction(userId: string, payload: UserFormData, ag
       create: { agencyId, userId, roleName: role }
     }).catch(() => null);
 
-    // Update Permissions if supplied
     if (permissions !== undefined) {
       await prisma.userPermission.deleteMany({
         where: { userId }
@@ -319,7 +295,6 @@ export async function updateUserAction(userId: string, payload: UserFormData, ag
       }
     }
 
-    // Audit Log: USER_UPDATED
     logger.info({
       event: 'USER_UPDATED',
       userId,
@@ -338,11 +313,9 @@ export async function updateUserAction(userId: string, payload: UserFormData, ag
   }
 }
 
-/**
- * Disable user (set status to INACTIVE and isActive to false).
- */
-export async function disableUserAction(userId: string, agencyIdInput?: string): Promise<ActionResult<{ userId: string }>> {
+export async function disableUserAction(userId: string, agencyIdInput?: string, userOverride?: any): Promise<ActionResult<{ userId: string }>> {
   try {
+    await requirePermission('user.manage', userOverride);
     const agencyId = agencyIdInput || await getResolvedAgencyId();
 
     const existingUser = await prisma.user.findFirst({
@@ -366,7 +339,6 @@ export async function disableUserAction(userId: string, agencyIdInput?: string):
       }
     });
 
-    // Audit Log: USER_DISABLED
     logger.info({
       event: 'USER_DISABLED',
       userId,

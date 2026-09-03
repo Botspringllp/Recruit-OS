@@ -1,9 +1,9 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { CandidateSource } from '@prisma/client';
+import { requirePermission } from '@/lib/rbac';
 
 async function getDemoAgencyId(): Promise<string> {
   const agency = await prisma.agency.findFirst({
@@ -38,8 +38,9 @@ export type ActionResult = {
   errors?: Record<string, string>;
 };
 
-export async function createCandidateAction(prevState: any, formData: FormData): Promise<ActionResult> {
+export async function createCandidateAction(prevState: any, formData: FormData, userOverride?: any): Promise<ActionResult> {
   try {
+    await requirePermission('candidate.create', userOverride);
     const agencyId = await getDemoAgencyId();
 
     const firstName = (formData.get('firstName') as string || '').trim();
@@ -56,7 +57,7 @@ export async function createCandidateAction(prevState: any, formData: FormData):
 
     if (!firstName) errors.firstName = 'First name is required';
     if (!lastName) errors.lastName = 'Last name is required';
-    
+
     if (!email) {
       errors.email = 'Email address is required';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -123,13 +124,13 @@ export async function createCandidateAction(prevState: any, formData: FormData):
     revalidatePath('/candidates');
     return { success: true, candidateId: newCandidate.id };
   } catch (err: any) {
-    console.error('Error creating candidate:', err);
     return { success: false, error: err.message || 'Failed to create candidate record' };
   }
 }
 
-export async function updateCandidateAction(candidateId: string, prevState: any, formData: FormData): Promise<ActionResult> {
+export async function updateCandidateAction(candidateId: string, prevState: any, formData: FormData, userOverride?: any): Promise<ActionResult> {
   try {
+    await requirePermission('candidate.edit', userOverride);
     const agencyId = await getDemoAgencyId();
 
     const firstName = (formData.get('firstName') as string || '').trim();
@@ -146,7 +147,7 @@ export async function updateCandidateAction(candidateId: string, prevState: any,
 
     if (!firstName) errors.firstName = 'First name is required';
     if (!lastName) errors.lastName = 'Last name is required';
-    
+
     if (!email) {
       errors.email = 'Email address is required';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -173,7 +174,6 @@ export async function updateCandidateAction(candidateId: string, prevState: any,
       return { success: false, errors };
     }
 
-    // Verify candidate belongs to tenant
     const existing = await prisma.candidateRecord.findFirst({
       where: { id: candidateId, agencyId, deletedAt: null }
     });
@@ -206,13 +206,13 @@ export async function updateCandidateAction(candidateId: string, prevState: any,
     revalidatePath(`/candidates/${candidateId}`);
     return { success: true, candidateId };
   } catch (err: any) {
-    console.error('Error updating candidate:', err);
     return { success: false, error: err.message || 'Failed to update candidate record' };
   }
 }
 
-export async function deleteCandidateAction(candidateId: string): Promise<ActionResult> {
+export async function deleteCandidateAction(candidateId: string, userOverride?: any): Promise<ActionResult> {
   try {
+    await requirePermission('candidate.delete', userOverride);
     const agencyId = await getDemoAgencyId();
 
     const existing = await prisma.candidateRecord.findFirst({
@@ -223,7 +223,6 @@ export async function deleteCandidateAction(candidateId: string): Promise<Action
       return { success: false, error: 'Candidate record not found or already deleted.' };
     }
 
-    // Soft delete by setting deletedAt timestamp
     await prisma.candidateRecord.update({
       where: { id: candidateId },
       data: {
@@ -234,7 +233,6 @@ export async function deleteCandidateAction(candidateId: string): Promise<Action
     revalidatePath('/candidates');
     return { success: true };
   } catch (err: any) {
-    console.error('Error deleting candidate:', err);
     return { success: false, error: err.message || 'Failed to soft delete candidate' };
   }
 }

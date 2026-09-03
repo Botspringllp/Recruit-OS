@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { uploadToStorage, deleteFromStorage, STORAGE_BUCKETS, StorageBucket } from '@/lib/storage';
 import { logEvent } from '@/lib/logger';
+import { requirePermission } from '@/lib/rbac';
 import {
   MANDATORY_COMPLIANCE_CATEGORIES,
   COMPLIANCE_STATUSES,
@@ -23,11 +24,9 @@ async function getDemoAgencyId(): Promise<string> {
   return agency.id;
 }
 
-// =============================================================================
-// 1. UPLOAD / REGISTER CANDIDATE DOCUMENT (SUPABASE STORAGE INTEGRATED)
-// =============================================================================
-export async function uploadCandidateDocumentAction(formData: FormData) {
+export async function uploadCandidateDocumentAction(formData: FormData, userOverride?: any) {
   try {
+    await requirePermission('compliance.approve', userOverride);
     const agencyId = await getDemoAgencyId();
 
     const candidateId = formData.get('candidateId')?.toString() || '';
@@ -50,7 +49,6 @@ export async function uploadCandidateDocumentAction(formData: FormData) {
       return { success: false, error: 'Selected candidate record not found' };
     }
 
-    // Determine target bucket based on document category
     let bucket: StorageBucket = STORAGE_BUCKETS.COMPLIANCE_DOCS;
     if (documentCategory === 'RESUME') {
       bucket = STORAGE_BUCKETS.RESUMES;
@@ -68,14 +66,12 @@ export async function uploadCandidateDocumentAction(formData: FormData) {
       const arrayBuffer = await file.arrayBuffer();
       fileBuffer = Buffer.from(arrayBuffer);
     } else {
-      // Fallback verification text document for demo/automated compliance register
       const documentPayload = `RecruitOS Compliance Document Verification\nAgency ID: ${agencyId}\nCandidate ID: ${candidateId}\nCategory: ${documentCategory}\nTimestamp: ${new Date().toISOString()}`;
       fileBuffer = Buffer.from(documentPayload, 'utf-8');
       if (!fileName.includes('.')) fileName = `${fileName}.txt`;
       contentType = 'text/plain';
     }
 
-    // Upload directly to Supabase Storage enforcing tenant agencyId isolation
     const storageResult = await uploadToStorage({
       bucket,
       agencyId,
@@ -103,7 +99,6 @@ export async function uploadCandidateDocumentAction(formData: FormData) {
       }
     });
 
-    // Create Audit Log
     await prisma.complianceAuditLog.create({
       data: {
         agencyId,
@@ -141,16 +136,15 @@ export async function uploadCandidateDocumentAction(formData: FormData) {
   }
 }
 
-// =============================================================================
-// 2. VERIFICATION WORKFLOW ACTION (REVIEW / VERIFY / REJECT / EXPIRE)
-// =============================================================================
 export async function updateDocumentStatusAction(
   docId: string,
   newStatus: string,
   reviewerNotes?: string,
-  rejectionReason?: string
+  rejectionReason?: string,
+  userOverride?: any
 ) {
   try {
+    await requirePermission('compliance.approve', userOverride);
     const agencyId = await getDemoAgencyId();
 
     const existing = await prisma.candidateComplianceDoc.findFirst({
@@ -176,7 +170,6 @@ export async function updateDocumentStatusAction(
       }
     });
 
-    // Audit Log Entry
     await prisma.complianceAuditLog.create({
       data: {
         agencyId,
@@ -200,16 +193,13 @@ export async function updateDocumentStatusAction(
 
     return { success: true, doc: updated };
   } catch (error: any) {
-    console.error('Error updating document status:', error);
     return { success: false, error: error.message || 'Failed to update document status' };
   }
 }
 
-// =============================================================================
-// 3. EDIT DOCUMENT DETAILS / RE-UPLOAD
-// =============================================================================
-export async function updateCandidateDocumentAction(docId: string, formData: FormData) {
+export async function updateCandidateDocumentAction(docId: string, formData: FormData, userOverride?: any) {
   try {
+    await requirePermission('compliance.approve', userOverride);
     const agencyId = await getDemoAgencyId();
 
     const existing = await prisma.candidateComplianceDoc.findFirst({
@@ -230,7 +220,6 @@ export async function updateCandidateDocumentAction(docId: string, formData: For
     let fileUrl = existing.fileUrl;
     let fileSize = existing.fileSize;
 
-    // If new file binary uploaded during edit
     if (file && typeof file.arrayBuffer === 'function') {
       let bucket: StorageBucket = STORAGE_BUCKETS.COMPLIANCE_DOCS;
       if (documentCategory === 'RESUME') bucket = STORAGE_BUCKETS.RESUMES;
@@ -251,7 +240,6 @@ export async function updateCandidateDocumentAction(docId: string, formData: For
       fileSize = storageResult.fileSize;
     }
 
-    // Reset status to SUBMITTED or UNDER_REVIEW if it was REJECTED or EXPIRED
     let newStatus = existing.status;
     if (existing.status === 'REJECTED' || existing.status === 'EXPIRED') {
       newStatus = 'SUBMITTED';
@@ -275,7 +263,6 @@ export async function updateCandidateDocumentAction(docId: string, formData: For
       }
     });
 
-    // Log re-upload/update audit
     await prisma.complianceAuditLog.create({
       data: {
         agencyId,
@@ -296,16 +283,13 @@ export async function updateCandidateDocumentAction(docId: string, formData: For
 
     return { success: true, docId: docId };
   } catch (error: any) {
-    console.error('Error updating candidate document:', error);
     return { success: false, error: error.message || 'Failed to update candidate document' };
   }
 }
 
-// =============================================================================
-// 4. SOFT DELETE DOCUMENT (WITH SUPABASE STORAGE CLEANUP)
-// =============================================================================
-export async function deleteCandidateDocumentAction(docId: string) {
+export async function deleteCandidateDocumentAction(docId: string, userOverride?: any) {
   try {
+    await requirePermission('compliance.approve', userOverride);
     const agencyId = await getDemoAgencyId();
 
     const existing = await prisma.candidateComplianceDoc.findFirst({
@@ -336,16 +320,13 @@ export async function deleteCandidateDocumentAction(docId: string) {
 
     return { success: true };
   } catch (error: any) {
-    console.error('Error deleting document:', error);
     return { success: false, error: error.message || 'Failed to delete document' };
   }
 }
 
-// =============================================================================
-// 5. CANDIDATE COMPLIANCE JOINING GATE ENFORCEMENT CHECK
-// =============================================================================
-export async function checkCandidateComplianceGateAction(candidateId: string) {
+export async function checkCandidateComplianceGateAction(candidateId: string, userOverride?: any) {
   try {
+    await requirePermission('compliance.view', userOverride);
     const agencyId = await getDemoAgencyId();
 
     const docs = await prisma.candidateComplianceDoc.findMany({
@@ -388,7 +369,6 @@ export async function checkCandidateComplianceGateAction(candidateId: string) {
         : `Compliance Verification Incomplete. Missing: [${missingDocs.join(', ')}], Unverified: [${unverifiedDocs.join(', ')}].`
     };
   } catch (error: any) {
-    console.error('Error checking compliance gate:', error);
     return {
       success: false,
       isCompliant: false,

@@ -1,12 +1,27 @@
 import React from 'react';
 import Link from 'next/link';
-import { Users, UserPlus, Shield, CheckCircle2, Mail, Ban, ArrowUpRight, Eye, Edit3 } from 'lucide-react';
+import { redirect } from 'next/navigation';
+import { getCurrentUser, hasPermission } from '@/lib/rbac';
+import { logger } from '@/lib/logger';
+import { Users, UserPlus, Shield, CheckCircle2, Mail, Ban, Eye, Edit3 } from 'lucide-react';
 import { getUsersAction } from '@/app/actions/users';
 import { DisableUserButton } from '@/components/users/DisableUserButton';
 
 export const revalidate = 0;
 
 export default async function UserManagementPage() {
+  const currentUser = await getCurrentUser();
+  if (!hasPermission(currentUser, 'user.manage')) {
+    logger.warn({
+      event: 'ACCESS_DENIED_PAGE_REDIRECT',
+      userId: currentUser?.id || 'ANONYMOUS',
+      agencyId: currentUser?.agencyId || 'GLOBAL',
+      page: '/settings/users',
+      requiredPermission: 'user.manage'
+    }, '🚫 [ACCESS_DENIED] Unauthorized page access redirected to /403');
+    redirect('/403');
+  }
+
   const result = await getUsersAction();
   const users = result.data?.users || [];
   const kpis = result.data?.kpis || {
@@ -18,7 +33,6 @@ export default async function UserManagementPage() {
 
   return (
     <div className="bg-white min-h-screen p-6 sm:p-8 space-y-8 text-[#111827]">
-      {/* Header Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E5E7EB] pb-6">
         <div>
           <div className="flex items-center gap-2">
@@ -41,9 +55,7 @@ export default async function UserManagementPage() {
         </Link>
       </div>
 
-      {/* KPI Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        {/* Total Users */}
         <div className="bg-white p-5 rounded-2xl border border-[#E5E7EB] shadow-sm flex items-center justify-between">
           <div>
             <p className="text-xs font-extrabold text-[#6B7280] uppercase tracking-wider">Total Users</p>
@@ -54,7 +66,6 @@ export default async function UserManagementPage() {
           </div>
         </div>
 
-        {/* Active Users */}
         <div className="bg-white p-5 rounded-2xl border border-[#E5E7EB] shadow-sm flex items-center justify-between">
           <div>
             <p className="text-xs font-extrabold text-[#6B7280] uppercase tracking-wider">Active Users</p>
@@ -65,7 +76,6 @@ export default async function UserManagementPage() {
           </div>
         </div>
 
-        {/* Invited Users */}
         <div className="bg-white p-5 rounded-2xl border border-[#E5E7EB] shadow-sm flex items-center justify-between">
           <div>
             <p className="text-xs font-extrabold text-[#6B7280] uppercase tracking-wider">Invited Users</p>
@@ -76,7 +86,6 @@ export default async function UserManagementPage() {
           </div>
         </div>
 
-        {/* Disabled Users */}
         <div className="bg-white p-5 rounded-2xl border border-[#E5E7EB] shadow-sm flex items-center justify-between">
           <div>
             <p className="text-xs font-extrabold text-[#6B7280] uppercase tracking-wider">Disabled Users</p>
@@ -88,7 +97,6 @@ export default async function UserManagementPage() {
         </div>
       </div>
 
-      {/* User Listing Table Card */}
       <div className="bg-white border border-[#E5E7EB] rounded-2xl shadow-sm overflow-hidden space-y-4">
         <div className="p-5 border-b border-[#E5E7EB] flex items-center justify-between">
           <h2 className="text-base font-extrabold text-[#111827]">Team Members Directory</h2>
@@ -123,7 +131,6 @@ export default async function UserManagementPage() {
 
                   return (
                     <tr key={user.id} className="hover:bg-amber-50/30 transition-colors">
-                      {/* Name */}
                       <td className="py-4 px-4 sm:px-6 font-bold text-[#111827]">
                         <Link href={`/settings/users/${user.id}`} className="hover:text-[#F59E0B] transition-colors flex items-center gap-2">
                           <div className="h-8 w-8 rounded-full bg-amber-100 border border-amber-300 text-[#D97706] font-black flex items-center justify-center shrink-0 uppercase text-xs">
@@ -133,12 +140,10 @@ export default async function UserManagementPage() {
                         </Link>
                       </td>
 
-                      {/* Email */}
                       <td className="py-4 px-4 font-semibold text-[#6B7280]">
                         {user.email}
                       </td>
 
-                      {/* Role Badge */}
                       <td className="py-4 px-4">
                         <span className={`px-2.5 py-1 rounded-md text-[11px] font-extrabold inline-block ${
                           user.role === 'MASTER_OWNER'
@@ -157,7 +162,6 @@ export default async function UserManagementPage() {
                         </span>
                       </td>
 
-                      {/* Status Badge */}
                       <td className="py-4 px-4">
                         <span className={`px-2.5 py-1 rounded-md text-[11px] font-extrabold inline-flex items-center gap-1 ${
                           user.status === 'ACTIVE'
@@ -173,17 +177,14 @@ export default async function UserManagementPage() {
                         </span>
                       </td>
 
-                      {/* Last Login */}
                       <td className="py-4 px-4 font-medium text-[#6B7280]">
                         {user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleDateString() : 'Never'}
                       </td>
 
-                      {/* Created Date */}
                       <td className="py-4 px-4 font-medium text-[#6B7280]">
                         {new Date(user.createdAt).toLocaleDateString()}
                       </td>
 
-                      {/* Actions */}
                       <td className="py-4 px-4 sm:px-6 text-right">
                         <div className="flex items-center justify-end gap-2">
                           <Link

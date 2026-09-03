@@ -8,10 +8,11 @@ import { TenantContextType, UserContextType } from '@/types/dashboard';
 interface DashboardShellProps {
   tenant: TenantContextType;
   user: UserContextType;
+  userPermissions?: string[];
   children: React.ReactNode;
 }
 
-export const DashboardShell: React.FC<DashboardShellProps> = ({ tenant, user, children }) => {
+export const DashboardShell: React.FC<DashboardShellProps> = ({ tenant, user, userPermissions = [], children }) => {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   return (
@@ -21,6 +22,7 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({ tenant, user, ch
         userRole={user.role}
         isOpenMobile={isMobileSidebarOpen}
         onCloseMobile={() => setIsMobileSidebarOpen(false)}
+        userPermissions={userPermissions}
       />
 
       {/* Main Content Area Offset by Desktop Sidebar */}

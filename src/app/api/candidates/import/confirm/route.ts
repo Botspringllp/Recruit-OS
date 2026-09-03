@@ -3,6 +3,8 @@ import { revalidatePath } from 'next/cache';
 import { importParsedCandidate } from '@/lib/candidates/service';
 import { updateSession } from '@/lib/supabase/middleware';
 import { getResolvedAgencyId } from '@/lib/agency/resolver';
+import { hasPermission, getCurrentUser } from '@/lib/rbac';
+import { logger } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,6 +14,25 @@ export async function POST(request: NextRequest) {
       user = sessionResult?.user || null;
     } catch (e) {
       console.warn('Supabase session fetch bypassed in confirm route:', e);
+    }
+
+    if (!user) {
+      user = await getCurrentUser();
+    }
+
+    if (!user || !hasPermission(user, 'candidate.create')) {
+      logger.warn({
+        event: 'ACCESS_DENIED',
+        userId: user?.id || 'ANONYMOUS',
+        agencyId: user?.agencyId || 'GLOBAL',
+        resource: 'candidate',
+        action: 'create'
+      }, `🚫 [ACCESS_DENIED] API /api/candidates/import/confirm denied for user ${user?.email || 'Anonymous'}`);
+
+      return NextResponse.json(
+        { error: 'Access Denied: Permission candidate.create required.' },
+        { status: 403 }
+      );
     }
 
     const agencyId = await getResolvedAgencyId(request, user);
