@@ -16,22 +16,25 @@ export async function parseWithAI(rawText: string, fileName?: string): Promise<A
   const truncatedText = rawText.slice(0, 6000);
 
   if (geminiApiKey) {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 6000);
+    const modelsToTry = ['gemini-pro-latest', 'gemini-2.5-flash', 'gemini-1.5-flash'];
 
-    try {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          signal: controller.signal,
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  {
-                    text: `You are an expert resume parser for an enterprise recruitment system. Extract candidate information from the following raw resume text into STRICT JSON ONLY. Do not include markdown code blocks, backticks, or any conversational text.
+    for (const modelName of modelsToTry) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+      try {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${geminiApiKey}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            signal: controller.signal,
+            body: JSON.stringify({
+              contents: [
+                {
+                  parts: [
+                    {
+                      text: `You are an expert resume parser for an enterprise recruitment system. Extract candidate information from the following raw resume text into STRICT JSON ONLY. Do not include markdown code blocks, backticks, or any conversational text.
 
 Return JSON adhering to this exact schema:
 {
@@ -53,32 +56,33 @@ Return JSON adhering to this exact schema:
 
 Resume Text:
 ${truncatedText}`
-                  }
-                ]
+                    }
+                  ]
+                }
+              ],
+              generationConfig: {
+                temperature: 0.1,
+                responseMimeType: 'application/json'
               }
-            ],
-            generationConfig: {
-              temperature: 0.1,
-              responseMimeType: 'application/json'
-            }
-          })
-        }
-      );
+            })
+          }
+        );
 
-      clearTimeout(timeoutId);
+        clearTimeout(timeoutId);
 
-      if (response.ok) {
-        const data = await response.json();
-        const jsonText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (jsonText) {
-          const cleanedJson = jsonText.replace(/```json/g, '').replace(/```/g, '').trim();
-          const parsed = JSON.parse(cleanedJson);
-          return sanitizeAIParsedData(parsed, truncatedText, fileName);
+        if (response.ok) {
+          const data = await response.json();
+          const jsonText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (jsonText) {
+            const cleanedJson = jsonText.replace(/```json/g, '').replace(/```/g, '').trim();
+            const parsed = JSON.parse(cleanedJson);
+            return sanitizeAIParsedData(parsed, truncatedText, fileName);
+          }
         }
+      } catch (error: any) {
+        clearTimeout(timeoutId);
+        // Continue to next model or fallback
       }
-    } catch (error: any) {
-      clearTimeout(timeoutId);
-      console.warn('Gemini API call bypassed or timed out, using real text structural extractor fallback:', error.message || error);
     }
   }
 
@@ -122,36 +126,35 @@ function sanitizeAIParsedData(parsed: any, rawText: string, fileName?: string): 
 export function extractFallbackCandidate(rawText: string, fileName?: string): AIParsedData {
   let candidateName = '';
 
+  const skipKeywords = /resume|curriculum|vitae|page|email|phone|address|profile|summary|experience|education|skills|contact|objective|xref|pdf|obj|stream|trailer|startxref|github|linkedin|developer|engineer|manager|architect|analyst|consultant|designer|specialist|lead|director|executive|officer|student|intern/i;
+
   if (rawText && typeof rawText === 'string') {
     const lines = rawText
       .split(/[\r\n]+/)
       .map(l => l.trim())
       .filter(Boolean);
 
-    const skipKeywords = /resume|curriculum|vitae|page|email|phone|address|profile|summary|experience|education|skills|contact|objective|xref|pdf|obj|stream|trailer|startxref|github|linkedin/i;
+    // 1. Scan top 12 lines for full candidate name
+    for (const line of lines.slice(0, 12)) {
+      // Strip URLs, emails, phone numbers, and special symbols
+      const cleanLine = line
+        .replace(/https?:\/\/\S+/gi, '')
+        .replace(/\S+@\S+/g, '')
+        .replace(/[\§\ï\•\|\,\-–]/g, ' ')
+        .trim();
 
-    // Scan top 15 lines for candidate full name
-    for (const line of lines.slice(0, 15)) {
-      const cleanLine = line.split(/[|•,\-–]/)[0].trim();
-      if (cleanLine.includes('@') || cleanLine.includes('http') || cleanLine.includes('www.') || /\d/.test(cleanLine)) {
-        continue; // Skip emails, URLs, and numeric strings
-      }
+      if (/\d/.test(cleanLine)) continue; // Skip numeric lines
+      if (skipKeywords.test(cleanLine)) continue; // Skip headers & job titles
 
-      const words = cleanLine.split(/\s+/).filter(w => /^[A-Za-z]+$/.test(w));
-      if (
-        words.length >= 1 &&
-        words.length <= 4 &&
-        cleanLine.length >= 3 &&
-        cleanLine.length <= 40 &&
-        !skipKeywords.test(cleanLine)
-      ) {
+      const words = cleanLine.split(/\s+/).filter(w => /^[A-Za-z]+$/.test(w) && w.length >= 2);
+      if (words.length >= 1 && words.length <= 4 && cleanLine.length <= 45) {
         candidateName = words.map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
         break;
       }
     }
   }
 
-  // Fallback to fileName name extraction if text scan yielded no clean name
+  // 2. Fallback to fileName extraction if text scan yielded no clean name
   if (!candidateName && fileName) {
     let cleanFile = fileName.replace(/\.(pdf|docx|doc)$/i, '');
     cleanFile = cleanFile.replace(/[\(\[\{]\d+[\)\]\}]/g, '');
@@ -167,13 +170,21 @@ export function extractFallbackCandidate(rawText: string, fileName?: string): AI
   const firstName = nameParts[0] || 'Candidate';
   const lastName = nameParts.slice(1).join(' ') || '';
 
-  // Extract skills safely from rawText
+  // 3. Dynamic Designation Extraction
+  let currentDesignation: string | undefined;
+  const desigRegex = /(?:Senior|Junior|Lead|Principal|Staff|Chief|Head of)?\s*(?:Full\s*-?\s*Stack|Frontend|Backend|Software|Web|Mobile|Cloud|DevOps|Data|System|UI\/UX|Product|QA|Test)\s*(?:Developer|Engineer|Architect|Manager|Analyst|Consultant|Designer|Specialist|Lead)/gi;
+  const desigMatch = (rawText || '').match(desigRegex);
+  if (desigMatch && desigMatch.length > 0) {
+    currentDesignation = desigMatch[0].trim();
+  }
+
+  // 4. Extract Skills safely from rawText
   const commonSkills = [
-    'React', 'Node.js', 'TypeScript', 'JavaScript', 'Next.js', 'Python', 'Java',
-    'PostgreSQL', 'MySQL', 'MongoDB', 'AWS', 'Docker', 'Kubernetes', 'GraphQL',
-    'TailwindCSS', 'Tailwind', 'CSS', 'HTML', 'SQL', 'Git', 'Agile', 'Redux',
-    'Express', 'REST API', 'Microservices', 'System Design', 'C++', 'C#', '.NET',
-    'Flutter', 'React Native', 'Vue.js', 'Angular', 'DevOps', 'CI/CD', 'Linux'
+    'React', 'Node.js', 'TypeScript', 'JavaScript', 'Next.js', 'Python', 'Flask', 'Django', 'Java',
+    'PostgreSQL', 'MySQL', 'MongoDB', 'AWS', 'Docker', 'Kubernetes', 'GraphQL', 'Prisma', 'Spring Boot',
+    'TailwindCSS', 'Tailwind', 'CSS', 'HTML', 'SQL', 'Git', 'Agile', 'Redux', 'Express', 'REST API',
+    'Microservices', 'System Design', 'C++', 'C#', '.NET', 'Flutter', 'React Native', 'Vue.js', 'Angular',
+    'DevOps', 'CI/CD', 'Linux', 'Firebase', 'Redis'
   ];
 
   const lowerRawText = (rawText || '').toLowerCase();
@@ -192,26 +203,12 @@ export function extractFallbackCandidate(rawText: string, fileName?: string): AI
     }
   });
 
-  // Designation matching
-  const titles = [
-    'Senior Full Stack Engineer', 'Full Stack Developer', 'Software Development Engineer',
-    'Software Engineer', 'Senior Software Engineer', 'Frontend Developer', 'Backend Developer',
-    'Lead Cloud Architect', 'DevOps Engineer', 'Data Scientist', 'Product Manager', 'System Administrator'
-  ];
-
-  let currentDesignation: string | undefined;
-  for (const title of titles) {
-    if (new RegExp(`\\b${title}\\b`, 'i').test(rawText || '')) {
-      currentDesignation = title;
-      break;
-    }
-  }
-
-  // Location matching
+  // 5. Location Matching
   const locations = [
     'Bengaluru', 'Bangalore', 'Mumbai', 'Delhi', 'NCR', 'Gurugram', 'Gurgaon',
-    'Noida', 'Hyderabad', 'Pune', 'Chennai', 'Kolkata', 'Ahmedabad', 'San Francisco',
-    'New York', 'London', 'Singapore'
+    'Noida', 'Hyderabad', 'Pune', 'Chennai', 'Kolkata', 'Ahmedabad', 'Jaipur',
+    'Chandigarh', 'Kochi', 'Indore', 'Bhubaneswar', 'Sambalpur', 'Odisha',
+    'San Francisco', 'New York', 'London', 'Singapore', 'Remote', 'India'
   ];
   let currentLocation: string | undefined;
   for (const loc of locations) {
@@ -221,7 +218,7 @@ export function extractFallbackCandidate(rawText: string, fileName?: string): AI
     }
   }
 
-  // Total Experience Extraction
+  // 6. Total Experience Extraction
   let totalExperienceYears: number | undefined;
   const expMatch = (rawText || '').match(/(\d+(?:\.\d+)?)\s*(?:\+)?\s*(?:years?|yrs?)/i);
   if (expMatch) {
@@ -231,13 +228,21 @@ export function extractFallbackCandidate(rawText: string, fileName?: string): AI
     }
   }
 
-  // Company Extraction
+  // 7. Company Extraction
   let currentCompany: string | undefined;
   const companyMatch = (rawText || '').match(/(?:at|company[:\s]+|working\s+at)\s+([A-Za-z0-9\s,.&]+?)(?=\n|,|\.|$)/i);
   if (companyMatch) {
     const comp = companyMatch[1].trim();
     if (comp.length >= 2 && comp.length <= 40) {
       currentCompany = comp;
+    }
+  }
+
+  // Secondary Company Match for Pvt Ltd / Tech / Solutions / InfoTech
+  if (!currentCompany) {
+    const corpMatch = (rawText || '').match(/\b([A-Z][A-Za-z0-9\s,.&]{2,30}\s+(?:Pvt\s*Ltd|Technologies|Solutions|Systems|Inc|Labs|Software|Infotech|Services|Global))\b/i);
+    if (corpMatch) {
+      currentCompany = corpMatch[1].trim();
     }
   }
 
