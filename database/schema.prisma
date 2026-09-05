@@ -35,6 +35,7 @@ enum AgencyStatus {
   ACTIVE
   SUSPENDED
   TRIAL
+  EXPIRED
 
   @@map("agency_status")
 }
@@ -48,6 +49,7 @@ enum SubscriptionTier {
 }
 
 enum UserRole {
+  SUPER_ADMIN
   MASTER_OWNER
   AGENCY_OWNER
   AGENCY_FOUNDER
@@ -220,6 +222,7 @@ model Agency {
   subdomain        String           @unique @db.VarChar(63)
   status           AgencyStatus     @default(ACTIVE)
   subscriptionTier SubscriptionTier @default(ENTERPRISE) @map("tier")
+  ownerId          String?          @map("owner_id") @db.Uuid
   createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz
   updatedAt        DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt        DateTime?        @map("deleted_at") @db.Timestamptz

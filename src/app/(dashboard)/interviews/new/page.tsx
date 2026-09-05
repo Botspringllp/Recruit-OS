@@ -1,17 +1,20 @@
 import React from 'react';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
+import { getCurrentUser, hasPermission } from '@/lib/rbac';
 import { InterviewForm } from '@/components/interviews/InterviewForm';
 import { Calendar, ArrowLeft } from 'lucide-react';
 
 export const revalidate = 0;
 
 export default async function NewInterviewPage() {
-  const demoAgency = await prisma.agency.findFirst({
-    where: { subdomain: 'demo' },
-    select: { id: true }
-  }).catch(() => null);
-  const agencyId = demoAgency?.id;
+  const dbUser = await getCurrentUser();
+  if (!dbUser || !hasPermission(dbUser, 'interview.create')) {
+    redirect('/403');
+  }
+
+  const agencyId = dbUser.agencyId;
 
   // Fetch active candidate submissions for dropdown selection
   const activeSubmissions = await prisma.candidateSubmission.findMany({

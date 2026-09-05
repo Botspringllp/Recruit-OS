@@ -1,9 +1,15 @@
 import React from 'react';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
+import { getCurrentUser, hasPermission } from '@/lib/rbac';
 import { ArrowLeft, Building2 } from 'lucide-react';
 import PartnerForm from '@/components/partners/PartnerForm';
 
-export default function NewPartnerPage() {
+export default async function NewPartnerPage() {
+  const dbUser = await getCurrentUser();
+  if (!dbUser || !hasPermission(dbUser, 'partner.create')) {
+    redirect('/403');
+  }
   return (
     <div className="space-y-6 pb-12">
       <div className="flex items-center gap-3 border-b border-slate-800/80 pb-5">

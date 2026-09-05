@@ -1,10 +1,11 @@
 import React from 'react';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { Calendar, Plus, Search, Filter, Video, Clock, User, Briefcase, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
 import { InterviewStatusDropdown } from '@/components/interviews/InterviewStatusDropdown';
 
-import { getCurrentUser } from '@/lib/rbac';
+import { getCurrentUser, hasPermission } from '@/lib/rbac';
 
 export const revalidate = 0;
 
@@ -20,6 +21,10 @@ interface InterviewsPageProps {
 
 export default async function InterviewsPage({ searchParams }: InterviewsPageProps) {
   const dbUser = await getCurrentUser();
+  if (!dbUser || !hasPermission(dbUser, 'interview.view')) {
+    redirect('/403');
+  }
+
   const agencyId = dbUser?.agencyId;
 
   const searchQuery = (searchParams.q || '').trim();

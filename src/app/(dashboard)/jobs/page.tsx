@@ -1,10 +1,11 @@
 import React from 'react';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { Briefcase, Search, Filter, Plus, Building2, Users, ArrowUpRight, ChevronLeft, ChevronRight, Edit3 } from 'lucide-react';
 import { prisma } from '@/lib/prisma';
 import { MandateStatus } from '@prisma/client';
 
-import { getCurrentUser } from '@/lib/rbac';
+import { getCurrentUser, hasPermission } from '@/lib/rbac';
 
 export const revalidate = 0;
 
@@ -26,6 +27,10 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
   const skip = (currentPage - 1) * pageSize;
 
   const dbUser = await getCurrentUser();
+  if (!dbUser || !hasPermission(dbUser, 'job.view')) {
+    redirect('/403');
+  }
+
   const agencyId = dbUser?.agencyId;
 
   const whereClause: any = { agencyId };

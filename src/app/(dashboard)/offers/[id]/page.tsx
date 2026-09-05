@@ -5,7 +5,8 @@ import { prisma } from '@/lib/prisma';
 import { Award, ArrowLeft, User, Briefcase, Calendar, DollarSign, Edit, FileText, ExternalLink, ShieldCheck } from 'lucide-react';
 import { OfferStatusDropdown } from '@/components/offers/OfferStatusDropdown';
 
-import { getCurrentUser } from '@/lib/rbac';
+import { getCurrentUser, hasPermission } from '@/lib/rbac';
+import { redirect } from 'next/navigation';
 
 export const revalidate = 0;
 
@@ -17,6 +18,10 @@ interface OfferDetailPageProps {
 
 export default async function OfferDetailPage({ params }: OfferDetailPageProps) {
   const dbUser = await getCurrentUser();
+  if (!dbUser || !hasPermission(dbUser, 'offer.view')) {
+    redirect('/403');
+  }
+
   const agencyId = dbUser?.agencyId;
 
   const offer = await prisma.jobOfferAudit.findFirst({

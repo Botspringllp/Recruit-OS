@@ -47,6 +47,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const navigationItems: NavigationItem[] = [
     {
+      id: 'super-admin',
+      label: 'Platform Super Admin',
+      href: '/super-admin',
+      icon: 'Building2',
+      rolesAllowed: ['SUPER_ADMIN', 'MASTER_OWNER'],
+      requiredPermission: 'agency.manage'
+    },
+    {
       id: 'cockpit',
       label: 'Recruiter Cockpit',
       href: '/cockpit',
@@ -121,11 +129,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
     }
   ];
 
-  // RBAC Filtering Logic: Master Owner & Agency Owner see all items. Others check rolesAllowed & requiredPermission.
+  // RBAC Filtering Logic:
+  // SUPER_ADMIN sees ONLY platform management links.
+  // MASTER_OWNER & AGENCY_OWNER see all agency links. Others check rolesAllowed & requiredPermission.
   const filteredNav = navigationItems.filter(item => {
-    if (roleStr === 'MASTER_OWNER' || roleStr === 'AGENCY_OWNER' || roleStr === 'AGENCY_FOUNDER') {
-      return true;
+    if (roleStr === 'SUPER_ADMIN') {
+      return item.id === 'super-admin';
     }
+
+    if (roleStr === 'MASTER_OWNER' || roleStr === 'AGENCY_OWNER' || roleStr === 'AGENCY_FOUNDER') {
+      return item.id !== 'super-admin';
+    }
+
+    if (item.id === 'super-admin') return false;
 
     const isRoleAllowed = item.rolesAllowed.includes(roleStr);
     if (!isRoleAllowed) return false;

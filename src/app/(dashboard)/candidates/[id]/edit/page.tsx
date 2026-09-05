@@ -1,7 +1,8 @@
 import React from 'react';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { Edit3 } from 'lucide-react';
 import { prisma } from '@/lib/prisma';
+import { getCurrentUser, hasPermission } from '@/lib/rbac';
 import { CandidateForm } from '@/components/candidates/CandidateForm';
 import { updateCandidateAction } from '@/app/actions/candidates';
 
@@ -14,11 +15,12 @@ interface CandidateEditPageProps {
 }
 
 export default async function CandidateEditPage({ params }: CandidateEditPageProps) {
-  const demoAgency = await prisma.agency.findFirst({
-    where: { subdomain: 'demo' },
-    select: { id: true }
-  }).catch(() => null);
-  const agencyId = demoAgency?.id;
+  const dbUser = await getCurrentUser();
+  if (!dbUser || !hasPermission(dbUser, 'candidate.edit')) {
+    redirect('/403');
+  }
+
+  const agencyId = dbUser.agencyId;
 
   const candidate = await prisma.candidateRecord.findFirst({
     where: {

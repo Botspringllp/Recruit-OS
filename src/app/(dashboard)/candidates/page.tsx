@@ -1,9 +1,10 @@
 import React from 'react';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { Users, Search, Plus, ArrowUpRight, ChevronLeft, ChevronRight, Edit3, Sparkles } from 'lucide-react';
 import { prisma } from '@/lib/prisma';
 import { DeleteCandidateButton } from '@/components/candidates/DeleteCandidateButton';
-import { getCurrentUser } from '@/lib/rbac';
+import { getCurrentUser, hasPermission } from '@/lib/rbac';
 
 export const revalidate = 0;
 
@@ -21,6 +22,10 @@ export default async function CandidatesPage({ searchParams }: CandidatesPagePro
   const skip = (currentPage - 1) * pageSize;
 
   const dbUser = await getCurrentUser();
+  if (!dbUser || !hasPermission(dbUser, 'candidate.view')) {
+    redirect('/403');
+  }
+
   const agencyId = dbUser?.agencyId;
 
   const whereClause: any = {

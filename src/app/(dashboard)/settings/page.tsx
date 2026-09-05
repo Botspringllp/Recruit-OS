@@ -1,13 +1,21 @@
 import React from 'react';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
+import { getCurrentUser, hasPermission } from '@/lib/rbac';
 import { Settings, Building, Save, Users, ArrowRight } from 'lucide-react';
 import { prisma } from '@/lib/prisma';
 
 export const revalidate = 0;
 
 export default async function SettingsPage() {
+  const dbUser = await getCurrentUser();
+  if (!dbUser || !hasPermission(dbUser, 'user.manage')) {
+    redirect('/403');
+  }
+
+  const agencyId = dbUser.agencyId;
   const demoAgency = await prisma.agency.findFirst({
-    where: { subdomain: 'demo' },
+    where: { id: agencyId },
     select: { id: true, name: true, subdomain: true, subscriptionTier: true }
   }).catch(() => null);
 

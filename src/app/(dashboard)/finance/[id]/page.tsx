@@ -1,7 +1,8 @@
 import React from 'react';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
+import { getCurrentUser, hasPermission } from '@/lib/rbac';
 import { InvoiceStatusDropdown } from '@/components/finance/InvoiceStatusDropdown';
 import { PaymentTracker } from '@/components/finance/PaymentTracker';
 import { InvoicePdfButton } from '@/components/finance/InvoicePdfButton';
@@ -16,11 +17,15 @@ interface InvoiceDetailPageProps {
 }
 
 export default async function InvoiceDetailPage({ params }: InvoiceDetailPageProps) {
-  const demoAgency = await prisma.agency.findFirst({
-    where: { subdomain: 'demo' },
-    select: { id: true, name: true }
-  });
-  const agencyId = demoAgency?.id;
+  const dbUser = await getCurrentUser();
+  if (!dbUser || !hasPermission(dbUser, 'finance.view')) {
+    redirect('/403');
+  }
+
+  const agencyId = dbUser.agencyId;
+  const agency = agencyId
+    ? await prisma.agency.findFirst({ where: { id: agencyId }, select: { name: true } }).catch(() => null)
+    : null;
 
   const invoice = await prisma.invoiceRecord.findFirst({
     where: { id: params.id, agencyId },
@@ -103,7 +108,7 @@ export default async function InvoiceDetailPage({ params }: InvoiceDetailPagePro
         <div className="flex items-start justify-between border-b border-slate-800 print:border-gray-200 pb-6">
           <div>
             <h2 className="text-2xl font-extrabold text-white print:text-black tracking-tight">
-              {demoAgency?.name || 'RecruitOS Agency'}
+              {agency?.name || 'RecruitOS Agency'}
             </h2>
             <p className="text-xs text-slate-400 print:text-gray-600 mt-1">
               Executive Recruitment & Placement Services

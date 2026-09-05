@@ -1,7 +1,8 @@
 import React from 'react';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { Edit3 } from 'lucide-react';
 import { prisma } from '@/lib/prisma';
+import { getCurrentUser, hasPermission } from '@/lib/rbac';
 import { JobForm } from '@/components/jobs/JobForm';
 import { updateJobMandateAction } from '@/app/actions/jobs';
 
@@ -14,11 +15,12 @@ interface JobEditPageProps {
 }
 
 export default async function JobEditPage({ params }: JobEditPageProps) {
-  const demoAgency = await prisma.agency.findFirst({
-    where: { subdomain: 'demo' },
-    select: { id: true }
-  }).catch(() => null);
-  const agencyId = demoAgency?.id;
+  const dbUser = await getCurrentUser();
+  if (!dbUser || !hasPermission(dbUser, 'job.edit')) {
+    redirect('/403');
+  }
+
+  const agencyId = dbUser.agencyId;
 
   const [job, clients] = await Promise.all([
     prisma.jobMandate.findFirst({

@@ -1,17 +1,20 @@
 import React from 'react';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
+import { getCurrentUser, hasPermission } from '@/lib/rbac';
 import { OfferForm } from '@/components/offers/OfferForm';
 import { Award, ArrowLeft } from 'lucide-react';
 
 export const revalidate = 0;
 
 export default async function NewOfferPage() {
-  const demoAgency = await prisma.agency.findFirst({
-    where: { subdomain: 'demo' },
-    select: { id: true }
-  }).catch(() => null);
-  const agencyId = demoAgency?.id;
+  const dbUser = await getCurrentUser();
+  if (!dbUser || !hasPermission(dbUser, 'offer.create')) {
+    redirect('/403');
+  }
+
+  const agencyId = dbUser.agencyId;
 
   // Fetch active candidate submissions for dropdown selection
   const activeSubmissions = await prisma.candidateSubmission.findMany({

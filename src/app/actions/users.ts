@@ -8,10 +8,14 @@ import { logger, logEvent } from '@/lib/logger';
 import { requirePermission } from '@/lib/rbac';
 import { AVAILABLE_PERMISSIONS } from '@/lib/permissions';
 
+import { createClient as createSupabaseAdminClient } from '@supabase/supabase-js';
+import crypto from 'crypto';
+
 export type UserFormData = {
   firstName: string;
   lastName: string;
   email: string;
+  password?: string;
   role: UserRole;
   status: UserStatus;
   managerId?: string | null;
@@ -35,6 +39,15 @@ function parsePermission(permStr: string) {
     return { resource: parts[0], action: parts.slice(1).join('.') };
   }
   return { resource: permStr, action: 'access' };
+}
+
+function getSupabaseAdmin() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://hadrlwfcsoouttnzeoye.supabase.co';
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceKey) return null;
+  return createSupabaseAdminClient(url, serviceKey, {
+    auth: { autoRefreshToken: false, persistSession: false }
+  });
 }
 
 export async function getUsersAction(agencyIdInput?: string, userOverride?: any): Promise<ActionResult<{
@@ -130,6 +143,7 @@ export async function createUserAction(payload: UserFormData, agencyIdInput?: st
     const firstName = (payload.firstName || '').trim();
     const lastName = (payload.lastName || '').trim();
     const email = (payload.email || '').trim().toLowerCase();
+    const password = payload.password ? payload.password.trim() : '';
     const role = payload.role || UserRole.RECRUITER;
     const status = payload.status || UserStatus.ACTIVE;
     const managerId = payload.managerId || null;
@@ -140,6 +154,9 @@ export async function createUserAction(payload: UserFormData, agencyIdInput?: st
     if (!lastName) errors.lastName = 'Last name is required';
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       errors.email = 'Valid email is required';
+    }
+    if (password && password.length < 6) {
+      errors.password = 'Password must be at least 6 characters long';
     }
 
     if (role === UserRole.MASTER_OWNER) {
@@ -167,18 +184,67 @@ export async function createUserAction(payload: UserFormData, agencyIdInput?: st
       }
     }
 
-    const newUser = await prisma.user.create({
-      data: {
-        agencyId,
-        firstName,
-        lastName,
-        email,
-        passwordHash: '$2b$10$UnassignedDummyHashForAgencyUser',
-        role,
-        status,
-        isActive: status === UserStatus.ACTIVE || status === UserStatus.INVITED,
-        managerId: managerId || null
+    // Provision user in Supabase Auth if password is provided
+    let supabaseAuthUserId: string | null = null;
+    if (password) {
+      const supabaseAdmin = getSupabaseAdmin();
+      if (supabaseAdmin) {
+        const { data: sbData, error: sbError } = await supabaseAdmin.auth.admin.createUser({
+          email,
+          password,
+          email_confirm: true,
+          user_metadata: {
+            agency_id: agencyId,
+            role,
+            first_name: firstName,
+            last_name: lastName
+          }
+        });
+
+        if (!sbError && sbData?.user) {
+          supabaseAuthUserId = sbData.user.id;
+        } else if (sbError && sbError.message.includes('already registered')) {
+          // If auth user already exists, update password and metadata
+          const { data: listData } = await supabaseAdmin.auth.admin.listUsers();
+          const existingSbUser = listData?.users?.find(u => u.email?.toLowerCase() === email);
+          if (existingSbUser) {
+            supabaseAuthUserId = existingSbUser.id;
+            await supabaseAdmin.auth.admin.updateUserById(existingSbUser.id, {
+              password,
+              user_metadata: {
+                agency_id: agencyId,
+                role,
+                first_name: firstName,
+                last_name: lastName
+              }
+            }).catch(() => null);
+          }
+        }
       }
+    }
+
+    const passwordHash = password
+      ? `$sha256$${crypto.createHash('sha256').update(password).digest('hex')}`
+      : '$2b$10$UnassignedDummyHashForAgencyUser';
+
+    const createUserData: any = {
+      agencyId,
+      firstName,
+      lastName,
+      email,
+      passwordHash,
+      role,
+      status,
+      isActive: status === UserStatus.ACTIVE || status === UserStatus.INVITED,
+      managerId: managerId || null
+    };
+
+    if (supabaseAuthUserId) {
+      createUserData.id = supabaseAuthUserId;
+    }
+
+    const newUser = await prisma.user.create({
+      data: createUserData
     });
 
     await prisma.userRoleAssignment.create({
@@ -203,6 +269,14 @@ export async function createUserAction(payload: UserFormData, agencyIdInput?: st
         data: permissionRows,
         skipDuplicates: true
       });
+
+      logger.info({
+        event: 'PERMISSION_UPDATED',
+        agencyId,
+        userId: newUser.id,
+        permissions,
+        timestamp: new Date().toISOString()
+      }, `🔐 [PERMISSION UPDATED] Assigned ${permissions.length} permissions to user ${newUser.email}`);
     }
 
     logger.info({
@@ -211,8 +285,9 @@ export async function createUserAction(payload: UserFormData, agencyIdInput?: st
       agencyId,
       email: newUser.email,
       role: newUser.role,
-      status: newUser.status
-    }, `👤 [User Created] ${newUser.firstName} ${newUser.lastName} (${newUser.email}) - Role: ${newUser.role}`);
+      status: newUser.status,
+      timestamp: new Date().toISOString()
+    }, `👤 [USER CREATED] Created user ${newUser.email} (${newUser.role})`);
 
     revalidatePath('/settings/users');
     return { success: true, data: { userId: newUser.id } };

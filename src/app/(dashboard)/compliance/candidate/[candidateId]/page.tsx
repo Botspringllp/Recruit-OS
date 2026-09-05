@@ -1,7 +1,8 @@
 import React from 'react';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
+import { getCurrentUser, hasPermission } from '@/lib/rbac';
 import { MANDATORY_COMPLIANCE_CATEGORIES } from '@/lib/constants/compliance';
 import { ComplianceStatusDropdown } from '@/components/compliance/ComplianceStatusDropdown';
 
@@ -13,13 +14,15 @@ export default async function CandidateComplianceMatrixPage({
 }: {
   params: { candidateId: string };
 }) {
-  const agency = await prisma.agency.findFirst({
-    where: { subdomain: 'demo' },
-    select: { id: true }
-  });
+  const dbUser = await getCurrentUser();
+  if (!dbUser || !hasPermission(dbUser, 'compliance.view')) {
+    redirect('/403');
+  }
+
+  const agencyId = dbUser.agencyId;
 
   const candidate = await prisma.candidateRecord.findFirst({
-    where: { id: params.candidateId, agencyId: agency?.id, deletedAt: null },
+    where: { id: params.candidateId, agencyId, deletedAt: null },
     include: {
       submissions: {
         include: {
@@ -37,7 +40,7 @@ export default async function CandidateComplianceMatrixPage({
   }
 
   const docs = await prisma.candidateComplianceDoc.findMany({
-    where: { candidateId: candidate.id, agencyId: agency?.id, deletedAt: null },
+    where: { candidateId: candidate.id, agencyId, deletedAt: null },
     include: {
       auditLogs: { orderBy: { createdAt: 'desc' } }
     }

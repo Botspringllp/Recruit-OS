@@ -48,10 +48,10 @@ export async function middleware(request: NextRequest) {
       return response;
     }
 
-    // 3. Unauthenticated requests to protected routes redirect to Splash route (/)
+    // 3. Unauthenticated requests to protected routes redirect to Login route (/login)
     if (!user && !isPublicRoute) {
       const url = request.nextUrl.clone();
-      url.pathname = '/';
+      url.pathname = '/login';
       return NextResponse.redirect(url);
     }
 

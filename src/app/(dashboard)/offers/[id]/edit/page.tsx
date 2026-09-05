@@ -1,7 +1,8 @@
 import React from 'react';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
+import { getCurrentUser, hasPermission } from '@/lib/rbac';
 import { OfferForm } from '@/components/offers/OfferForm';
 import { Award, ArrowLeft } from 'lucide-react';
 
@@ -14,11 +15,12 @@ interface EditOfferPageProps {
 }
 
 export default async function EditOfferPage({ params }: EditOfferPageProps) {
-  const demoAgency = await prisma.agency.findFirst({
-    where: { subdomain: 'demo' },
-    select: { id: true }
-  }).catch(() => null);
-  const agencyId = demoAgency?.id;
+  const dbUser = await getCurrentUser();
+  if (!dbUser || !hasPermission(dbUser, 'offer.edit')) {
+    redirect('/403');
+  }
+
+  const agencyId = dbUser.agencyId;
 
   const offer = await prisma.jobOfferAudit.findFirst({
     where: { id: params.id, agencyId }

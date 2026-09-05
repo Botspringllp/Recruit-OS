@@ -18,6 +18,11 @@ export interface UserWithRoleAndPermissions {
   role: string;
   status: string;
   isActive: boolean;
+  agency?: {
+    id: string;
+    status: string;
+    name: string;
+  } | null;
   permissions?: UserPermissionItem[];
   userRoles?: { roleName: string }[];
 }
@@ -30,7 +35,12 @@ export function getCurrentUserPermissions(user: UserWithRoleAndPermissions | nul
 
   const roleStr = String(user.role || '').toUpperCase();
 
-  // MASTER_OWNER and AGENCY_OWNER have global permissions inside system/agency
+  // SUPER_ADMIN has platform management permissions only (NO business tenant data permissions)
+  if (roleStr === 'SUPER_ADMIN') {
+    return ['agency.manage', 'platform.admin', 'user.manage'];
+  }
+
+  // MASTER_OWNER and AGENCY_OWNER have global permissions inside their agency
   if (roleStr === 'MASTER_OWNER' || roleStr === 'AGENCY_OWNER' || roleStr === 'AGENCY_FOUNDER') {
     return ['*'];
   }
@@ -61,7 +71,8 @@ export function getCurrentUserPermissions(user: UserWithRoleAndPermissions | nul
 
 /**
  * Checks if a given user has a specific permission.
- * MASTER_OWNER and AGENCY_OWNER bypass all permission checks.
+ * - Suspended users or users belonging to a SUSPENDED agency have NO access.
+ * - SUPER_ADMIN can only manage agencies & platform settings; SUPER_ADMIN CANNOT access business data (candidates, jobs, interviews, finance, compliance, offers).
  */
 export function hasPermission(user: UserWithRoleAndPermissions | null | undefined, permission: string): boolean {
   if (!user) return false;
@@ -73,7 +84,27 @@ export function hasPermission(user: UserWithRoleAndPermissions | null | undefine
 
   const roleStr = String(user.role || '').toUpperCase();
 
-  // MASTER_OWNER and AGENCY_OWNER bypass all checks
+  // Check if agency is suspended (applies to non-SUPER_ADMIN users)
+  if (roleStr !== 'SUPER_ADMIN' && roleStr !== 'MASTER_OWNER') {
+    if (user.agency && user.agency.status === 'SUSPENDED') {
+      return false;
+    }
+  }
+
+  // SECURITY RULE: SUPER_ADMIN MUST NOT access agency business data
+  const businessResources = ['candidate', 'job', 'interview', 'offer', 'compliance', 'finance', 'submission', 'partner'];
+  const [targetResource] = permission.split('.');
+
+  if (roleStr === 'SUPER_ADMIN') {
+    if (businessResources.includes(targetResource.toLowerCase())) {
+      return false; // Strictly block Super Admin from viewing agency business data
+    }
+    if (permission === 'agency.manage' || permission === 'platform.admin' || permission === 'user.manage') {
+      return true;
+    }
+  }
+
+  // MASTER_OWNER and AGENCY_OWNER bypass all checks inside their agency context
   if (roleStr === 'MASTER_OWNER' || roleStr === 'AGENCY_OWNER' || roleStr === 'AGENCY_FOUNDER') {
     return true;
   }
@@ -109,7 +140,7 @@ export function hasRole(user: UserWithRoleAndPermissions | null | undefined, rol
   if (!user) return false;
 
   const roleStr = String(user.role || '').toUpperCase();
-  if (roleStr === 'MASTER_OWNER') return true;
+  if (roleStr === 'MASTER_OWNER' || roleStr === 'SUPER_ADMIN') return true;
 
   if (roleStr === roleName.toUpperCase()) return true;
 
@@ -121,17 +152,19 @@ export function hasRole(user: UserWithRoleAndPermissions | null | undefined, rol
 }
 
 /**
- * Helper to fetch current active user from database with permissions.
+ * Helper to fetch current active user from database with permissions & agency status.
  */
 export const getCurrentUser = cache(async (): Promise<UserWithRoleAndPermissions | null> => {
   try {
-    // Demo/system default user for server action evaluation if no request session
     const user = await prisma.user.findFirst({
       where: {
         deletedAt: null,
         status: 'ACTIVE'
       },
       include: {
+        agency: {
+          select: { id: true, name: true, status: true }
+        },
         permissions: { select: { resource: true, action: true } },
         userRoles: { select: { roleName: true } }
       },

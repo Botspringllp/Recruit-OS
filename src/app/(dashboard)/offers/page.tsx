@@ -1,10 +1,11 @@
 import React from 'react';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { Award, Plus, Search, Filter, Calendar, ExternalLink, ChevronLeft, ChevronRight, User, Briefcase } from 'lucide-react';
 import { OfferStatusDropdown } from '@/components/offers/OfferStatusDropdown';
 
-import { getCurrentUser } from '@/lib/rbac';
+import { getCurrentUser, hasPermission } from '@/lib/rbac';
 
 export const revalidate = 0;
 
@@ -18,6 +19,10 @@ interface OffersPageProps {
 
 export default async function OffersPage({ searchParams }: OffersPageProps) {
   const dbUser = await getCurrentUser();
+  if (!dbUser || !hasPermission(dbUser, 'offer.view')) {
+    redirect('/403');
+  }
+
   const agencyId = dbUser?.agencyId;
 
   const searchQuery = (searchParams.q || '').trim();

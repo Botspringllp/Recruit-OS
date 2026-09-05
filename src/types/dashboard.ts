@@ -1,9 +1,15 @@
 export type UserRoleType = 
+  | 'MASTER_OWNER'
+  | 'AGENCY_OWNER'
   | 'AGENCY_FOUNDER'
   | 'RECRUITER'
+  | 'FINANCE_MANAGER'
+  | 'FINANCE_ADMIN'
+  | 'COMPLIANCE_OFFICER'
+  | 'INTERVIEW_COORDINATOR'
   | 'CLIENT_HR'
   | 'PARTNER_RECRUITER'
-  | 'FINANCE_ADMIN';
+  | (string & {});
 
 export interface TenantContextType {
   agencyId: string;

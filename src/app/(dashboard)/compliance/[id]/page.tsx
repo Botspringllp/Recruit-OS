@@ -1,7 +1,8 @@
 import React from 'react';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
+import { getCurrentUser, hasPermission } from '@/lib/rbac';
 import { ComplianceStatusDropdown } from '@/components/compliance/ComplianceStatusDropdown';
 import { CandidateComplianceTimeline } from '@/components/compliance/CandidateComplianceTimeline';
 
@@ -13,13 +14,15 @@ export default async function DocumentDetailPage({
 }: {
   params: { id: string };
 }) {
-  const agency = await prisma.agency.findFirst({
-    where: { subdomain: 'demo' },
-    select: { id: true }
-  });
+  const dbUser = await getCurrentUser();
+  if (!dbUser || !hasPermission(dbUser, 'compliance.view')) {
+    redirect('/403');
+  }
+
+  const agencyId = dbUser.agencyId;
 
   const doc = await prisma.candidateComplianceDoc.findFirst({
-    where: { id: params.id, agencyId: agency?.id, deletedAt: null },
+    where: { id: params.id, agencyId, deletedAt: null },
     include: {
       candidate: true,
       submission: {

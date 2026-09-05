@@ -1,4 +1,5 @@
 import React from 'react';
+import { redirect } from 'next/navigation';
 import { Calendar, Plus, Clock, Sparkles } from 'lucide-react';
 import { KpiMetricStrip } from '@/components/cockpit/KpiMetricStrip';
 import { MandatesGridControl } from '@/components/cockpit/MandatesGridControl';
@@ -13,6 +14,14 @@ export default async function CockpitPage() {
 
   // Fetch agency context
   const dbUser = await getCurrentUser();
+  if (dbUser?.role === 'SUPER_ADMIN') {
+    redirect('/super-admin');
+  }
+
+  if (dbUser?.agency?.status === 'SUSPENDED') {
+    redirect('/403');
+  }
+
   const agencyId = dbUser?.agencyId;
 
   // Single-batch aggregate queries (Parallelized)

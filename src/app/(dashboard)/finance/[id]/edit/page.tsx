@@ -1,7 +1,8 @@
 import React from 'react';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
+import { getCurrentUser, hasPermission } from '@/lib/rbac';
 import { InvoiceForm } from '@/components/finance/InvoiceForm';
 import { ArrowLeft, Edit } from 'lucide-react';
 
@@ -14,11 +15,12 @@ interface EditInvoicePageProps {
 }
 
 export default async function EditInvoicePage({ params }: EditInvoicePageProps) {
-  const demoAgency = await prisma.agency.findFirst({
-    where: { subdomain: 'demo' },
-    select: { id: true }
-  });
-  const agencyId = demoAgency?.id;
+  const dbUser = await getCurrentUser();
+  if (!dbUser || !hasPermission(dbUser, 'finance.edit')) {
+    redirect('/403');
+  }
+
+  const agencyId = dbUser.agencyId;
 
   const invoice = await prisma.invoiceRecord.findFirst({
     where: { id: params.id, agencyId }

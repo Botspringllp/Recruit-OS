@@ -1,8 +1,9 @@
 import React from 'react';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { ArrowLeft, Building2, User, Mail, Phone, Percent, Edit3, Share2, Users, DollarSign } from 'lucide-react';
 import { prisma } from '@/lib/prisma';
+import { getCurrentUser, hasPermission } from '@/lib/rbac';
 
 export const revalidate = 0;
 
@@ -11,11 +12,12 @@ interface PartnerDetailPageProps {
 }
 
 export default async function PartnerDetailPage({ params }: PartnerDetailPageProps) {
-  const demoAgency = await prisma.agency.findFirst({
-    where: { subdomain: 'demo' },
-    select: { id: true }
-  }).catch(() => null);
-  const agencyId = demoAgency?.id || 'adaa404d-0ce3-4b72-9981-882a8f31a2af';
+  const dbUser = await getCurrentUser();
+  if (!dbUser || !hasPermission(dbUser, 'partner.view')) {
+    redirect('/403');
+  }
+
+  const agencyId = dbUser.agencyId;
 
   const partner = await (prisma as any).partnerAgency.findFirst({
     where: { id: params.id, agencyId },

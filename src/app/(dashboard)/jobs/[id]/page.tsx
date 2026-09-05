@@ -5,7 +5,8 @@ import { Briefcase, Building2, Users, DollarSign, Percent, ArrowLeft, Edit3, Cal
 import { prisma } from '@/lib/prisma';
 import { JobStatusActions } from '@/components/jobs/JobStatusActions';
 
-import { getCurrentUser } from '@/lib/rbac';
+import { getCurrentUser, hasPermission } from '@/lib/rbac';
+import { redirect } from 'next/navigation';
 
 export const revalidate = 0;
 
@@ -17,6 +18,10 @@ interface JobDetailPageProps {
 
 export default async function JobDetailPage({ params }: JobDetailPageProps) {
   const dbUser = await getCurrentUser();
+  if (!dbUser || !hasPermission(dbUser, 'job.view')) {
+    redirect('/403');
+  }
+
   const agencyId = dbUser?.agencyId;
 
   const job = await prisma.jobMandate.findFirst({

@@ -5,7 +5,8 @@ import { User, Mail, Phone, Building, Briefcase, MapPin, Award, Layers, ArrowLef
 import { prisma } from '@/lib/prisma';
 import { DeleteCandidateButton } from '@/components/candidates/DeleteCandidateButton';
 
-import { getCurrentUser } from '@/lib/rbac';
+import { getCurrentUser, hasPermission } from '@/lib/rbac';
+import { redirect } from 'next/navigation';
 
 export const revalidate = 0;
 
@@ -25,6 +26,10 @@ function formatFileSize(bytes: number): string {
 
 export default async function CandidateDetailPage({ params }: CandidateDetailPageProps) {
   const dbUser = await getCurrentUser();
+  if (!dbUser || !hasPermission(dbUser, 'candidate.view')) {
+    redirect('/403');
+  }
+
   const agencyId = dbUser?.agencyId;
 
   const candidate = await prisma.candidateRecord.findFirst({

@@ -1,7 +1,8 @@
 import React from 'react';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
+import { getCurrentUser, hasPermission } from '@/lib/rbac';
 import { InterviewForm } from '@/components/interviews/InterviewForm';
 import { Calendar, ArrowLeft } from 'lucide-react';
 
@@ -14,11 +15,12 @@ interface EditInterviewPageProps {
 }
 
 export default async function EditInterviewPage({ params }: EditInterviewPageProps) {
-  const demoAgency = await prisma.agency.findFirst({
-    where: { subdomain: 'demo' },
-    select: { id: true }
-  }).catch(() => null);
-  const agencyId = demoAgency?.id;
+  const dbUser = await getCurrentUser();
+  if (!dbUser || !hasPermission(dbUser, 'interview.edit')) {
+    redirect('/403');
+  }
+
+  const agencyId = dbUser.agencyId;
 
   const interview = await prisma.interviewSchedule.findFirst({
     where: { id: params.id, agencyId }

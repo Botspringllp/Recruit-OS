@@ -1,19 +1,23 @@
 import React from 'react';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
+import { getCurrentUser, hasPermission } from '@/lib/rbac';
 import { InvoiceForm } from '@/components/finance/InvoiceForm';
 import { ArrowLeft, Receipt } from 'lucide-react';
 
 export const revalidate = 0;
 
 export default async function NewInvoicePage() {
-  const demoAgency = await prisma.agency.findFirst({
-    where: { subdomain: 'demo' },
-    select: { id: true }
-  });
+  const dbUser = await getCurrentUser();
+  if (!dbUser || !hasPermission(dbUser, 'finance.create')) {
+    redirect('/403');
+  }
+
+  const agencyId = dbUser.agencyId;
 
   const clients = await prisma.client.findMany({
-    where: { agencyId: demoAgency?.id },
+    where: { agencyId },
     select: { id: true, companyName: true },
     orderBy: { companyName: 'asc' }
   });

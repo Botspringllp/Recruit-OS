@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { User, LogOut, Shield, ChevronDown, KeyRound } from 'lucide-react';
 import { UserContextType } from '@/types/dashboard';
+import { createClient } from '@/lib/supabase/client';
 
 interface UserProfileDropdownProps {
   user: UserContextType;
@@ -11,6 +12,7 @@ interface UserProfileDropdownProps {
 
 export const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({ user, onLogout }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -23,18 +25,43 @@ export const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({ user, 
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      if (onLogout) {
+        onLogout();
+      }
+      const supabase = createClient();
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error('Sign Out Error:', err);
+    } finally {
+      window.location.href = '/login';
+    }
+  };
+
   const getRoleBadge = (role: string) => {
-    switch (role) {
+    const roleUpper = String(role || '').toUpperCase();
+    switch (roleUpper) {
+      case 'SUPER_ADMIN':
+      case 'MASTER_OWNER':
+        return { label: 'Role: SUPER_ADMIN', color: 'bg-amber-500 text-slate-950 border-amber-600 font-black' };
       case 'AGENCY_FOUNDER':
-        return { label: 'Agency Founder', color: 'bg-purple-100 text-purple-800 border-purple-300' };
+      case 'AGENCY_OWNER':
+        return { label: 'Role: AGENCY_OWNER', color: 'bg-purple-100 text-purple-800 border-purple-300 font-extrabold' };
       case 'FINANCE_ADMIN':
-        return { label: 'Finance Admin', color: 'bg-emerald-100 text-emerald-800 border-emerald-300' };
+      case 'FINANCE_MANAGER':
+        return { label: 'Role: FINANCE_MANAGER', color: 'bg-emerald-100 text-emerald-800 border-emerald-300 font-extrabold' };
+      case 'COMPLIANCE_OFFICER':
+        return { label: 'Role: COMPLIANCE_OFFICER', color: 'bg-emerald-100 text-emerald-800 border-emerald-300 font-extrabold' };
+      case 'INTERVIEW_COORDINATOR':
+        return { label: 'Role: INTERVIEW_COORDINATOR', color: 'bg-indigo-100 text-indigo-800 border-indigo-300 font-extrabold' };
       case 'CLIENT_HR':
-        return { label: 'Client HR', color: 'bg-amber-100 text-amber-800 border-amber-300' };
+        return { label: 'Role: CLIENT_HR', color: 'bg-amber-100 text-amber-800 border-amber-300 font-extrabold' };
       case 'PARTNER_RECRUITER':
-        return { label: 'Partner Recruiter', color: 'bg-cyan-100 text-cyan-800 border-cyan-300' };
+        return { label: 'Role: PARTNER_RECRUITER', color: 'bg-cyan-100 text-cyan-800 border-cyan-300 font-extrabold' };
       default:
-        return { label: 'Recruiter', color: 'bg-blue-100 text-blue-800 border-blue-300' };
+        return { label: `Role: ${roleUpper || 'RECRUITER'}`, color: 'bg-blue-100 text-blue-800 border-blue-300 font-extrabold' };
     }
   };
 
@@ -57,8 +84,8 @@ export const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({ user, 
           <span className="text-xs font-bold text-slate-900 leading-tight">
             {user.firstName} {user.lastName}
           </span>
-          <span className="text-[10px] text-slate-500 truncate max-w-[130px]">
-            {user.email}
+          <span className={`inline-block text-[9px] px-1.5 py-0.2 rounded mt-0.5 border ${roleBadge.color}`}>
+            {roleBadge.label}
           </span>
         </div>
         <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
@@ -95,9 +122,9 @@ export const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({ user, 
               <span>Security & MFA</span>
             </a>
 
-            {user.role === 'AGENCY_FOUNDER' && (
+            {(user.role === 'AGENCY_FOUNDER' || user.role === 'AGENCY_OWNER') && (
               <a
-                href="#agency-settings"
+                href="/settings/users"
                 className="flex items-center gap-3 px-4 py-2 text-xs font-medium text-amber-800 hover:bg-amber-50 transition-colors"
               >
                 <Shield className="h-4 w-4 text-amber-600" />
@@ -109,11 +136,12 @@ export const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({ user, 
           {/* Footer / Logout */}
           <div className="pt-1 mt-1 border-t border-slate-100 px-2">
             <button
-              onClick={onLogout || (() => console.log('Logout executed'))}
-              className="w-full flex items-center gap-3 px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-lg transition-colors text-left"
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+              className="w-full flex items-center gap-3 px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-lg transition-colors text-left disabled:opacity-50"
             >
               <LogOut className="h-4 w-4 text-rose-600" />
-              <span>Sign Out</span>
+              <span>{isLoggingOut ? 'Signing Out...' : 'Sign Out'}</span>
             </button>
           </div>
         </div>

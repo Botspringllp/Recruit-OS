@@ -1,7 +1,8 @@
 import React from 'react';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { ArrowLeft, Edit3, Shield, Mail, Calendar, UserCheck, Users, Key } from 'lucide-react';
+import { getCurrentUser, hasPermission } from '@/lib/rbac';
 import { getUserByIdAction } from '@/app/actions/users';
 import { AVAILABLE_PERMISSIONS } from '@/lib/permissions';
 import { DisableUserButton } from '@/components/users/DisableUserButton';
@@ -15,6 +16,11 @@ interface UserDetailPageProps {
 }
 
 export default async function UserDetailPage({ params }: UserDetailPageProps) {
+  const dbUser = await getCurrentUser();
+  if (!dbUser || !hasPermission(dbUser, 'user.manage')) {
+    redirect('/403');
+  }
+
   const { id } = params;
   const result = await getUserByIdAction(id);
 

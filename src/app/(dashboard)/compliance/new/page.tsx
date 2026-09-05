@@ -1,16 +1,20 @@
 import React from 'react';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
+import { getCurrentUser, hasPermission } from '@/lib/rbac';
 import { DocumentUploadForm } from '@/components/compliance/DocumentUploadForm';
 
 export default async function NewDocumentPage() {
-  const agency = await prisma.agency.findFirst({
-    where: { subdomain: 'demo' },
-    select: { id: true }
-  });
+  const dbUser = await getCurrentUser();
+  if (!dbUser || (!hasPermission(dbUser, 'compliance.review') && !hasPermission(dbUser, 'compliance.create'))) {
+    redirect('/403');
+  }
+
+  const agencyId = dbUser.agencyId;
 
   const candidates = await prisma.candidateRecord.findMany({
-    where: { agencyId: agency?.id, deletedAt: null },
+    where: { agencyId, deletedAt: null },
     select: { id: true, firstName: true, lastName: true, email: true },
     orderBy: { createdAt: 'desc' },
     take: 100

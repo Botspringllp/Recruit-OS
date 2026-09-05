@@ -5,7 +5,8 @@ import { prisma } from '@/lib/prisma';
 import { Calendar, ArrowLeft, User, Briefcase, Video, Clock, Building2, ExternalLink, Edit, FileText } from 'lucide-react';
 import { InterviewStatusDropdown } from '@/components/interviews/InterviewStatusDropdown';
 
-import { getCurrentUser } from '@/lib/rbac';
+import { getCurrentUser, hasPermission } from '@/lib/rbac';
+import { redirect } from 'next/navigation';
 
 export const revalidate = 0;
 
@@ -17,6 +18,10 @@ interface InterviewDetailPageProps {
 
 export default async function InterviewDetailPage({ params }: InterviewDetailPageProps) {
   const dbUser = await getCurrentUser();
+  if (!dbUser || !hasPermission(dbUser, 'interview.view')) {
+    redirect('/403');
+  }
+
   const agencyId = dbUser?.agencyId;
 
   const interview = await prisma.interviewSchedule.findFirst({

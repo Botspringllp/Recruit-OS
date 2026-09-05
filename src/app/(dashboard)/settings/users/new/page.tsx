@@ -12,13 +12,11 @@ export default function CreateUserPage() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [role, setRole] = useState<UserRole>(UserRole.RECRUITER);
   const [status, setStatus] = useState<UserStatus>(UserStatus.ACTIVE);
   const [managerId, setManagerId] = useState<string>('');
-  const [selectedPermissions, setSelectedPermissions] = useState<string[]>([
-    'candidate.view',
-    'job.view'
-  ]);
+  const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
 
   const [agencyUsers, setAgencyUsers] = useState<any[]>([]);
   const [isPending, startTransition] = useTransition();
@@ -56,6 +54,7 @@ export default function CreateUserPage() {
         firstName,
         lastName,
         email,
+        password: password || undefined,
         role,
         status,
         managerId: managerId || null,
@@ -144,7 +143,7 @@ export default function CreateUserPage() {
               />
             </div>
 
-            <div className="space-y-1.5 sm:col-span-2">
+            <div className="space-y-1.5">
               <label className="text-xs font-extrabold text-[#111827] block">
                 Work Email Address <span className="text-rose-500">*</span>
               </label>
@@ -154,6 +153,20 @@ export default function CreateUserPage() {
                 placeholder="sarah@agency.com"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
+                className="w-full px-3.5 py-2.5 bg-gray-50 border border-[#E5E7EB] rounded-xl text-xs font-bold text-[#111827] focus:outline-none focus:border-[#F59E0B] focus:bg-white focus:ring-2 focus:ring-[#F59E0B]/20 transition-all"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-extrabold text-[#111827] flex items-center justify-between">
+                <span>Account Password  </span>
+                <span className="text-[10px] font-semibold text-[#6B7280]">Min 6 chars</span>
+              </label>
+              <input
+                type="password"
+                placeholder="Assign login password for user"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
                 className="w-full px-3.5 py-2.5 bg-gray-50 border border-[#E5E7EB] rounded-xl text-xs font-bold text-[#111827] focus:outline-none focus:border-[#F59E0B] focus:bg-white focus:ring-2 focus:ring-[#F59E0B]/20 transition-all"
               />
             </div>
@@ -229,10 +242,10 @@ export default function CreateUserPage() {
             <div>
               <h2 className="text-sm font-black text-[#111827] uppercase tracking-wider flex items-center gap-2">
                 <Shield className="h-4 w-4 text-[#F59E0B]" />
-                3. Feature Permission Assignments
+                3. Feature Permission Assignments (Optional)
               </h2>
               <p className="text-xs font-semibold text-[#6B7280] mt-0.5">
-                Select granular feature authorizations for this user
+                Default role permissions apply automatically. You can optionally assign extra custom permissions below.
               </p>
             </div>
 
