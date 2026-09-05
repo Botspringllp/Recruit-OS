@@ -15,8 +15,9 @@ export async function POST(request: NextRequest) {
       console.warn('Supabase session fetch bypassed in parse route:', e);
     }
 
-    if (!user) {
-      user = await getCurrentUser();
+    const dbUser = await getCurrentUser();
+    if (!user || (!user.role && !user.user_metadata?.user_role)) {
+      user = dbUser || user;
     }
 
     if (!user || !hasPermission(user, 'candidate.create')) {
