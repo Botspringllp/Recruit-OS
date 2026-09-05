@@ -4,6 +4,8 @@ import { Briefcase, Search, Filter, Plus, Building2, Users, ArrowUpRight, Chevro
 import { prisma } from '@/lib/prisma';
 import { MandateStatus } from '@prisma/client';
 
+import { getCurrentUser } from '@/lib/rbac';
+
 export const revalidate = 0;
 
 interface JobsPageProps {
@@ -23,11 +25,8 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
   const pageSize = 10;
   const skip = (currentPage - 1) * pageSize;
 
-  const demoAgency = await prisma.agency.findFirst({
-    where: { subdomain: 'demo' },
-    select: { id: true }
-  }).catch(() => null);
-  const agencyId = demoAgency?.id;
+  const dbUser = await getCurrentUser();
+  const agencyId = dbUser?.agencyId;
 
   const whereClause: any = { agencyId };
 

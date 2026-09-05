@@ -23,11 +23,7 @@ export default async function PartnersPage() {
     redirect('/403');
   }
 
-  const demoAgency = await prisma.agency.findFirst({
-    where: { subdomain: 'demo' },
-    select: { id: true }
-  }).catch(() => null);
-  const agencyId = demoAgency?.id || 'adaa404d-0ce3-4b72-9981-882a8f31a2af';
+  const agencyId = currentUser?.agencyId || 'adaa404d-0ce3-4b72-9981-882a8f31a2af';
 
   const partners = await (prisma as any).partnerAgency.findMany({
     where: { agencyId },

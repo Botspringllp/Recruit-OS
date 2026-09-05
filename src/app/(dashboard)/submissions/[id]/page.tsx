@@ -6,6 +6,8 @@ import { prisma } from '@/lib/prisma';
 import { SubmissionStageSelector } from '@/components/submissions/SubmissionStageSelector';
 import { calculateSlaStatus } from '@/lib/sla';
 
+import { getCurrentUser } from '@/lib/rbac';
+
 export const revalidate = 0;
 
 interface SubmissionDetailPageProps {
@@ -15,11 +17,8 @@ interface SubmissionDetailPageProps {
 }
 
 export default async function SubmissionDetailPage({ params }: SubmissionDetailPageProps) {
-  const demoAgency = await prisma.agency.findFirst({
-    where: { subdomain: 'demo' },
-    select: { id: true }
-  }).catch(() => null);
-  const agencyId = demoAgency?.id;
+  const dbUser = await getCurrentUser();
+  const agencyId = dbUser?.agencyId;
 
   const submission = await prisma.candidateSubmission.findFirst({
     where: {

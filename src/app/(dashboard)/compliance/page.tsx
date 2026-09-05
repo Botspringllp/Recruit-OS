@@ -32,12 +32,7 @@ export default async function ComplianceDashboardPage({
     redirect('/403');
   }
 
-  const agency = await prisma.agency.findFirst({
-    where: { subdomain: 'demo' },
-    select: { id: true }
-  });
-
-  const agencyId = agency?.id || '';
+  const agencyId = currentUser?.agencyId || '';
 
   const query = searchParams.query || '';
   const category = searchParams.category || '';

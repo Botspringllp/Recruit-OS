@@ -6,6 +6,8 @@ import { PipelineStage, SlaStatus } from '@prisma/client';
 import { SubmissionStageSelector } from '@/components/submissions/SubmissionStageSelector';
 import { calculateSlaStatus } from '@/lib/sla';
 
+import { getCurrentUser } from '@/lib/rbac';
+
 export const revalidate = 0;
 
 interface SubmissionsPageProps {
@@ -21,11 +23,8 @@ export default async function SubmissionsPage({ searchParams }: SubmissionsPageP
   const filterJobId = searchParams?.jobId || '';
   const filterSla = searchParams?.sla || '';
 
-  const demoAgency = await prisma.agency.findFirst({
-    where: { subdomain: 'demo' },
-    select: { id: true }
-  }).catch(() => null);
-  const agencyId = demoAgency?.id;
+  const dbUser = await getCurrentUser();
+  const agencyId = dbUser?.agencyId;
 
   const whereClause: any = { agencyId };
 

@@ -4,6 +4,7 @@ import { KpiMetricStrip } from '@/components/cockpit/KpiMetricStrip';
 import { MandatesGridControl } from '@/components/cockpit/MandatesGridControl';
 import { KpiMetricItem, MandateSummaryCard } from '@/types/cockpit';
 import { prisma } from '@/lib/prisma';
+import { getCurrentUser } from '@/lib/rbac';
 
 export const revalidate = 0; // Enforce dynamic server rendering
 
@@ -11,11 +12,8 @@ export default async function CockpitPage() {
   const now = new Date();
 
   // Fetch agency context
-  const demoAgency = await prisma.agency.findFirst({
-    where: { subdomain: 'demo' },
-    select: { id: true }
-  }).catch(() => null);
-  const agencyId = demoAgency?.id;
+  const dbUser = await getCurrentUser();
+  const agencyId = dbUser?.agencyId;
 
   // Single-batch aggregate queries (Parallelized)
   const [

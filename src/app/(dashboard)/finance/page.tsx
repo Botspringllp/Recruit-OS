@@ -33,11 +33,7 @@ export default async function FinancePage({ searchParams }: FinancePageProps) {
     redirect('/403');
   }
 
-  const demoAgency = await prisma.agency.findFirst({
-    where: { subdomain: 'demo' },
-    select: { id: true }
-  });
-  const agencyId = demoAgency?.id;
+  const agencyId = currentUser?.agencyId;
 
   const query = (searchParams.q || '').trim();
   const selectedStatus = (searchParams.status || '').trim();

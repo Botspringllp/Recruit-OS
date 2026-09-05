@@ -2,9 +2,8 @@ const fs = require('fs');
 const path = require('path');
 const { PrismaClient } = require('@prisma/client');
 const { createClient } = require('@supabase/supabase-js');
-const crypto = require('crypto');
 
-// Load environment variables from .env.local
+// Load environment variables from .env.local if available
 const envPath = path.join(__dirname, '..', '.env.local');
 if (fs.existsSync(envPath)) {
   const envConfig = fs.readFileSync(envPath, 'utf-8');
@@ -25,7 +24,7 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !serviceRoleKey) {
-  console.error('❌ Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in .env.local');
+  console.error('❌ Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in environment');
   process.exit(1);
 }
 
@@ -35,21 +34,8 @@ const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
 
 const prisma = new PrismaClient();
 
-function genUuid() {
-  return crypto.randomUUID();
-}
-
-async function execSql(name, sql) {
-  try {
-    await prisma.$executeRawUnsafe(sql);
-  } catch (err) {
-    console.error(`❌ Error executing ${name}:`, err.message || err);
-    throw err;
-  }
-}
-
 async function main() {
-  console.log('🚀 Starting RecruitOS Initial Platform Bootstrap Execution...');
+  console.log('🚀 Starting RecruitOS Platform Seed Execution (Prisma Client API)...');
 
   const founderEmail = 'admin@recruitos.local';
   const founderPassword = 'StrongPassword123!';
@@ -82,80 +68,121 @@ async function main() {
     console.log(`✅ Created Supabase Auth Founder user: ${authUserId}`);
   }
 
-  // 2. Insert Agency
-  let agencyId = genUuid();
-  const existingAgencies = await prisma.$queryRawUnsafe("SELECT agency_id FROM public.agencies WHERE subdomain = 'demo' LIMIT 1;");
+  // 2. Demo Agency
+  let agency = await prisma.agency.findFirst({
+    where: { subdomain: 'demo' }
+  });
 
-  if (existingAgencies.length > 0) {
-    agencyId = existingAgencies[0].agency_id;
-    console.log(`✅ Found existing Agency: ${agencyId}`);
+  if (!agency) {
+    agency = await prisma.agency.create({
+      data: {
+        name: 'RecruitOS Demo Agency',
+        subdomain: 'demo',
+        status: 'ACTIVE',
+        subscriptionTier: 'ENTERPRISE'
+      }
+    });
+    console.log(`✅ Created Demo Agency: RecruitOS Demo Agency (${agency.id})`);
   } else {
-    await execSql('Insert Agency', `
-      INSERT INTO public.agencies (agency_id, name, subdomain, tier, status, created_at, updated_at)
-      VALUES ('${agencyId}', 'RecruitOS Demo Agency', 'demo', 'ENTERPRISE'::agency_tier, 'ACTIVE', NOW(), NOW());
-    `);
-    console.log(`✅ Inserted 1 Agency: RecruitOS Demo Agency (${agencyId})`);
+    console.log(`✅ Found existing Demo Agency: (${agency.id})`);
   }
 
   // Update Auth User Metadata with agency_id
   await supabaseAdmin.auth.admin.updateUserById(authUserId, {
     user_metadata: {
-      agency_id: agencyId,
+      agency_id: agency.id,
       first_name: 'Admin',
       last_name: 'Founder',
       user_role: 'AGENCY_FOUNDER'
     }
   });
 
-  // 3. Insert Founder User in public.users
-  const existingFounderUsers = await prisma.$queryRawUnsafe(`SELECT user_id FROM public.users WHERE email = '${founderEmail}' LIMIT 1;`);
-  let founderUserId = authUserId;
+  // 3. Founder User in Prisma
+  let founderUser = await prisma.user.findFirst({
+    where: { email: founderEmail }
+  });
 
-  if (existingFounderUsers.length === 0) {
-    await execSql('Insert Founder User', `
-      INSERT INTO public.users (user_id, agency_id, email, first_name, last_name, phone, is_active, created_at, updated_at)
-      VALUES ('${authUserId}', '${agencyId}', '${founderEmail}', 'Admin', 'Founder', '+919876543210', true, NOW(), NOW());
-    `);
-    console.log(`✅ Inserted Founder User record in public.users`);
+  if (!founderUser) {
+    founderUser = await prisma.user.create({
+      data: {
+        id: authUserId,
+        agencyId: agency.id,
+        email: founderEmail,
+        passwordHash: '$2b$10$hashedpasswordplaceholder',
+        firstName: 'Admin',
+        lastName: 'Founder',
+        phone: '+919876543210',
+        role: 'AGENCY_FOUNDER',
+        status: 'ACTIVE',
+        isActive: true
+      }
+    });
+    console.log(`✅ Created Founder User record in DB`);
+  } else {
+    console.log(`✅ Found existing Founder User record`);
   }
 
-  // Assign Founder Role in user_roles
-  await execSql('Assign Founder Role', `
-    INSERT INTO public.user_roles (role_id, user_id, agency_id, role, granted_at)
-    VALUES ('${genUuid()}', '${founderUserId}', '${agencyId}', 'AGENCY_FOUNDER'::user_role, NOW())
-    ON CONFLICT DO NOTHING;
-  `);
+  // Role Assignment for Founder
+  const existingFounderRole = await prisma.userRoleAssignment.findFirst({
+    where: { userId: founderUser.id, roleName: 'AGENCY_FOUNDER' }
+  });
+  if (!existingFounderRole) {
+    await prisma.userRoleAssignment.create({
+      data: {
+        agencyId: agency.id,
+        userId: founderUser.id,
+        roleName: 'AGENCY_FOUNDER'
+      }
+    });
+  }
 
-  // 4. Insert 3 Recruiters
+  // 4. Recruiters
   const recruiterData = [
     { email: 'sarah@recruitos.local', firstName: 'Sarah', lastName: 'Sharma' },
     { email: 'rahul@recruitos.local', firstName: 'Rahul', lastName: 'Verma' },
     { email: 'priya@recruitos.local', firstName: 'Priya', lastName: 'Patel' }
   ];
 
-  const recruiterUserIds = [founderUserId];
+  const recruiterUserIds = [founderUser.id];
   for (const r of recruiterData) {
-    let recId = genUuid();
-    const existingRecs = await prisma.$queryRawUnsafe(`SELECT user_id FROM public.users WHERE email = '${r.email}' LIMIT 1;`);
-    if (existingRecs.length > 0) {
-      recId = existingRecs[0].user_id;
-    } else {
-      await execSql(`Insert Recruiter ${r.email}`, `
-        INSERT INTO public.users (user_id, agency_id, email, first_name, last_name, phone, is_active, created_at, updated_at)
-        VALUES ('${recId}', '${agencyId}', '${r.email}', '${r.firstName}', '${r.lastName}', '+919800000000', true, NOW(), NOW());
-      `);
+    let recUser = await prisma.user.findFirst({
+      where: { email: r.email }
+    });
 
-      await execSql(`Assign Recruiter Role ${r.email}`, `
-        INSERT INTO public.user_roles (role_id, user_id, agency_id, role, granted_at)
-        VALUES ('${genUuid()}', '${recId}', '${agencyId}', 'RECRUITER'::user_role, NOW())
-        ON CONFLICT DO NOTHING;
-      `);
+    if (!recUser) {
+      recUser = await prisma.user.create({
+        data: {
+          agencyId: agency.id,
+          email: r.email,
+          passwordHash: '$2b$10$hashedpasswordplaceholder',
+          firstName: r.firstName,
+          lastName: r.lastName,
+          phone: '+919800000000',
+          role: 'RECRUITER',
+          status: 'ACTIVE',
+          isActive: true
+        }
+      });
     }
-    recruiterUserIds.push(recId);
-  }
-  console.log(`✅ Inserted 3 Recruiter Accounts (Roles = RECRUITER)`);
 
-  // 5. Insert 5 Clients
+    const existingRole = await prisma.userRoleAssignment.findFirst({
+      where: { userId: recUser.id, roleName: 'RECRUITER' }
+    });
+    if (!existingRole) {
+      await prisma.userRoleAssignment.create({
+        data: {
+          agencyId: agency.id,
+          userId: recUser.id,
+          roleName: 'RECRUITER'
+        }
+      });
+    }
+
+    recruiterUserIds.push(recUser.id);
+  }
+  console.log(`✅ Created/Verified 3 Recruiter Accounts`);
+
+  // 5. Clients
   const clientData = [
     { name: 'Acme Corp Technologies', ind: 'SaaS / Enterprise Software', web: 'https://acmecorp.tech' },
     { name: 'FinTech Dynamics Global', ind: 'Financial Technology', web: 'https://fintechdynamics.com' },
@@ -166,21 +193,28 @@ async function main() {
 
   const clientIds = [];
   for (const c of clientData) {
-    let clientId = genUuid();
-    const existingClients = await prisma.$queryRawUnsafe(`SELECT client_id FROM public.clients WHERE company_name = '${c.name}' AND agency_id = '${agencyId}' LIMIT 1;`);
-    if (existingClients.length > 0) {
-      clientId = existingClients[0].client_id;
-    } else {
-      await execSql(`Insert Client ${c.name}`, `
-        INSERT INTO public.clients (client_id, agency_id, company_name, industry, website, created_at)
-        VALUES ('${clientId}', '${agencyId}', '${c.name}', '${c.ind}', '${c.web}', NOW());
-      `);
-    }
-    clientIds.push(clientId);
-  }
-  console.log(`✅ Inserted 5 Client Companies`);
+    let clientRecord = await prisma.client.findFirst({
+      where: { agencyId: agency.id, companyName: c.name }
+    });
 
-  // 6. Insert 10 Job Mandates
+    if (!clientRecord) {
+      clientRecord = await prisma.client.create({
+        data: {
+          agencyId: agency.id,
+          companyName: c.name,
+          industry: c.ind,
+          website: c.web,
+          standardFeePercentage: 8.33,
+          paymentTermsDays: 30,
+          status: 'ACTIVE'
+        }
+      });
+    }
+    clientIds.push(clientRecord.id);
+  }
+  console.log(`✅ Created/Verified 5 Client Companies`);
+
+  // 6. Job Mandates
   const mandateTitles = [
     { title: 'Senior Full Stack Engineer (Node + React)', minCtc: 24, maxCtc: 36, headcount: 3, status: 'ACTIVE' },
     { title: 'Lead DevOps & Cloud Platform Architect', minCtc: 35, maxCtc: 50, headcount: 1, status: 'ACTIVE' },
@@ -199,21 +233,29 @@ async function main() {
     const item = mandateTitles[i];
     const cid = clientIds[i % clientIds.length];
 
-    let mid = genUuid();
-    const existingMandates = await prisma.$queryRawUnsafe(`SELECT mandate_id FROM public.job_mandates WHERE title = '${item.title}' AND agency_id = '${agencyId}' LIMIT 1;`);
-    if (existingMandates.length > 0) {
-      mid = existingMandates[0].mandate_id;
-    } else {
-      await execSql(`Insert Mandate ${item.title}`, `
-        INSERT INTO public.job_mandates (mandate_id, agency_id, client_id, title, headcount, min_ctc_lpa, max_ctc_lpa, fee_percentage, status, created_at, updated_at)
-        VALUES ('${mid}', '${agencyId}', '${cid}', '${item.title}', ${item.headcount}, ${item.minCtc}, ${item.maxCtc}, 8.33, '${item.status}'::mandate_status, NOW(), NOW());
-      `);
-    }
-    mandateIds.push(mid);
-  }
-  console.log(`✅ Inserted 10 Job Mandates`);
+    let mandate = await prisma.jobMandate.findFirst({
+      where: { agencyId: agency.id, title: item.title }
+    });
 
-  // 7. Insert 25 Candidate Records
+    if (!mandate) {
+      mandate = await prisma.jobMandate.create({
+        data: {
+          agencyId: agency.id,
+          clientId: cid,
+          title: item.title,
+          headcount: item.headcount,
+          minCtcLpa: item.minCtc,
+          maxCtcLpa: item.maxCtc,
+          feePercentage: 8.33,
+          status: item.status
+        }
+      });
+    }
+    mandateIds.push(mandate.id);
+  }
+  console.log(`✅ Created/Verified 10 Job Mandates`);
+
+  // 7. Candidate Records
   const firstNames = ['Aarav', 'Ananya', 'Rohan', 'Sneha', 'Vikram', 'Meera', 'Karan', 'Pooja', 'Aditya', 'Riya', 'Siddharth', 'Neha', 'Varun', 'Divya', 'Manish', 'Kavya', 'Deepak', 'Ishita', 'Gaurav', 'Tanvi', 'Nikhil', 'Simran', 'Amit', 'Priti', 'Rajesh'];
   const lastNames = ['Sharma', 'Verma', 'Patel', 'Gupta', 'Singh', 'Rao', 'Joshi', 'Mehta', 'Nair', 'Kumar', 'Reddy', 'Agarwal', 'Shah', 'Bhat', 'Deshmukh', 'Chopra', 'Malhotra', 'Srinivasan', 'Kapoor', 'Saxena', 'Pandey', 'Kulkarni', 'Bhasin', 'Trivedi', 'Dutta'];
 
@@ -222,22 +264,40 @@ async function main() {
     const fn = firstNames[i];
     const ln = lastNames[i];
     const email = `${fn.toLowerCase()}.${ln.toLowerCase()}@example.com`;
+    const phone = `+91910000${String(i).padStart(4, '0')}`;
 
-    let candidateId = genUuid();
-    const existingCands = await prisma.$queryRawUnsafe(`SELECT candidate_id FROM public.candidate_records WHERE email = '${email}' AND agency_id = '${agencyId}' LIMIT 1;`);
-    if (existingCands.length > 0) {
-      candidateId = existingCands[0].candidate_id;
-    } else {
-      await execSql(`Insert Candidate ${email}`, `
-        INSERT INTO public.candidate_records (candidate_id, agency_id, first_name, last_name, email, phone, current_city, total_experience_years, current_ctc_lpa, expected_ctc_lpa, notice_period_days, status, created_at, updated_at)
-        VALUES ('${candidateId}', '${agencyId}', '${fn}', '${ln}', '${email}', '+91910000${String(i).padStart(4, '0')}', 'Bengaluru', ${4 + (i%8)}, ${15 + (i%15)}, ${22 + (i%20)}, ${(i%3 === 0) ? 30 : 60}, 'NEW'::candidate_status, NOW(), NOW());
-      `);
+    let candidate = await prisma.candidateRecord.findFirst({
+      where: { agencyId: agency.id, email }
+    });
+
+    if (!candidate) {
+      candidate = await prisma.candidateRecord.create({
+        data: {
+          agencyId: agency.id,
+          assignedRecruiterId: recruiterUserIds[i % recruiterUserIds.length],
+          firstName: fn,
+          lastName: ln,
+          email,
+          phone,
+          currentCompany: 'Tech Corp',
+          currentDesignation: 'Senior Software Engineer',
+          totalExperienceYears: 4 + (i % 8),
+          noticePeriodDays: (i % 3 === 0) ? 30 : 60,
+          currentCtcLpa: 15 + (i % 15),
+          expectedCtcLpa: 22 + (i % 20),
+          currentLocation: 'Bengaluru',
+          preferredLocations: ['Bengaluru', 'Remote'],
+          primarySkills: ['TypeScript', 'React', 'Node.js'],
+          source: 'DIRECT_INTAKE',
+          ownershipStatus: 'ACTIVE'
+        }
+      });
     }
-    candidateIds.push(candidateId);
+    candidateIds.push(candidate.id);
   }
-  console.log(`✅ Inserted 25 Candidate Records`);
+  console.log(`✅ Created/Verified 25 Candidate Records`);
 
-  // 8. Insert 50 Candidate Submissions
+  // 8. Candidate Submissions
   const stages = ['SCREENED', 'SUBMITTED_TO_CLIENT', 'INTERVIEW_SCHEDULED', 'OFFER_EXTENDED', 'JOINED', 'REJECTED'];
 
   const submissionIds = [];
@@ -247,33 +307,48 @@ async function main() {
     const stage = stages[i % stages.length];
     const slaStatus = (stage === 'SCREENED' && i % 4 === 0) ? 'WARNING' : ((stage === 'SCREENED' && i % 7 === 0) ? 'BREACHED' : 'ON_TRACK');
 
-    let subId = genUuid();
-    const existingSubs = await prisma.$queryRawUnsafe(`SELECT submission_id FROM public.candidate_submissions WHERE mandate_id = '${mid}' AND candidate_id = '${cid}' AND agency_id = '${agencyId}' LIMIT 1;`);
-    if (existingSubs.length > 0) {
-      subId = existingSubs[0].submission_id;
-    } else {
-      await execSql(`Insert Submission ${i+1}`, `
-        INSERT INTO public.candidate_submissions (submission_id, agency_id, mandate_id, candidate_id, stage, sla_status, created_at, updated_at)
-        VALUES ('${subId}', '${agencyId}', '${mid}', '${cid}', '${stage}'::pipeline_stage, '${slaStatus}'::sla_status, NOW(), NOW());
-      `);
-    }
-    submissionIds.push(subId);
-  }
-  console.log(`✅ Inserted 50 Candidate Submissions`);
+    let sub = await prisma.candidateSubmission.findFirst({
+      where: { agencyId: agency.id, jobId: mid, candidateId: cid }
+    });
 
-  // 9. Insert 10 Interview Schedules
+    if (!sub) {
+      sub = await prisma.candidateSubmission.create({
+        data: {
+          agencyId: agency.id,
+          jobId: mid,
+          candidateId: cid,
+          stage,
+          slaStatus
+        }
+      });
+    }
+    submissionIds.push(sub.id);
+  }
+  console.log(`✅ Created/Verified 50 Candidate Submissions`);
+
+  // 9. Interview Schedules
   for (let i = 0; i < 10; i++) {
     const subId = submissionIds[i];
-    let intId = genUuid();
-    const existingInts = await prisma.$queryRawUnsafe(`SELECT interview_id FROM public.interview_schedules WHERE submission_id = '${subId}' LIMIT 1;`);
-    if (existingInts.length === 0) {
-      await execSql(`Insert Interview ${i+1}`, `
-        INSERT INTO public.interview_schedules (interview_id, submission_id, agency_id, round_type, scheduled_at, meeting_link, mode, created_at)
-        VALUES ('${intId}', '${subId}', '${agencyId}', 'CLIENT_ROUND_1'::interview_type, NOW(), 'https://meet.google.com/abc-defg-hij-${i}', 'GOOGLE_MEET'::interview_mode, NOW());
-      `);
+    let interview = await prisma.interviewSchedule.findFirst({
+      where: { agencyId: agency.id, submissionId: subId }
+    });
+
+    if (!interview) {
+      await prisma.interviewSchedule.create({
+        data: {
+          agencyId: agency.id,
+          submissionId: subId,
+          roundType: 'CLIENT_ROUND_1',
+          confirmedStartTime: new Date(),
+          durationMinutes: 45,
+          mode: 'GOOGLE_MEET',
+          meetingLink: `https://meet.google.com/abc-defg-hij-${i}`,
+          status: 'SCHEDULED'
+        }
+      });
     }
   }
-  console.log(`✅ Inserted 10 Interview Schedules`);
+  console.log(`✅ Created/Verified 10 Interview Schedules`);
 
   console.log('\n🎉 INITIAL PLATFORM BOOTSTRAP COMPLETE!');
   console.log('==================================================');
@@ -285,7 +360,7 @@ async function main() {
 
 main()
   .catch((err) => {
-    console.error('❌ Fatal Seed Error:', err.message || err);
+    console.error('❌ Fatal Seed Error:', err);
     process.exit(1);
   })
   .finally(async () => {

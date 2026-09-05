@@ -5,6 +5,8 @@ import { User, Mail, Phone, Building, Briefcase, MapPin, Award, Layers, ArrowLef
 import { prisma } from '@/lib/prisma';
 import { DeleteCandidateButton } from '@/components/candidates/DeleteCandidateButton';
 
+import { getCurrentUser } from '@/lib/rbac';
+
 export const revalidate = 0;
 
 interface CandidateDetailPageProps {
@@ -22,11 +24,8 @@ function formatFileSize(bytes: number): string {
 }
 
 export default async function CandidateDetailPage({ params }: CandidateDetailPageProps) {
-  const demoAgency = await prisma.agency.findFirst({
-    where: { subdomain: 'demo' },
-    select: { id: true }
-  }).catch(() => null);
-  const agencyId = demoAgency?.id;
+  const dbUser = await getCurrentUser();
+  const agencyId = dbUser?.agencyId;
 
   const candidate = await prisma.candidateRecord.findFirst({
     where: {

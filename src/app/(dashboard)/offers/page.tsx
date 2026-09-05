@@ -4,6 +4,8 @@ import { prisma } from '@/lib/prisma';
 import { Award, Plus, Search, Filter, Calendar, ExternalLink, ChevronLeft, ChevronRight, User, Briefcase } from 'lucide-react';
 import { OfferStatusDropdown } from '@/components/offers/OfferStatusDropdown';
 
+import { getCurrentUser } from '@/lib/rbac';
+
 export const revalidate = 0;
 
 interface OffersPageProps {
@@ -15,11 +17,8 @@ interface OffersPageProps {
 }
 
 export default async function OffersPage({ searchParams }: OffersPageProps) {
-  const demoAgency = await prisma.agency.findFirst({
-    where: { subdomain: 'demo' },
-    select: { id: true }
-  }).catch(() => null);
-  const agencyId = demoAgency?.id;
+  const dbUser = await getCurrentUser();
+  const agencyId = dbUser?.agencyId;
 
   const searchQuery = (searchParams.q || '').trim();
   const statusFilter = (searchParams.status || '').trim();

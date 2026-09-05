@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { ROLE_DEFAULT_PERMISSIONS, AVAILABLE_PERMISSIONS } from './permissions';
@@ -122,7 +123,7 @@ export function hasRole(user: UserWithRoleAndPermissions | null | undefined, rol
 /**
  * Helper to fetch current active user from database with permissions.
  */
-export async function getCurrentUser(): Promise<UserWithRoleAndPermissions | null> {
+export const getCurrentUser = cache(async (): Promise<UserWithRoleAndPermissions | null> => {
   try {
     // Demo/system default user for server action evaluation if no request session
     const user = await prisma.user.findFirst({
@@ -141,7 +142,7 @@ export async function getCurrentUser(): Promise<UserWithRoleAndPermissions | nul
   } catch (e) {
     return null;
   }
-}
+});
 
 /**
  * Enforces permission requirement. If user lacks permission, logs ACCESS_DENIED audit event and throws an error.

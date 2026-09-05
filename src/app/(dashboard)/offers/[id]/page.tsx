@@ -5,6 +5,8 @@ import { prisma } from '@/lib/prisma';
 import { Award, ArrowLeft, User, Briefcase, Calendar, DollarSign, Edit, FileText, ExternalLink, ShieldCheck } from 'lucide-react';
 import { OfferStatusDropdown } from '@/components/offers/OfferStatusDropdown';
 
+import { getCurrentUser } from '@/lib/rbac';
+
 export const revalidate = 0;
 
 interface OfferDetailPageProps {
@@ -14,11 +16,8 @@ interface OfferDetailPageProps {
 }
 
 export default async function OfferDetailPage({ params }: OfferDetailPageProps) {
-  const demoAgency = await prisma.agency.findFirst({
-    where: { subdomain: 'demo' },
-    select: { id: true }
-  }).catch(() => null);
-  const agencyId = demoAgency?.id;
+  const dbUser = await getCurrentUser();
+  const agencyId = dbUser?.agencyId;
 
   const offer = await prisma.jobOfferAudit.findFirst({
     where: { id: params.id, agencyId },

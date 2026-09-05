@@ -5,6 +5,8 @@ import { Briefcase, Building2, Users, DollarSign, Percent, ArrowLeft, Edit3, Cal
 import { prisma } from '@/lib/prisma';
 import { JobStatusActions } from '@/components/jobs/JobStatusActions';
 
+import { getCurrentUser } from '@/lib/rbac';
+
 export const revalidate = 0;
 
 interface JobDetailPageProps {
@@ -14,11 +16,8 @@ interface JobDetailPageProps {
 }
 
 export default async function JobDetailPage({ params }: JobDetailPageProps) {
-  const demoAgency = await prisma.agency.findFirst({
-    where: { subdomain: 'demo' },
-    select: { id: true }
-  }).catch(() => null);
-  const agencyId = demoAgency?.id;
+  const dbUser = await getCurrentUser();
+  const agencyId = dbUser?.agencyId;
 
   const job = await prisma.jobMandate.findFirst({
     where: {

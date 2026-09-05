@@ -1,5 +1,17 @@
+import { cache } from 'react';
 import { prisma } from '@/lib/prisma';
 import { NextRequest } from 'next/server';
+
+/**
+ * Resolves and returns the demo agency ID once per request, cached via React's cache().
+ */
+export const getDemoAgencyId = cache(async (): Promise<string | undefined> => {
+  const agency = await prisma.agency.findFirst({
+    where: { subdomain: 'demo' },
+    select: { id: true }
+  }).catch(() => null);
+  return agency?.id;
+});
 
 /**
  * Safely resolves a valid database Agency ID for API routes and Server Actions.
