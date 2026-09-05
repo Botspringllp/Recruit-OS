@@ -28,12 +28,7 @@ export interface UserWithRoleAndPermissions {
 export function getCurrentUserPermissions(user: UserWithRoleAndPermissions | null | undefined): string[] {
   if (!user) return [];
 
-  const roleStr = String(
-    user.role ||
-    (user as any).user_metadata?.user_role ||
-    (user as any).app_metadata?.user_role ||
-    ''
-  ).toUpperCase();
+  const roleStr = String(user.role || '').toUpperCase();
 
   // MASTER_OWNER and AGENCY_OWNER have global permissions inside system/agency
   if (roleStr === 'MASTER_OWNER' || roleStr === 'AGENCY_OWNER' || roleStr === 'AGENCY_FOUNDER') {
@@ -76,12 +71,7 @@ export function hasPermission(user: UserWithRoleAndPermissions | null | undefine
     return false;
   }
 
-  const roleStr = String(
-    user.role ||
-    (user as any).user_metadata?.user_role ||
-    (user as any).app_metadata?.user_role ||
-    ''
-  ).toUpperCase();
+  const roleStr = String(user.role || '').toUpperCase();
 
   // MASTER_OWNER and AGENCY_OWNER bypass all checks
   if (roleStr === 'MASTER_OWNER' || roleStr === 'AGENCY_OWNER' || roleStr === 'AGENCY_FOUNDER') {
@@ -118,13 +108,8 @@ export function hasPermission(user: UserWithRoleAndPermissions | null | undefine
 export function hasRole(user: UserWithRoleAndPermissions | null | undefined, roleName: string): boolean {
   if (!user) return false;
 
-  const roleStr = String(
-    user.role ||
-    (user as any).user_metadata?.user_role ||
-    (user as any).app_metadata?.user_role ||
-    ''
-  ).toUpperCase();
-  if (roleStr === 'MASTER_OWNER' || roleStr === 'AGENCY_FOUNDER') return true;
+  const roleStr = String(user.role || '').toUpperCase();
+  if (roleStr === 'MASTER_OWNER') return true;
 
   if (roleStr === roleName.toUpperCase()) return true;
 
