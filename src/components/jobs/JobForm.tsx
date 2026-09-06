@@ -61,7 +61,7 @@ export function JobForm({ clients, initialData, action, isEdit = false }: JobFor
 
   // Form State initialized with extracted or existing values
   const [title, setTitle] = useState(initialData?.title || '');
-  const [clientId, setClientId] = useState(initialData?.clientId || '');
+  const [companyName, setCompanyName] = useState(initialData?.clientName || '');
   const [industry, setIndustry] = useState(initialData?.industry || '');
   const [employmentType, setEmploymentType] = useState(initialData?.employmentType || 'Full-Time');
   const [experience, setExperience] = useState(initialData?.experience || '');
@@ -84,7 +84,7 @@ export function JobForm({ clients, initialData, action, isEdit = false }: JobFor
 
     const formData = new FormData();
     formData.append('title', title.trim() || 'Untitled Job Mandate');
-    if (clientId) formData.append('clientId', clientId);
+    formData.append('companyName', companyName.trim());
     formData.append('industry', industry.trim());
     formData.append('employmentType', employmentType);
     formData.append('experience', experience.trim());
@@ -140,11 +140,12 @@ export function JobForm({ clients, initialData, action, isEdit = false }: JobFor
           {/* Position Title */}
           <div className="space-y-1.5 md:col-span-2">
             <label className="text-slate-900 font-extrabold uppercase tracking-wider text-[11px] block">
-              Position Title
+              Position Title <span className="text-rose-500 font-bold ml-0.5">*</span>
             </label>
             <input
               type="text"
               name="title"
+              required
               value={title}
               onChange={e => setTitle(e.target.value)}
               placeholder="e.g. Senior Full Stack Engineer (Node + React)"
@@ -152,36 +153,33 @@ export function JobForm({ clients, initialData, action, isEdit = false }: JobFor
             />
           </div>
 
-          {/* Company Name / Client */}
+          {/* Company Name */}
           <div className="space-y-1.5">
             <label className="text-slate-900 font-extrabold uppercase tracking-wider text-[11px] flex items-center gap-1.5">
               <Building2 className="h-3.5 w-3.5 text-amber-600" />
-              Company Name
+              Company Name <span className="text-rose-500 font-bold ml-0.5">*</span>
             </label>
-            <select
-              name="clientId"
-              value={clientId}
-              onChange={e => setClientId(e.target.value)}
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 font-bold focus:outline-none focus:border-amber-500 focus:bg-white transition-all"
-            >
-              <option value="">Unassigned Client / Internal</option>
-              {clients.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.companyName}
-                </option>
-              ))}
-            </select>
+            <input
+              type="text"
+              name="companyName"
+              required
+              value={companyName}
+              onChange={e => setCompanyName(e.target.value)}
+              placeholder="e.g. Acme Corporation, Google, TCS..."
+              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 font-bold placeholder:text-slate-400 focus:outline-none focus:border-amber-500 focus:bg-white focus:ring-2 focus:ring-amber-500/20 transition-all"
+            />
           </div>
 
           {/* Industry Type */}
           <div className="space-y-1.5">
             <label className="text-slate-900 font-extrabold uppercase tracking-wider text-[11px] flex items-center gap-1.5">
               <Globe className="h-3.5 w-3.5 text-amber-600" />
-              Industry Type
+              Industry Type <span className="text-rose-500 font-bold ml-0.5">*</span>
             </label>
             <input
               type="text"
               name="industry"
+              required
               value={industry}
               onChange={e => setIndustry(e.target.value)}
               placeholder="e.g. IT Services / FinTech / Healthcare"
@@ -192,10 +190,11 @@ export function JobForm({ clients, initialData, action, isEdit = false }: JobFor
           {/* Employment Type */}
           <div className="space-y-1.5">
             <label className="text-slate-900 font-extrabold uppercase tracking-wider text-[11px] block">
-              Employment Type
+              Employment Type <span className="text-rose-500 font-bold ml-0.5">*</span>
             </label>
             <select
               name="employmentType"
+              required
               value={employmentType}
               onChange={e => setEmploymentType(e.target.value)}
               className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 font-bold focus:outline-none focus:border-amber-500 focus:bg-white transition-all"
@@ -211,11 +210,12 @@ export function JobForm({ clients, initialData, action, isEdit = false }: JobFor
           {/* Experience Required */}
           <div className="space-y-1.5">
             <label className="text-slate-900 font-extrabold uppercase tracking-wider text-[11px] block">
-              Experience Required (Years)
+              Experience Required (Years) <span className="text-rose-500 font-bold ml-0.5">*</span>
             </label>
             <input
               type="text"
               name="experience"
+              required
               value={experience}
               onChange={e => setExperience(e.target.value)}
               placeholder="e.g. 3 - 5 Years"
@@ -227,11 +227,12 @@ export function JobForm({ clients, initialData, action, isEdit = false }: JobFor
           <div className="space-y-1.5 md:col-span-2">
             <label className="text-slate-900 font-extrabold uppercase tracking-wider text-[11px] flex items-center gap-1.5">
               <GraduationCap className="h-3.5 w-3.5 text-amber-600" />
-              Education Requirements
+              Education Requirements <span className="text-rose-500 font-bold ml-0.5">*</span>
             </label>
             <input
               type="text"
               name="education"
+              required
               value={education}
               onChange={e => setEducation(e.target.value)}
               placeholder="e.g. B.Tech / B.E. / M.C.A / M.B.A"
@@ -243,11 +244,12 @@ export function JobForm({ clients, initialData, action, isEdit = false }: JobFor
           <div className="space-y-1.5 md:col-span-2">
             <label className="text-slate-900 font-extrabold uppercase tracking-wider text-[11px] flex items-center gap-1.5">
               <Sparkles className="h-3.5 w-3.5 text-amber-600" />
-              Key Skills Required
+              Key Skills Required <span className="text-rose-500 font-bold ml-0.5">*</span>
             </label>
             <input
               type="text"
               name="skills"
+              required
               value={skills}
               onChange={e => setSkills(e.target.value)}
               placeholder="e.g. React.js, Node.js, TypeScript, PostgreSQL, AWS"
@@ -259,10 +261,11 @@ export function JobForm({ clients, initialData, action, isEdit = false }: JobFor
           <div className="space-y-1.5 md:col-span-2">
             <label className="text-slate-900 font-extrabold uppercase tracking-wider text-[11px] flex items-center gap-1.5">
               <FileText className="h-3.5 w-3.5 text-amber-600" />
-              Job Description & Responsibilities
+              Job Description & Responsibilities <span className="text-rose-500 font-bold ml-0.5">*</span>
             </label>
             <textarea
               name="description"
+              required
               rows={4}
               value={description}
               onChange={e => setDescription(e.target.value)}
@@ -275,10 +278,11 @@ export function JobForm({ clients, initialData, action, isEdit = false }: JobFor
           <div className="space-y-1.5 md:col-span-2">
             <label className="text-slate-900 font-extrabold uppercase tracking-wider text-[11px] flex items-center gap-1.5">
               <Building2 className="h-3.5 w-3.5 text-amber-600" />
-              Company Overview / About Company
+              Company Overview / About Company <span className="text-rose-500 font-bold ml-0.5">*</span>
             </label>
             <textarea
               name="companyOverview"
+              required
               rows={3}
               value={companyOverview}
               onChange={e => setCompanyOverview(e.target.value)}

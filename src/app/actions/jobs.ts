@@ -13,6 +13,36 @@ export type JobActionResult = {
   errors?: Record<string, string>;
 };
 
+async function resolveOrCreateClient(agencyId: string, companyName: string, industry?: string): Promise<string | null> {
+  const trimmed = companyName.trim();
+  if (!trimmed) return null;
+
+  // Search case-insensitively for an existing client under this agency
+  const existing = await prisma.client.findFirst({
+    where: {
+      agencyId,
+      companyName: { equals: trimmed, mode: 'insensitive' }
+    },
+    select: { id: true }
+  });
+
+  if (existing) {
+    return existing.id;
+  }
+
+  // Create new client record automatically
+  const newClient = await prisma.client.create({
+    data: {
+      agencyId,
+      companyName: trimmed,
+      industry: industry || null,
+      status: 'ACTIVE'
+    }
+  });
+
+  return newClient.id;
+}
+
 export async function createJobMandateAction(prevState: any, formData: FormData, userOverride?: any): Promise<JobActionResult> {
   try {
     await requirePermission('job.create', userOverride);
@@ -20,14 +50,14 @@ export async function createJobMandateAction(prevState: any, formData: FormData,
 
     const rawTitle = (formData.get('title') as string || '').trim();
     const title = rawTitle || 'Untitled Job Mandate';
-    const clientId = (formData.get('clientId') as string || '').trim() || null;
+    const companyName = (formData.get('companyName') as string || '').trim();
     const headcountStr = formData.get('headcount') as string;
     const minCtcStr = formData.get('minCtcLpa') as string;
     const maxCtcStr = formData.get('maxCtcLpa') as string;
     const feeStr = formData.get('feePercentage') as string;
     const statusStr = (formData.get('status') as string || 'OPEN').trim();
 
-    // Recruiter Intake Fields
+    // Recruiter Intake Fields (Mandatory)
     const industry = (formData.get('industry') as string || '').trim();
     const employmentType = (formData.get('employmentType') as string || '').trim();
     const experience = (formData.get('experience') as string || '').trim();
@@ -35,6 +65,20 @@ export async function createJobMandateAction(prevState: any, formData: FormData,
     const skills = (formData.get('skills') as string || '').trim();
     const description = (formData.get('description') as string || '').trim();
     const companyOverview = (formData.get('companyOverview') as string || '').trim();
+
+    // Mandatory Field Validations
+    if (!rawTitle) return { success: false, error: 'Position Title is mandatory' };
+    if (!companyName) return { success: false, error: 'Company Name is mandatory' };
+    if (!industry) return { success: false, error: 'Industry Type is mandatory' };
+    if (!employmentType) return { success: false, error: 'Employment Type is mandatory' };
+    if (!experience) return { success: false, error: 'Experience Required is mandatory' };
+    if (!education) return { success: false, error: 'Education Requirements is mandatory' };
+    if (!skills) return { success: false, error: 'Key Skills Required is mandatory' };
+    if (!description) return { success: false, error: 'Job Description is mandatory' };
+    if (!companyOverview) return { success: false, error: 'Company Overview is mandatory' };
+
+    // Resolve or create Client record automatically
+    const clientId = await resolveOrCreateClient(agencyId, companyName, industry);
 
     let headcount = 1;
     if (headcountStr && headcountStr.trim() !== '') {
@@ -78,7 +122,7 @@ export async function createJobMandateAction(prevState: any, formData: FormData,
     });
 
     // Save recruiter requirement details into JobPrepKit
-    const prepKitOverview = companyOverview || `Company: ${clientId ? 'Client Mandate' : 'Internal'}`;
+    const prepKitOverview = companyOverview || `Company: ${companyName || 'Internal Mandate'}`;
     const prepKitProcess = [
       industry ? `Industry: ${industry}` : '',
       employmentType ? `Employment Type: ${employmentType}` : '',
@@ -113,14 +157,14 @@ export async function updateJobMandateAction(jobId: string, prevState: any, form
 
     const rawTitle = (formData.get('title') as string || '').trim();
     const title = rawTitle || 'Untitled Job Mandate';
-    const clientId = (formData.get('clientId') as string || '').trim() || null;
+    const companyName = (formData.get('companyName') as string || '').trim();
     const headcountStr = formData.get('headcount') as string;
     const minCtcStr = formData.get('minCtcLpa') as string;
     const maxCtcStr = formData.get('maxCtcLpa') as string;
     const feeStr = formData.get('feePercentage') as string;
     const statusStr = (formData.get('status') as string || 'OPEN').trim();
 
-    // Recruiter Intake Fields
+    // Recruiter Intake Fields (Mandatory)
     const industry = (formData.get('industry') as string || '').trim();
     const employmentType = (formData.get('employmentType') as string || '').trim();
     const experience = (formData.get('experience') as string || '').trim();
@@ -129,6 +173,17 @@ export async function updateJobMandateAction(jobId: string, prevState: any, form
     const description = (formData.get('description') as string || '').trim();
     const companyOverview = (formData.get('companyOverview') as string || '').trim();
 
+    // Mandatory Field Validations
+    if (!rawTitle) return { success: false, error: 'Position Title is mandatory' };
+    if (!companyName) return { success: false, error: 'Company Name is mandatory' };
+    if (!industry) return { success: false, error: 'Industry Type is mandatory' };
+    if (!employmentType) return { success: false, error: 'Employment Type is mandatory' };
+    if (!experience) return { success: false, error: 'Experience Required is mandatory' };
+    if (!education) return { success: false, error: 'Education Requirements is mandatory' };
+    if (!skills) return { success: false, error: 'Key Skills Required is mandatory' };
+    if (!description) return { success: false, error: 'Job Description is mandatory' };
+    if (!companyOverview) return { success: false, error: 'Company Overview is mandatory' };
+
     const existing = await prisma.jobMandate.findFirst({
       where: { id: jobId, agencyId }
     });
@@ -136,6 +191,9 @@ export async function updateJobMandateAction(jobId: string, prevState: any, form
     if (!existing) {
       return { success: false, error: 'Job mandate record not found or access denied.' };
     }
+
+    // Resolve or create Client record automatically
+    const clientId = await resolveOrCreateClient(agencyId, companyName, industry);
 
     let headcount = existing.headcount;
     if (headcountStr && headcountStr.trim() !== '') {
@@ -180,7 +238,7 @@ export async function updateJobMandateAction(jobId: string, prevState: any, form
     });
 
     // Update linked JobPrepKit
-    const prepKitOverview = companyOverview || 'Company Overview';
+    const prepKitOverview = companyOverview || `Company: ${companyName || 'Internal Mandate'}`;
     const prepKitProcess = [
       industry ? `Industry: ${industry}` : '',
       employmentType ? `Employment Type: ${employmentType}` : '',

@@ -63,21 +63,10 @@ export const UploadJobMandateButton: React.FC<UploadJobMandateButtonProps> = ({ 
     try {
       const res = await parseJobMandateAction(formData);
       setIsAnalyzing(false);
-
       if (res.success && res.data) {
-        // Try matching extracted clientName with available clients list
-        let matchedClientId = '';
-        if (res.data.clientName) {
-          const match = clients.find(c =>
-            c.companyName.toLowerCase().includes(res.data!.clientName.toLowerCase()) ||
-            res.data!.clientName.toLowerCase().includes(c.companyName.toLowerCase())
-          );
-          if (match) matchedClientId = match.id;
-        }
-
         setExtractedData({
           title: res.data.title || '',
-          clientId: matchedClientId,
+          clientName: res.data.clientName || '',
           industry: res.data.industry || '',
           employmentType: res.data.employmentType || 'Full-Time',
           experience: res.data.experience || '',
@@ -221,6 +210,16 @@ export const UploadJobMandateButton: React.FC<UploadJobMandateButtonProps> = ({ 
                 <span>{warningMessage}</span>
               </div>
             )}
+
+            {/* AI Field Confidence Breakdown */}
+            <div className="bg-slate-50 border-b border-slate-200 px-6 py-2.5 flex flex-wrap items-center gap-2 text-[10px] font-extrabold font-sans">
+              <span className="text-slate-500 uppercase tracking-wider">AI Field Confidence:</span>
+              <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-950 border border-emerald-300">Title: {Math.round((confidence.title || 0.85) * 100)}%</span>
+              <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-950 border border-emerald-300">Company: {Math.round((confidence.clientName || 0.85) * 100)}%</span>
+              <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-950 border border-amber-300">Industry (AI Inferred): {Math.round((confidence.industry || 0.75) * 100)}%</span>
+              <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-950 border border-emerald-300">Skills: {Math.round((confidence.skills || 0.85) * 100)}%</span>
+              <span className="px-2 py-0.5 rounded-md bg-cyan-100 text-cyan-950 border border-cyan-300">Overview: {Math.round((confidence.companyOverview || 0.75) * 100)}%</span>
+            </div>
 
             {/* Content Body with Job Form */}
             <div className="p-6 max-h-[80vh] overflow-y-auto">
