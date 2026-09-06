@@ -9,7 +9,7 @@ import { hashPassword } from '@/lib/auth/password';
 
 export type CreateAgencyPayload = {
   name: string;
-  subdomain: string;
+  subdomain?: string;
   ownerName: string;
   ownerEmail: string;
   temporaryPassword?: string;
@@ -23,30 +23,34 @@ export type ActionResult<T = any> = {
   errors?: Record<string, string>;
 };
 
-
-
 async function requireSuperAdmin(userOverride?: any) {
   const currentUser = userOverride || await getCurrentUser();
   const roleStr = String(currentUser?.role || '');
+
   if (!currentUser || (roleStr !== 'SUPER_ADMIN' && roleStr !== 'MASTER_OWNER')) {
-    throw new Error('Access denied: Platform Super Admin authorization required');
+    logger.warn({
+      event: 'UNAUTHORIZED_SUPER_ADMIN_ACCESS',
+      userId: currentUser?.id,
+      email: currentUser?.email,
+      role: currentUser?.role
+    }, `🔒 [ACCESS DENIED] Super Admin privileges required for user ${currentUser?.email}`);
+    throw new Error('Access denied. Platform Super Admin privileges required.');
   }
+
   return currentUser;
 }
 
-export async function getAgenciesAction(userOverride?: any): Promise<ActionResult<{
-  agencies: any[];
-  kpis: {
-    totalAgencies: number;
-    activeAgencies: number;
-    trialAgencies: number;
-    suspendedAgencies: number;
-  };
-}>> {
+export async function getAgenciesAction(userOverride?: any): Promise<ActionResult<{ agencies: any[]; kpis: any }>> {
   try {
-    await requireSuperAdmin(userOverride);
+    const adminUser = await requireSuperAdmin(userOverride);
 
-    const agencies = await (prisma.agency as any).findMany({
+    logger.info({
+      event: 'GET_AGENCIES_REQUESTED',
+      superAdminId: adminUser.id,
+      timestamp: new Date().toISOString()
+    }, `🔍 [SUPER ADMIN] Fetching all agencies for ${adminUser.email}`);
+
+    const agencies = await prisma.agency.findMany({
       where: { deletedAt: null },
       select: {
         id: true,
@@ -119,21 +123,26 @@ export async function createAgencyAction(payload: CreateAgencyPayload, userOverr
     const adminUser = await requireSuperAdmin(userOverride);
 
     const name = (payload.name || '').trim();
-    const subdomain = (payload.subdomain || '').trim().toLowerCase().replace(/[^a-z0-9-]/g, '');
+    let subdomain = (payload.subdomain || '').trim().toLowerCase().replace(/[^a-z0-9-]/g, '');
+    if (!subdomain && name) {
+      const baseSlug = name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+      subdomain = baseSlug || `agency-${Date.now().toString(36)}`;
+    }
+
     const ownerName = (payload.ownerName || '').trim();
     const ownerEmail = (payload.ownerEmail || '').trim().toLowerCase();
-    const temporaryPassword = payload.temporaryPassword ? payload.temporaryPassword.trim() : 'TempPass123!';
+    const temporaryPassword = payload.temporaryPassword ? payload.temporaryPassword.trim() : '';
     const plan = payload.plan || SubscriptionTier.ENTERPRISE;
 
     const errors: Record<string, string> = {};
     if (!name) errors.name = 'Agency name is required';
-    if (!subdomain) errors.subdomain = 'Valid subdomain slug is required';
+    if (!subdomain) errors.subdomain = 'Valid agency name is required to generate subdomain';
     if (!ownerName) errors.ownerName = 'Agency owner name is required';
     if (!ownerEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(ownerEmail)) {
       errors.ownerEmail = 'Valid owner email is required';
     }
-    if (temporaryPassword && temporaryPassword.length < 6) {
-      errors.temporaryPassword = 'Password must be at least 6 characters long';
+    if (!temporaryPassword || temporaryPassword.length < 6) {
+      errors.temporaryPassword = 'Password is required and must be at least 6 characters long';
     }
 
     if (Object.keys(errors).length > 0) {
@@ -141,10 +150,10 @@ export async function createAgencyAction(payload: CreateAgencyPayload, userOverr
     }
 
     const existingAgency = await prisma.agency.findFirst({
-      where: { subdomain }
+      where: { subdomain, deletedAt: null }
     });
     if (existingAgency) {
-      return { success: false, error: `Subdomain '${subdomain}' is already registered.` };
+      subdomain = `${subdomain}-${Date.now().toString(36).slice(-4)}`;
     }
 
     const nameParts = ownerName.split(' ');
@@ -177,7 +186,7 @@ export async function createAgencyAction(payload: CreateAgencyPayload, userOverr
       }
     });
 
-    // 4. Link Owner to Agency & UserRoleAssignment
+    // 3. Link Owner to Agency & UserRoleAssignment
     await (prisma.agency as any).update({
       where: { id: agency.id },
       data: { ownerId: ownerUser.id }
@@ -191,7 +200,6 @@ export async function createAgencyAction(payload: CreateAgencyPayload, userOverr
       }
     }).catch(() => null);
 
-    // 5. Structured Audit Logging
     logger.info({
       event: 'AGENCY_CREATED',
       agencyId: agency.id,
@@ -201,15 +209,6 @@ export async function createAgencyAction(payload: CreateAgencyPayload, userOverr
       createdBy: adminUser.id,
       timestamp: new Date().toISOString()
     }, `🏢 [AGENCY CREATED] ${agency.name} (${agency.subdomain})`);
-
-    logger.info({
-      event: 'OWNER_CREATED',
-      agencyId: agency.id,
-      userId: ownerUser.id,
-      email: ownerUser.email,
-      role: ownerUser.role,
-      timestamp: new Date().toISOString()
-    }, `👤 [OWNER CREATED] ${ownerUser.firstName} ${ownerUser.lastName} (${ownerUser.email})`);
 
     revalidatePath('/super-admin');
     return { success: true, data: { agencyId: agency.id } };
@@ -282,5 +281,165 @@ export async function activateAgencyAction(agencyId: string, userOverride?: any)
   } catch (error: any) {
     logger.error({ event: 'ACTIVATE_AGENCY_FAILED', agencyId, error: error.message }, 'Failed to activate agency');
     return { success: false, error: error.message || 'Failed to activate agency' };
+  }
+}
+
+export async function deleteAgencyAction(agencyId: string, userOverride?: any): Promise<ActionResult> {
+  try {
+    const adminUser = await requireSuperAdmin(userOverride);
+
+    const agency = await prisma.agency.findUnique({
+      where: { id: agencyId }
+    });
+
+    if (!agency) {
+      return { success: false, error: 'Agency not found' };
+    }
+
+    await prisma.agency.update({
+      where: { id: agencyId },
+      data: { deletedAt: new Date(), status: AgencyStatus.SUSPENDED }
+    });
+
+    logger.info({
+      event: 'AGENCY_DELETED',
+      agencyId,
+      name: agency.name,
+      deletedBy: adminUser.id,
+      timestamp: new Date().toISOString()
+    }, `🗑️ [AGENCY DELETED] ${agency.name} (${agency.id})`);
+
+    revalidatePath('/super-admin');
+    return { success: true };
+  } catch (error: any) {
+    logger.error({ event: 'DELETE_AGENCY_FAILED', agencyId, error: error.message }, 'Failed to delete agency');
+    return { success: false, error: error.message || 'Failed to delete agency' };
+  }
+}
+
+export async function restoreAgencyAction(agencyId: string, userOverride?: any): Promise<ActionResult> {
+  try {
+    const adminUser = await requireSuperAdmin(userOverride);
+
+    const agency = await prisma.agency.findUnique({
+      where: { id: agencyId }
+    });
+
+    if (!agency) {
+      return { success: false, error: 'Agency not found' };
+    }
+
+    await prisma.agency.update({
+      where: { id: agencyId },
+      data: { deletedAt: null, status: AgencyStatus.ACTIVE }
+    });
+
+    logger.info({
+      event: 'AGENCY_RESTORED',
+      agencyId,
+      name: agency.name,
+      restoredBy: adminUser.id,
+      timestamp: new Date().toISOString()
+    }, `♻️ [AGENCY RESTORED] ${agency.name} (${agency.id})`);
+
+    revalidatePath('/super-admin');
+    return { success: true };
+  } catch (error: any) {
+    logger.error({ event: 'RESTORE_AGENCY_FAILED', agencyId, error: error.message }, 'Failed to restore agency');
+    return { success: false, error: error.message || 'Failed to restore agency' };
+  }
+}
+
+export async function permanentlyDeleteAgencyAction(agencyId: string, userOverride?: any): Promise<ActionResult> {
+  try {
+    const adminUser = await requireSuperAdmin(userOverride);
+
+    const agency = await prisma.agency.findUnique({
+      where: { id: agencyId }
+    });
+
+    if (!agency) {
+      return { success: false, error: 'Agency not found' };
+    }
+
+    // Unlink ownerId to avoid circular foreign key restraint
+    await prisma.agency.update({
+      where: { id: agencyId },
+      data: { ownerId: null }
+    }).catch(() => null);
+
+    // Delete user roles, users, and agency
+    await prisma.userRoleAssignment.deleteMany({ where: { agencyId } }).catch(() => null);
+    await prisma.user.deleteMany({ where: { agencyId } }).catch(() => null);
+    await prisma.agency.delete({ where: { id: agencyId } });
+
+    logger.info({
+      event: 'AGENCY_PERMANENTLY_DELETED',
+      agencyId,
+      name: agency.name,
+      deletedBy: adminUser.id,
+      timestamp: new Date().toISOString()
+    }, `🔥 [AGENCY PERMANENTLY DELETED] ${agency.name} (${agency.id})`);
+
+    revalidatePath('/super-admin');
+    return { success: true };
+  } catch (error: any) {
+    logger.error({ event: 'PERMANENT_DELETE_AGENCY_FAILED', agencyId, error: error.message }, 'Failed to permanently delete agency');
+    return { success: false, error: error.message || 'Failed to permanently delete agency' };
+  }
+}
+
+export async function getDeletedAgenciesAction(userOverride?: any): Promise<ActionResult<{ agencies: any[] }>> {
+  try {
+    const adminUser = await requireSuperAdmin(userOverride);
+
+    const agencies = await prisma.agency.findMany({
+      where: { deletedAt: { not: null } },
+      select: {
+        id: true,
+        name: true,
+        subdomain: true,
+        status: true,
+        subscriptionTier: true,
+        ownerId: true,
+        createdAt: true,
+        deletedAt: true,
+        users: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            role: true
+          },
+          take: 1
+        }
+      },
+      orderBy: { deletedAt: 'desc' }
+    });
+
+    const formattedAgencies = agencies.map((a: any) => {
+      const owner = a.users?.[0] || null;
+      return {
+        id: a.id,
+        name: a.name,
+        subdomain: a.subdomain,
+        status: a.status,
+        plan: a.subscriptionTier,
+        createdAt: a.createdAt,
+        deletedAt: a.deletedAt,
+        ownerName: owner ? `${owner.firstName} ${owner.lastName}` : 'Unassigned Owner',
+        ownerEmail: owner ? owner.email : 'N/A',
+        ownerId: owner ? owner.id : a.ownerId
+      };
+    });
+
+    return {
+      success: true,
+      data: { agencies: formattedAgencies }
+    };
+  } catch (error: any) {
+    logger.error({ event: 'GET_DELETED_AGENCIES_FAILED', error: error.message }, 'Failed to fetch deleted agencies');
+    return { success: false, error: error.message || 'Failed to fetch deleted agencies' };
   }
 }

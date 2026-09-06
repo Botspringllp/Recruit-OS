@@ -57,6 +57,7 @@ export async function getUsersAction(agencyIdInput?: string, userOverride?: any)
     const users = await prisma.user.findMany({
       where: {
         agencyId,
+        role: { not: UserRole.SUPER_ADMIN },
         deletedAt: null
       },
       include: {

@@ -2,9 +2,9 @@ import React from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/rbac';
-import { getAgenciesAction } from '@/app/actions/agencies';
+import { getAgenciesAction, getDeletedAgenciesAction } from '@/app/actions/agencies';
 import { SuperAdminDashboardClient } from './SuperAdminDashboardClient';
-import { Building2, Plus, ShieldAlert, CheckCircle2, PauseCircle, Clock } from 'lucide-react';
+import { Building2, Plus, CheckCircle2, PauseCircle, Clock, Trash2 } from 'lucide-react';
 
 export const revalidate = 0;
 
@@ -17,8 +17,13 @@ export default async function SuperAdminDashboardPage() {
     redirect('/403');
   }
 
-  const res = await getAgenciesAction(currentUser);
+  const [res, deletedRes] = await Promise.all([
+    getAgenciesAction(currentUser),
+    getDeletedAgenciesAction(currentUser)
+  ]);
+
   const agencies = res.success && res.data ? res.data.agencies : [];
+  const deletedAgencies = deletedRes.success && deletedRes.data ? deletedRes.data.agencies : [];
   const kpis = res.success && res.data ? res.data.kpis : {
     totalAgencies: 0,
     activeAgencies: 0,
@@ -58,7 +63,7 @@ export default async function SuperAdminDashboardPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">Total Agencies</span>
+            <span className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">Active Agencies</span>
             <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600">
               <Building2 className="h-5 w-5" />
             </div>
@@ -78,16 +83,6 @@ export default async function SuperAdminDashboardPage() {
 
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">Trial Tenants</span>
-            <div className="p-2 rounded-xl bg-amber-50 text-amber-600">
-              <Clock className="h-5 w-5" />
-            </div>
-          </div>
-          <p className="text-3xl font-black text-slate-900">{kpis.trialAgencies}</p>
-        </div>
-
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
-          <div className="flex items-center justify-between">
             <span className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">Suspended Tenants</span>
             <div className="p-2 rounded-xl bg-rose-50 text-rose-600">
               <PauseCircle className="h-5 w-5" />
@@ -95,10 +90,23 @@ export default async function SuperAdminDashboardPage() {
           </div>
           <p className="text-3xl font-black text-slate-900">{kpis.suspendedAgencies}</p>
         </div>
+
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">Deleted Agencies</span>
+            <div className="p-2 rounded-xl bg-slate-100 text-slate-600">
+              <Trash2 className="h-5 w-5" />
+            </div>
+          </div>
+          <p className="text-3xl font-black text-slate-900">{deletedAgencies.length}</p>
+        </div>
       </div>
 
-      {/* Interactive Agency List Table */}
-      <SuperAdminDashboardClient initialAgencies={agencies} />
+      {/* Interactive Agency List Table with Active & Deleted Tabs */}
+      <SuperAdminDashboardClient
+        initialAgencies={agencies}
+        initialDeletedAgencies={deletedAgencies}
+      />
     </div>
   );
 }

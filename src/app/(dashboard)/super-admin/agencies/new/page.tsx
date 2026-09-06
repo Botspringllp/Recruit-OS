@@ -5,27 +5,19 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createAgencyAction } from '@/app/actions/agencies';
 import { SubscriptionTier } from '@prisma/client';
-import { Building2, ArrowLeft, Shield, CheckCircle, AlertCircle, Key, Mail, User } from 'lucide-react';
+import { Building2, ArrowLeft, CheckCircle, AlertCircle, User, Eye, EyeOff } from 'lucide-react';
 
 export default function CreateAgencyWizardPage() {
   const router = useRouter();
   const [name, setName] = useState('');
-  const [subdomain, setSubdomain] = useState('');
   const [ownerName, setOwnerName] = useState('');
   const [ownerEmail, setOwnerEmail] = useState('');
-  const [temporaryPassword, setTemporaryPassword] = useState('TempPass123!');
+  const [temporaryPassword, setTemporaryPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [plan, setPlan] = useState<SubscriptionTier>(SubscriptionTier.ENTERPRISE);
 
   const [isPending, startTransition] = useTransition();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  const handleNameChange = (val: string) => {
-    setName(val);
-    if (!subdomain) {
-      const slug = val.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
-      setSubdomain(slug);
-    }
-  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,7 +26,6 @@ export default function CreateAgencyWizardPage() {
     startTransition(async () => {
       const res = await createAgencyAction({
         name,
-        subdomain,
         ownerName,
         ownerEmail,
         temporaryPassword,
@@ -45,7 +36,7 @@ export default function CreateAgencyWizardPage() {
         router.push('/super-admin');
         router.refresh();
       } else {
-        setErrorMessage(res.error || 'Failed to provision agency tenant.');
+        setErrorMessage(res.error || (res.errors ? Object.values(res.errors)[0] : 'Failed to provision agency tenant.'));
       }
     });
   };
@@ -80,7 +71,7 @@ export default function CreateAgencyWizardPage() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6" autoComplete="off">
         {/* Section 1: Agency Metadata */}
         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-6">
           <h2 className="text-xs font-black text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-3 flex items-center gap-2">
@@ -88,7 +79,7 @@ export default function CreateAgencyWizardPage() {
             1. Agency Tenant Profile
           </h2>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 gap-5">
             <div className="space-y-1.5">
               <label className="text-xs font-extrabold text-slate-800 block">
                 Agency Name <span className="text-rose-500">*</span>
@@ -98,31 +89,12 @@ export default function CreateAgencyWizardPage() {
                 required
                 placeholder="e.g. Apex Talent Solutions"
                 value={name}
-                onChange={e => handleNameChange(e.target.value)}
+                onChange={e => setName(e.target.value)}
                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:border-amber-500 focus:bg-white focus:ring-4 focus:ring-amber-500/20 transition-all"
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-extrabold text-slate-800 block">
-                Subdomain Slug <span className="text-rose-500">*</span>
-              </label>
-              <div className="relative flex items-center">
-                <input
-                  type="text"
-                  required
-                  placeholder="apex"
-                  value={subdomain}
-                  onChange={e => setSubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:border-amber-500 focus:bg-white focus:ring-4 focus:ring-amber-500/20 transition-all pr-32"
-                />
-                <span className="absolute right-3.5 text-[11px] font-mono font-bold text-slate-400">
-                  .recruitos.com
-                </span>
-              </div>
-            </div>
-
-            <div className="space-y-1.5 sm:col-span-2">
               <label className="text-xs font-extrabold text-slate-800 block">
                 Subscription Plan <span className="text-rose-500">*</span>
               </label>
@@ -189,16 +161,27 @@ export default function CreateAgencyWizardPage() {
 
             <div className="space-y-1.5 sm:col-span-2">
               <label className="text-xs font-extrabold text-slate-800 block">
-                Temporary Password <span className="text-rose-500">*</span>
+                Password <span className="text-rose-500">*</span>
               </label>
-              <input
-                type="password"
-                required
-                placeholder="••••••••••••"
-                value={temporaryPassword}
-                onChange={e => setTemporaryPassword(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:border-amber-500 focus:bg-white focus:ring-4 focus:ring-amber-500/20 transition-all"
-              />
+              <div className="relative flex items-center">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  placeholder="Enter password for agency owner..."
+                  value={temporaryPassword}
+                  onChange={e => setTemporaryPassword(e.target.value)}
+                  autoComplete="new-password"
+                  className="w-full px-4 py-3 pr-11 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:border-amber-500 focus:bg-white focus:ring-4 focus:ring-amber-500/20 transition-all"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3.5 p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-200/50 transition-colors"
+                  title={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
               <p className="text-[10px] text-slate-500 font-medium mt-1">
                 Owner will use this initial password to sign in to their agency cockpit.
               </p>

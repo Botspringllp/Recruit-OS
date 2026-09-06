@@ -186,9 +186,6 @@ export default async function CockpitPage() {
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-black tracking-tight text-slate-900">Recruiter Cockpit</h1>
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-extrabold bg-indigo-100 text-indigo-900 border border-indigo-300">
-              Live Operations
-            </span>
           </div>
           <p className="mt-1 text-xs text-slate-600 font-semibold">
             Real-time pipeline analytics, mandate tracking, and operational telemetry.

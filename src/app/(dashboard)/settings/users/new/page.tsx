@@ -2,8 +2,7 @@
 
 import React, { useState, useEffect, useTransition } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/router';
-import { ArrowLeft, UserPlus, Shield, Check, AlertCircle, Loader2 } from 'lucide-react';
+import { ArrowLeft, UserPlus, Shield, AlertCircle, Loader2, ChevronDown, ChevronUp, Eye, EyeOff } from 'lucide-react';
 import { UserRole, UserStatus } from '@prisma/client';
 import { createUserAction, getUsersAction } from '@/app/actions/users';
 import { AVAILABLE_PERMISSIONS } from '@/lib/permissions';
@@ -13,10 +12,12 @@ export default function CreateUserPage() {
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [role, setRole] = useState<UserRole>(UserRole.RECRUITER);
   const [status, setStatus] = useState<UserStatus>(UserStatus.ACTIVE);
   const [managerId, setManagerId] = useState<string>('');
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
+  const [isPermissionsOpen, setIsPermissionsOpen] = useState(false);
 
   const [agencyUsers, setAgencyUsers] = useState<any[]>([]);
   const [isPending, startTransition] = useTransition();
@@ -34,6 +35,16 @@ export default function CreateUserPage() {
     setSelectedPermissions(prev =>
       prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
     );
+  };
+
+  const allPermissionsSelected = AVAILABLE_PERMISSIONS.length > 0 && selectedPermissions.length === AVAILABLE_PERMISSIONS.length;
+
+  const handleGlobalSelectToggle = () => {
+    if (allPermissionsSelected) {
+      setSelectedPermissions([]);
+    } else {
+      setSelectedPermissions(AVAILABLE_PERMISSIONS.map(p => p.key));
+    }
   };
 
   const handleSelectAllGroup = (groupKeys: string[]) => {
@@ -159,16 +170,27 @@ export default function CreateUserPage() {
 
             <div className="space-y-1.5">
               <label className="text-xs font-extrabold text-[#111827] flex items-center justify-between">
-                <span>Account Password  </span>
+                <span>Account Password</span>
                 <span className="text-[10px] font-semibold text-[#6B7280]">Min 6 chars</span>
               </label>
-              <input
-                type="password"
-                placeholder="Assign login password for user"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-gray-50 border border-[#E5E7EB] rounded-xl text-xs font-bold text-[#111827] focus:outline-none focus:border-[#F59E0B] focus:bg-white focus:ring-2 focus:ring-[#F59E0B]/20 transition-all"
-              />
+              <div className="relative flex items-center">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Assign login password for user"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  autoComplete="new-password"
+                  className="w-full px-3.5 py-2.5 pr-10 bg-gray-50 border border-[#E5E7EB] rounded-xl text-xs font-bold text-[#111827] focus:outline-none focus:border-[#F59E0B] focus:bg-white focus:ring-2 focus:ring-[#F59E0B]/20 transition-all"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 p-1 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-200/50 transition-colors"
+                  title={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -236,78 +258,105 @@ export default function CreateUserPage() {
           </div>
         </div>
 
-        {/* Section 3: Permission Checklist */}
-        <div className="bg-white p-6 rounded-2xl border border-[#E5E7EB] shadow-sm space-y-6">
-          <div className="flex items-center justify-between border-b border-[#E5E7EB] pb-3">
+        {/* Section 3: Permission Checklist (Collapsible Dropdown) */}
+        <div className="bg-white rounded-2xl border border-[#E5E7EB] shadow-sm overflow-hidden transition-all">
+          {/* Accordion Header */}
+          <div
+            onClick={() => setIsPermissionsOpen(!isPermissionsOpen)}
+            className="p-6 flex items-center justify-between cursor-pointer hover:bg-gray-50/80 transition-colors select-none"
+          >
             <div>
               <h2 className="text-sm font-black text-[#111827] uppercase tracking-wider flex items-center gap-2">
                 <Shield className="h-4 w-4 text-[#F59E0B]" />
                 3. Feature Permission Assignments (Optional)
               </h2>
               <p className="text-xs font-semibold text-[#6B7280] mt-0.5">
-                Default role permissions apply automatically. You can optionally assign extra custom permissions below.
+                Default role permissions apply automatically. Click to expand and assign custom permissions.
               </p>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setSelectedPermissions(AVAILABLE_PERMISSIONS.map(p => p.key))}
-              className="text-xs font-extrabold text-[#F59E0B] hover:text-[#D97706] hover:underline"
-            >
-              Select All
-            </button>
+            <div className="flex items-center gap-3">
+              {selectedPermissions.length > 0 && (
+                <span className="px-2.5 py-1 text-[11px] font-extrabold rounded-lg bg-amber-50 text-amber-800 border border-amber-200">
+                  {selectedPermissions.length} Selected
+                </span>
+              )}
+              <button
+                type="button"
+                className="p-1.5 rounded-xl text-gray-500 hover:text-gray-900 hover:bg-gray-200/60 transition-colors"
+                aria-label="Toggle Permissions Section"
+              >
+                {isPermissionsOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+              </button>
+            </div>
           </div>
 
-          <div className="space-y-6">
-            {Object.entries(permissionGroups).map(([groupName, perms]) => {
-              const groupKeys = perms.map(p => p.key);
-              const allChecked = groupKeys.every(k => selectedPermissions.includes(k));
+          {/* Accordion Content */}
+          {isPermissionsOpen && (
+            <div className="p-6 pt-0 border-t border-[#E5E7EB] space-y-6">
+              {/* Select All / Deselect All Toggle Bar */}
+              <div className="flex items-center justify-end pt-4">
+                <button
+                  type="button"
+                  onClick={handleGlobalSelectToggle}
+                  className="px-3.5 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 border border-amber-200 text-xs font-extrabold text-[#D97706] transition-colors"
+                >
+                  {allPermissionsSelected ? 'Deselect All' : 'Select All'}
+                </button>
+              </div>
 
-              return (
-                <div key={groupName} className="space-y-3 bg-gray-50/50 p-4 rounded-xl border border-[#E5E7EB]">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-xs font-extrabold text-[#111827] uppercase tracking-wide">
-                      {groupName}
-                    </h3>
-                    <button
-                      type="button"
-                      onClick={() => handleSelectAllGroup(groupKeys)}
-                      className="text-[11px] font-bold text-gray-500 hover:text-[#111827]"
-                    >
-                      {allChecked ? 'Deselect Group' : 'Select Group'}
-                    </button>
-                  </div>
+              <div className="space-y-6">
+                {Object.entries(permissionGroups).map(([groupName, perms]) => {
+                  const groupKeys = perms.map(p => p.key);
+                  const allChecked = groupKeys.every(k => selectedPermissions.includes(k));
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {perms.map(perm => {
-                      const isChecked = selectedPermissions.includes(perm.key);
-                      return (
-                        <label
-                          key={perm.key}
-                          className={`flex items-center gap-3 p-2.5 rounded-lg border text-xs font-extrabold cursor-pointer transition-all ${
-                            isChecked
-                              ? 'bg-amber-50 border-amber-300 text-amber-900 shadow-sm'
-                              : 'bg-white border-[#E5E7EB] text-gray-700 hover:bg-gray-100'
-                          }`}
+                  return (
+                    <div key={groupName} className="space-y-3 bg-gray-50/50 p-4 rounded-xl border border-[#E5E7EB]">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-xs font-extrabold text-[#111827] uppercase tracking-wide">
+                          {groupName}
+                        </h3>
+                        <button
+                          type="button"
+                          onClick={() => handleSelectAllGroup(groupKeys)}
+                          className="text-[11px] font-bold text-gray-500 hover:text-[#111827]"
                         >
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={() => togglePermission(perm.key)}
-                            className="h-4 w-4 rounded border-gray-300 text-[#F59E0B] focus:ring-[#F59E0B]"
-                          />
-                          <span>{perm.label}</span>
-                          <span className="text-[10px] font-semibold text-gray-400 font-mono ml-auto">
-                            {perm.key}
-                          </span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                          {allChecked ? 'Deselect Group' : 'Select Group'}
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {perms.map(perm => {
+                          const isChecked = selectedPermissions.includes(perm.key);
+                          return (
+                            <label
+                              key={perm.key}
+                              className={`flex items-center gap-3 p-2.5 rounded-lg border text-xs font-extrabold cursor-pointer transition-all ${
+                                isChecked
+                                  ? 'bg-amber-50 border-amber-300 text-amber-900 shadow-sm'
+                                  : 'bg-white border-[#E5E7EB] text-gray-700 hover:bg-gray-100'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => togglePermission(perm.key)}
+                                className="h-4 w-4 rounded border-gray-300 text-[#F59E0B] focus:ring-[#F59E0B]"
+                              />
+                              <span>{perm.label}</span>
+                              <span className="text-[10px] font-semibold text-gray-400 font-mono ml-auto">
+                                {perm.key}
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Submit Actions */}

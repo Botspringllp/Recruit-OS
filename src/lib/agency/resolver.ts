@@ -1,6 +1,7 @@
 import { cache } from 'react';
 import { prisma } from '@/lib/prisma';
 import { NextRequest } from 'next/server';
+import { getCurrentUser } from '@/lib/rbac';
 
 /**
  * Resolves and returns the demo agency ID once per request, cached via React's cache().
@@ -18,7 +19,17 @@ export const getDemoAgencyId = cache(async (): Promise<string | undefined> => {
  * Prevents foreign key failures by querying existing agencies or creating a default.
  */
 export async function getResolvedAgencyId(request?: NextRequest, user?: any): Promise<string> {
-  // 1. Check custom header if valid UUID/string and not dummy fallback
+  // 1. Check active session user agencyId
+  try {
+    const currentUser = await getCurrentUser();
+    if (currentUser?.agencyId) {
+      return currentUser.agencyId;
+    }
+  } catch {
+    // Ignore error if unauthenticated
+  }
+
+  // 2. Check custom header if valid UUID/string and not dummy fallback
   if (request) {
     const headerId = request.headers.get('x-agency-id');
     if (headerId && headerId !== 'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d') {

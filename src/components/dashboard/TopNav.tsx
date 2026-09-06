@@ -1,9 +1,10 @@
 'use client';
 
 import React from 'react';
-import { Menu, Search, Bell } from 'lucide-react';
+import { Menu, Bell } from 'lucide-react';
 import { TenantBadge } from './TenantBadge';
 import { UserProfileDropdown } from './UserProfileDropdown';
+import { InlineGlobalSearch } from './InlineGlobalSearch';
 import { TenantContextType, UserContextType } from '@/types/dashboard';
 
 interface TopNavProps {
@@ -21,7 +22,7 @@ export const TopNav: React.FC<TopNavProps> = ({
 }) => {
   return (
     <header className="h-16 sticky top-0 z-30 bg-white border-b border-slate-200/90 px-4 md:px-6 flex items-center justify-between gap-4 shadow-2xs">
-      {/* Left: Mobile Toggle & Page Title */}
+      {/* Left: Mobile Toggle */}
       <div className="flex items-center gap-3">
         <button
           onClick={onOpenMobileSidebar}
@@ -30,31 +31,11 @@ export const TopNav: React.FC<TopNavProps> = ({
         >
           <Menu className="h-5 w-5" />
         </button>
-
-        <div className="flex items-center gap-2.5">
-          <h1 className="text-sm md:text-base font-extrabold text-slate-900 tracking-tight">
-            Recruiter Cockpit
-          </h1>
-          <span className="hidden sm:inline-block px-2.5 py-0.5 text-[10px] font-extrabold rounded-full bg-amber-100 text-amber-900 border border-amber-300">
-            Live Feed
-          </span>
-        </div>
       </div>
 
-      {/* Middle: Global Search Trigger */}
-      <div className="hidden md:flex flex-1 max-w-md mx-4">
-        <button
-          onClick={() => console.log('Global search triggered')}
-          className="w-full flex items-center justify-between px-3.5 py-1.5 rounded-xl bg-slate-50 border border-slate-300 text-slate-600 hover:text-slate-950 hover:border-indigo-500 text-xs font-medium transition-all duration-200 shadow-2xs"
-        >
-          <div className="flex items-center gap-2">
-            <Search className="h-4 w-4 text-indigo-600" />
-            <span>Search candidates, job mandates, or clients...</span>
-          </div>
-          <kbd className="px-2 py-0.5 text-[10px] font-mono font-bold text-slate-600 bg-white rounded-md border border-slate-300 shadow-2xs">
-            Ctrl + K
-          </kbd>
-        </button>
+      {/* Middle: Direct Active Inline Search Input */}
+      <div className="hidden md:flex flex-1 max-w-lg mx-4 justify-center">
+        <InlineGlobalSearch />
       </div>
 
       {/* Right: Tenant Badge, Notification Bell & User Dropdown */}

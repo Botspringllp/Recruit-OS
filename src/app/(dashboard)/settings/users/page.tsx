@@ -22,7 +22,7 @@ export default async function UserManagementPage() {
     redirect('/403');
   }
 
-  const result = await getUsersAction();
+  const result = await getUsersAction(currentUser?.agencyId);
   const users = result.data?.users || [];
   const kpis = result.data?.kpis || {
     totalUsers: 0,
