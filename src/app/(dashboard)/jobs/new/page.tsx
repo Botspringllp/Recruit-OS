@@ -25,12 +25,12 @@ export default async function NewJobPage() {
   return (
     <div className="space-y-6 pb-12">
       {/* Header */}
-      <div className="border-b border-slate-800/80 pb-5">
-        <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2.5">
-          <Briefcase className="h-6 w-6 text-indigo-400" />
+      <div className="border-b border-slate-200 pb-5 font-sans">
+        <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
+          <Briefcase className="h-6 w-6 text-amber-500" />
           Create New Job Mandate
         </h1>
-        <p className="text-xs text-slate-400 mt-1">
+        <p className="text-xs font-semibold text-slate-600 mt-1">
           Open a new hiring requisition for client recruitment pipeline
         </p>
       </div>

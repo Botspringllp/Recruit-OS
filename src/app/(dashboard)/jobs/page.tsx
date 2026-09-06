@@ -6,6 +6,7 @@ import { prisma } from '@/lib/prisma';
 import { MandateStatus } from '@prisma/client';
 
 import { getCurrentUser, hasPermission } from '@/lib/rbac';
+import { UploadJobMandateButton } from '@/components/jobs/UploadJobMandateButton';
 
 export const revalidate = 0;
 
@@ -53,7 +54,7 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
     orderBy = { headcount: 'desc' };
   }
 
-  const [totalJobs, jobList] = await Promise.all([
+  const [totalJobs, jobList, clients] = await Promise.all([
     prisma.jobMandate.count({ where: whereClause }).catch(() => 0),
     prisma.jobMandate.findMany({
       where: whereClause,
@@ -64,6 +65,11 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
         client: { select: { companyName: true } },
         submissions: { select: { id: true } }
       }
+    }).catch(() => []),
+    prisma.client.findMany({
+      where: { agencyId },
+      select: { id: true, companyName: true },
+      orderBy: { companyName: 'asc' }
     }).catch(() => [])
   ]);
 
@@ -84,13 +90,16 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
           </p>
         </div>
 
-        <Link
-          href="/jobs/new"
-          className="px-4 py-2.5 bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-slate-950 rounded-xl text-xs font-black shadow-md shadow-amber-500/20 flex items-center gap-2 self-start sm:self-auto transition-all"
-        >
-          <Plus className="h-4 w-4 stroke-[3]" />
-          Create Mandate
-        </Link>
+        <div className="flex items-center gap-3 self-start sm:self-auto">
+          <UploadJobMandateButton clients={clients} />
+          <Link
+            href="/jobs/new"
+            className="px-4 py-2.5 bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-slate-950 rounded-xl text-xs font-black shadow-md shadow-amber-500/20 flex items-center gap-2 transition-all"
+          >
+            <Plus className="h-4 w-4 stroke-[3]" />
+            <span>Create Mandate</span>
+          </Link>
+        </div>
       </div>
 
       {/* Filter and Search Bar */}

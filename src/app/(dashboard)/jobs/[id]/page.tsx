@@ -51,31 +51,31 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
   const interviewsCount = job.submissions.reduce((acc, s) => acc + s.interviewSchedules.length, 0);
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-6 pb-12 font-sans">
       {/* Top Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800/80 pb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-5">
         <div className="flex items-center gap-3">
           <Link
             href="/jobs"
-            className="p-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-400 hover:text-white transition"
+            className="p-2 bg-white border border-slate-300 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition"
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold text-white tracking-tight">{job.title}</h1>
-              <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
+              <h1 className="text-2xl font-black text-slate-900 tracking-tight">{job.title}</h1>
+              <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-extrabold border ${
                 job.status === 'ACTIVE' || job.status === 'OPEN'
-                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                  ? 'bg-emerald-100 text-emerald-950 border-emerald-300'
                   : job.status === 'PAUSED' || job.status === 'ON_HOLD'
-                  ? 'bg-amber-500/10 text-amber-300 border-amber-500/20'
-                  : 'bg-slate-800 text-slate-400 border-slate-700'
+                  ? 'bg-amber-100 text-amber-950 border-amber-300'
+                  : 'bg-slate-100 text-slate-700 border-slate-300'
               }`}>
                 {job.status}
               </span>
             </div>
-            <p className="text-xs text-slate-400 mt-1">
-              Client: <span className="text-slate-200 font-semibold">{job.client?.companyName || 'Unassigned Client'}</span>
+            <p className="text-xs font-semibold text-slate-500 mt-1">
+              Client: <span className="text-slate-900 font-extrabold">{job.client?.companyName || 'Unassigned Client'}</span>
             </p>
           </div>
         </div>
@@ -86,7 +86,7 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
 
           <Link
             href={`/jobs/${job.id}/edit`}
-            className="px-4 py-2 bg-gradient-to-r from-brand-600 to-indigo-600 text-white rounded-xl text-xs font-semibold hover:brightness-110 transition flex items-center gap-2 shadow-glow-brand"
+            className="px-4 py-2 bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-slate-950 rounded-xl text-xs font-black transition flex items-center gap-2 shadow-md shadow-amber-500/20"
           >
             <Edit3 className="h-4 w-4" />
             Edit Mandate
@@ -96,33 +96,33 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
 
       {/* Overview Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
-        <div className="glass-panel p-4 rounded-2xl border border-slate-800/80 space-y-1">
-          <span className="text-[10px] uppercase font-medium text-slate-400">Total Submissions</span>
-          <div className="text-2xl font-bold text-white flex items-center gap-2">
-            <Users className="h-5 w-5 text-brand-400" />
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+          <span className="text-[10px] uppercase font-bold text-slate-500">Total Submissions</span>
+          <div className="text-2xl font-black text-slate-900 flex items-center gap-2">
+            <Users className="h-5 w-5 text-amber-600" />
             {totalSubmissions}
           </div>
         </div>
 
-        <div className="glass-panel p-4 rounded-2xl border border-slate-800/80 space-y-1">
-          <span className="text-[10px] uppercase font-medium text-slate-400">Interviews Conducted</span>
-          <div className="text-2xl font-bold text-white flex items-center gap-2">
-            <Video className="h-5 w-5 text-cyan-400" />
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+          <span className="text-[10px] uppercase font-bold text-slate-500">Interviews Conducted</span>
+          <div className="text-2xl font-black text-slate-900 flex items-center gap-2">
+            <Video className="h-5 w-5 text-cyan-600" />
             {interviewsCount}
           </div>
         </div>
 
-        <div className="glass-panel p-4 rounded-2xl border border-slate-800/80 space-y-1">
-          <span className="text-[10px] uppercase font-medium text-slate-400">Placements Joined</span>
-          <div className="text-2xl font-bold text-white flex items-center gap-2">
-            <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+          <span className="text-[10px] uppercase font-bold text-slate-500">Placements Joined</span>
+          <div className="text-2xl font-black text-slate-900 flex items-center gap-2">
+            <CheckCircle2 className="h-5 w-5 text-emerald-600" />
             {placementsCount} / {job.headcount}
           </div>
         </div>
 
-        <div className="glass-panel p-4 rounded-2xl border border-slate-800/80 space-y-1">
-          <span className="text-[10px] uppercase font-medium text-slate-400">Compensation CTC Range</span>
-          <div className="text-lg font-bold text-emerald-400 flex items-center gap-1.5 pt-1">
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+          <span className="text-[10px] uppercase font-bold text-slate-500">Compensation CTC Range</span>
+          <div className="text-lg font-black text-emerald-700 flex items-center gap-1.5 pt-1">
             <DollarSign className="h-4 w-4" />
             {job.minCtcLpa ? `${Number(job.minCtcLpa)} - ${Number(job.maxCtcLpa || 0)} LPA` : 'Competitive'}
           </div>
@@ -132,77 +132,77 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
       {/* Main Details & Submissions Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Mandate Info Panel */}
-        <div className="lg:col-span-1 glass-panel p-6 rounded-2xl border border-slate-800/80 space-y-5 self-start">
-          <h3 className="font-semibold text-sm text-white flex items-center gap-2 border-b border-slate-800/60 pb-3">
-            <Briefcase className="h-4 w-4 text-indigo-400" />
+        <div className="lg:col-span-1 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-5 self-start">
+          <h3 className="font-extrabold text-sm text-slate-900 flex items-center gap-2 border-b border-slate-100 pb-3">
+            <Briefcase className="h-4 w-4 text-amber-600" />
             Mandate Specification
           </h3>
 
-          <div className="space-y-3.5 text-xs text-slate-300">
+          <div className="space-y-3.5 text-xs text-slate-700">
             <div>
-              <span className="text-slate-400 block text-[11px]">Client Company</span>
-              <span className="font-semibold text-white">{job.client?.companyName || 'Unassigned'}</span>
+              <span className="text-slate-500 block text-[11px] font-bold uppercase">Client Company</span>
+              <span className="font-extrabold text-slate-900">{job.client?.companyName || 'Unassigned'}</span>
             </div>
 
             <div>
-              <span className="text-slate-400 block text-[11px]">Industry</span>
-              <span>{job.client?.industry || 'N/A'}</span>
+              <span className="text-slate-500 block text-[11px] font-bold uppercase">Industry</span>
+              <span className="font-semibold text-slate-800">{job.client?.industry || 'N/A'}</span>
             </div>
 
             <div>
-              <span className="text-slate-400 block text-[11px]">Open Headcount</span>
-              <span className="font-semibold text-white">{job.headcount} Positions</span>
+              <span className="text-slate-500 block text-[11px] font-bold uppercase">Open Headcount</span>
+              <span className="font-extrabold text-slate-900">{job.headcount} Positions</span>
             </div>
 
             <div>
-              <span className="text-slate-400 block text-[11px]">Placement Fee</span>
-              <span className="font-semibold text-purple-300">{Number(job.feePercentage)}%</span>
+              <span className="text-slate-500 block text-[11px] font-bold uppercase">Placement Fee</span>
+              <span className="font-extrabold text-amber-700">{Number(job.feePercentage)}%</span>
             </div>
 
             <div>
-              <span className="text-slate-400 block text-[11px]">Created Date</span>
-              <span>{new Date(job.createdAt).toLocaleString()}</span>
+              <span className="text-slate-500 block text-[11px] font-bold uppercase">Created Date</span>
+              <span className="font-semibold text-slate-700">{new Date(job.createdAt).toLocaleString()}</span>
             </div>
 
             <div>
-              <span className="text-slate-400 block text-[11px]">Last Updated</span>
-              <span>{new Date(job.updatedAt).toLocaleString()}</span>
+              <span className="text-slate-500 block text-[11px] font-bold uppercase">Last Updated</span>
+              <span className="font-semibold text-slate-700">{new Date(job.updatedAt).toLocaleString()}</span>
             </div>
           </div>
         </div>
 
         {/* Candidate Pipeline */}
-        <div className="lg:col-span-2 glass-panel p-6 rounded-2xl border border-slate-800/80 space-y-4">
-          <h3 className="font-semibold text-sm text-white flex items-center gap-2">
-            <Users className="h-4 w-4 text-brand-400" />
+        <div className="lg:col-span-2 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+          <h3 className="font-extrabold text-sm text-slate-900 flex items-center gap-2">
+            <Users className="h-4 w-4 text-amber-600" />
             Active Submissions Pipeline ({job.submissions.length})
           </h3>
 
           <div className="space-y-3 pt-1">
             {job.submissions.length > 0 ? (
               job.submissions.map((sub) => (
-                <div key={sub.id} className="p-4 bg-slate-900/60 rounded-xl border border-slate-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div key={sub.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
-                    <h4 className="font-semibold text-xs text-white">
+                    <h4 className="font-extrabold text-xs text-slate-900">
                       {sub.candidate.firstName} {sub.candidate.lastName}
                     </h4>
-                    <p className="text-[11px] text-slate-400 mt-0.5">
+                    <p className="text-[11px] font-semibold text-slate-500 mt-0.5">
                       {sub.candidate.email} | {sub.candidate.phone}
                     </p>
                   </div>
 
                   <div className="flex items-center gap-3 text-xs">
-                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-brand-500/10 text-brand-400 border border-brand-500/20">
+                    <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-amber-100 text-amber-950 border border-amber-300">
                       {sub.stage}
                     </span>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-950 border border-emerald-300">
                       {sub.slaStatus}
                     </span>
                   </div>
                 </div>
               ))
             ) : (
-              <div className="py-8 text-center text-slate-400 text-xs">
+              <div className="py-8 text-center text-slate-500 text-xs font-semibold">
                 No candidates submitted to this mandate yet.
               </div>
             )}

@@ -4,17 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { MandateStatus } from '@prisma/client';
 import { requirePermission } from '@/lib/rbac';
-
-async function getDemoAgencyId(): Promise<string> {
-  const agency = await prisma.agency.findFirst({
-    where: { subdomain: 'demo' },
-    select: { id: true }
-  });
-  if (!agency) {
-    throw new Error('Default agency contextual record not found');
-  }
-  return agency.id;
-}
+import { getResolvedAgencyId } from '@/lib/agency/resolver';
 
 export type JobActionResult = {
   success: boolean;
@@ -26,9 +16,10 @@ export type JobActionResult = {
 export async function createJobMandateAction(prevState: any, formData: FormData, userOverride?: any): Promise<JobActionResult> {
   try {
     await requirePermission('job.create', userOverride);
-    const agencyId = await getDemoAgencyId();
+    const agencyId = await getResolvedAgencyId();
 
-    const title = (formData.get('title') as string || '').trim();
+    const rawTitle = (formData.get('title') as string || '').trim();
+    const title = rawTitle || 'Untitled Job Mandate';
     const clientId = (formData.get('clientId') as string || '').trim() || null;
     const headcountStr = formData.get('headcount') as string;
     const minCtcStr = formData.get('minCtcLpa') as string;
@@ -36,54 +27,37 @@ export async function createJobMandateAction(prevState: any, formData: FormData,
     const feeStr = formData.get('feePercentage') as string;
     const statusStr = (formData.get('status') as string || 'OPEN').trim();
 
-    const errors: Record<string, string> = {};
-
-    if (!title) errors.title = 'Position title is required';
+    // Recruiter Intake Fields
+    const industry = (formData.get('industry') as string || '').trim();
+    const employmentType = (formData.get('employmentType') as string || '').trim();
+    const experience = (formData.get('experience') as string || '').trim();
+    const education = (formData.get('education') as string || '').trim();
+    const skills = (formData.get('skills') as string || '').trim();
+    const description = (formData.get('description') as string || '').trim();
+    const companyOverview = (formData.get('companyOverview') as string || '').trim();
 
     let headcount = 1;
     if (headcountStr && headcountStr.trim() !== '') {
       const parsed = parseInt(headcountStr, 10);
-      if (isNaN(parsed) || parsed < 1) {
-        errors.headcount = 'Open positions headcount must be at least 1';
-      } else {
-        headcount = parsed;
-      }
+      if (!isNaN(parsed) && parsed >= 1) headcount = parsed;
     }
 
     let minCtcLpa: number | null = null;
     if (minCtcStr && minCtcStr.trim() !== '') {
       const parsed = parseFloat(minCtcStr);
-      if (isNaN(parsed) || parsed < 0) {
-        errors.minCtcLpa = 'Min salary must be a positive number';
-      } else {
-        minCtcLpa = parsed;
-      }
+      if (!isNaN(parsed) && parsed >= 0) minCtcLpa = parsed;
     }
 
     let maxCtcLpa: number | null = null;
     if (maxCtcStr && maxCtcStr.trim() !== '') {
       const parsed = parseFloat(maxCtcStr);
-      if (isNaN(parsed) || parsed < 0) {
-        errors.maxCtcLpa = 'Max salary must be a positive number';
-      } else {
-        maxCtcLpa = parsed;
-      }
-    }
-
-    if (minCtcLpa !== null && maxCtcLpa !== null && minCtcLpa > maxCtcLpa) {
-      errors.maxCtcLpa = 'Max salary cannot be less than Min salary';
+      if (!isNaN(parsed) && parsed >= 0) maxCtcLpa = parsed;
     }
 
     let feePercentage = 8.33;
     if (feeStr && feeStr.trim() !== '') {
       const parsed = parseFloat(feeStr);
-      if (!isNaN(parsed) && parsed >= 0) {
-        feePercentage = parsed;
-      }
-    }
-
-    if (Object.keys(errors).length > 0) {
-      return { success: false, errors };
+      if (!isNaN(parsed) && parsed >= 0) feePercentage = parsed;
     }
 
     const validStatus = Object.values(MandateStatus).includes(statusStr as MandateStatus)
@@ -103,6 +77,28 @@ export async function createJobMandateAction(prevState: any, formData: FormData,
       }
     });
 
+    // Save recruiter requirement details into JobPrepKit
+    const prepKitOverview = companyOverview || `Company: ${clientId ? 'Client Mandate' : 'Internal'}`;
+    const prepKitProcess = [
+      industry ? `Industry: ${industry}` : '',
+      employmentType ? `Employment Type: ${employmentType}` : '',
+      experience ? `Experience: ${experience}` : '',
+      education ? `Education: ${education}` : '',
+      skills ? `Key Skills: ${skills}` : '',
+      description ? `Job Description: ${description}` : ''
+    ].filter(Boolean).join('\n\n');
+
+    await prisma.jobPrepKit.create({
+      data: {
+        agencyId,
+        jobId: newJob.id,
+        companyOverview: prepKitOverview,
+        interviewProcess: prepKitProcess || 'Standard Hiring Process',
+        behavioralTips: skills || null,
+        technicalFaqs: description || null
+      }
+    }).catch(() => null);
+
     revalidatePath('/jobs');
     return { success: true, jobId: newJob.id };
   } catch (err: any) {
@@ -113,9 +109,10 @@ export async function createJobMandateAction(prevState: any, formData: FormData,
 export async function updateJobMandateAction(jobId: string, prevState: any, formData: FormData, userOverride?: any): Promise<JobActionResult> {
   try {
     await requirePermission('job.edit', userOverride);
-    const agencyId = await getDemoAgencyId();
+    const agencyId = await getResolvedAgencyId();
 
-    const title = (formData.get('title') as string || '').trim();
+    const rawTitle = (formData.get('title') as string || '').trim();
+    const title = rawTitle || 'Untitled Job Mandate';
     const clientId = (formData.get('clientId') as string || '').trim() || null;
     const headcountStr = formData.get('headcount') as string;
     const minCtcStr = formData.get('minCtcLpa') as string;
@@ -123,55 +120,14 @@ export async function updateJobMandateAction(jobId: string, prevState: any, form
     const feeStr = formData.get('feePercentage') as string;
     const statusStr = (formData.get('status') as string || 'OPEN').trim();
 
-    const errors: Record<string, string> = {};
-
-    if (!title) errors.title = 'Position title is required';
-
-    let headcount = 1;
-    if (headcountStr && headcountStr.trim() !== '') {
-      const parsed = parseInt(headcountStr, 10);
-      if (isNaN(parsed) || parsed < 1) {
-        errors.headcount = 'Open positions headcount must be at least 1';
-      } else {
-        headcount = parsed;
-      }
-    }
-
-    let minCtcLpa: number | null = null;
-    if (minCtcStr && minCtcStr.trim() !== '') {
-      const parsed = parseFloat(minCtcStr);
-      if (isNaN(parsed) || parsed < 0) {
-        errors.minCtcLpa = 'Min salary must be a positive number';
-      } else {
-        minCtcLpa = parsed;
-      }
-    }
-
-    let maxCtcLpa: number | null = null;
-    if (maxCtcStr && maxCtcStr.trim() !== '') {
-      const parsed = parseFloat(maxCtcStr);
-      if (isNaN(parsed) || parsed < 0) {
-        errors.maxCtcLpa = 'Max salary must be a positive number';
-      } else {
-        maxCtcLpa = parsed;
-      }
-    }
-
-    if (minCtcLpa !== null && maxCtcLpa !== null && minCtcLpa > maxCtcLpa) {
-      errors.maxCtcLpa = 'Max salary cannot be less than Min salary';
-    }
-
-    let feePercentage = 8.33;
-    if (feeStr && feeStr.trim() !== '') {
-      const parsed = parseFloat(feeStr);
-      if (!isNaN(parsed) && parsed >= 0) {
-        feePercentage = parsed;
-      }
-    }
-
-    if (Object.keys(errors).length > 0) {
-      return { success: false, errors };
-    }
+    // Recruiter Intake Fields
+    const industry = (formData.get('industry') as string || '').trim();
+    const employmentType = (formData.get('employmentType') as string || '').trim();
+    const experience = (formData.get('experience') as string || '').trim();
+    const education = (formData.get('education') as string || '').trim();
+    const skills = (formData.get('skills') as string || '').trim();
+    const description = (formData.get('description') as string || '').trim();
+    const companyOverview = (formData.get('companyOverview') as string || '').trim();
 
     const existing = await prisma.jobMandate.findFirst({
       where: { id: jobId, agencyId }
@@ -181,9 +137,33 @@ export async function updateJobMandateAction(jobId: string, prevState: any, form
       return { success: false, error: 'Job mandate record not found or access denied.' };
     }
 
+    let headcount = existing.headcount;
+    if (headcountStr && headcountStr.trim() !== '') {
+      const parsed = parseInt(headcountStr, 10);
+      if (!isNaN(parsed) && parsed >= 1) headcount = parsed;
+    }
+
+    let minCtcLpa: number | null = existing.minCtcLpa ? Number(existing.minCtcLpa) : null;
+    if (minCtcStr && minCtcStr.trim() !== '') {
+      const parsed = parseFloat(minCtcStr);
+      if (!isNaN(parsed) && parsed >= 0) minCtcLpa = parsed;
+    }
+
+    let maxCtcLpa: number | null = existing.maxCtcLpa ? Number(existing.maxCtcLpa) : null;
+    if (maxCtcStr && maxCtcStr.trim() !== '') {
+      const parsed = parseFloat(maxCtcStr);
+      if (!isNaN(parsed) && parsed >= 0) maxCtcLpa = parsed;
+    }
+
+    let feePercentage = existing.feePercentage ? Number(existing.feePercentage) : 8.33;
+    if (feeStr && feeStr.trim() !== '') {
+      const parsed = parseFloat(feeStr);
+      if (!isNaN(parsed) && parsed >= 0) feePercentage = parsed;
+    }
+
     const validStatus = Object.values(MandateStatus).includes(statusStr as MandateStatus)
       ? (statusStr as MandateStatus)
-      : MandateStatus.OPEN;
+      : existing.status;
 
     await prisma.jobMandate.update({
       where: { id: jobId },
@@ -199,6 +179,41 @@ export async function updateJobMandateAction(jobId: string, prevState: any, form
       }
     });
 
+    // Update linked JobPrepKit
+    const prepKitOverview = companyOverview || 'Company Overview';
+    const prepKitProcess = [
+      industry ? `Industry: ${industry}` : '',
+      employmentType ? `Employment Type: ${employmentType}` : '',
+      experience ? `Experience: ${experience}` : '',
+      education ? `Education: ${education}` : '',
+      skills ? `Key Skills: ${skills}` : '',
+      description ? `Job Description: ${description}` : ''
+    ].filter(Boolean).join('\n\n');
+
+    const existingKit = await prisma.jobPrepKit.findFirst({ where: { jobId } });
+    if (existingKit) {
+      await prisma.jobPrepKit.update({
+        where: { id: existingKit.id },
+        data: {
+          companyOverview: prepKitOverview,
+          interviewProcess: prepKitProcess,
+          behavioralTips: skills || null,
+          technicalFaqs: description || null
+        }
+      });
+    } else {
+      await prisma.jobPrepKit.create({
+        data: {
+          agencyId,
+          jobId,
+          companyOverview: prepKitOverview,
+          interviewProcess: prepKitProcess,
+          behavioralTips: skills || null,
+          technicalFaqs: description || null
+        }
+      }).catch(() => null);
+    }
+
     revalidatePath('/jobs');
     revalidatePath(`/jobs/${jobId}`);
     return { success: true, jobId };
@@ -210,7 +225,7 @@ export async function updateJobMandateAction(jobId: string, prevState: any, form
 export async function updateJobStatusAction(jobId: string, newStatus: MandateStatus, userOverride?: any): Promise<JobActionResult> {
   try {
     await requirePermission('job.edit', userOverride);
-    const agencyId = await getDemoAgencyId();
+    const agencyId = await getResolvedAgencyId();
 
     const existing = await prisma.jobMandate.findFirst({
       where: { id: jobId, agencyId }
