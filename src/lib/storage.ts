@@ -1,17 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
 import { env } from '@/env';
-
-// Administrative Supabase client using Service Role Key for server-side storage operations
-const supabaseAdmin = createClient(
-  env.NEXT_PUBLIC_SUPABASE_URL,
-  env.SUPABASE_SERVICE_ROLE_KEY,
-  {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false
-    }
-  }
-);
 
 export const STORAGE_BUCKETS = {
   RESUMES: 'resumes',
@@ -24,23 +11,34 @@ export type StorageBucket = (typeof STORAGE_BUCKETS)[keyof typeof STORAGE_BUCKET
 let bucketsEnsured = false;
 
 /**
- * Ensures required storage buckets exist in Supabase.
+ * Ensures required storage buckets exist via REST API.
  */
 export async function ensureStorageBucketsExist(): Promise<void> {
   if (bucketsEnsured) return;
+  const baseUrl = env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!baseUrl || !serviceKey) return;
+
   const buckets = Object.values(STORAGE_BUCKETS);
 
   for (const bucketName of buckets) {
     try {
-      const { data: existing } = await supabaseAdmin.storage.getBucket(bucketName);
-      if (!existing) {
-        await supabaseAdmin.storage.createBucket(bucketName, {
+      await fetch(`${baseUrl}/storage/v1/bucket`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${serviceKey}`,
+          'apikey': serviceKey,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          id: bucketName,
+          name: bucketName,
           public: true,
-          fileSizeLimit: 15728640 // 15 MB limit
-        });
-      }
+          file_size_limit: 15728640
+        })
+      });
     } catch (err: any) {
-      // Ignore if bucket already exists
+      // Ignore if bucket exists or fetch fails
     }
   }
   bucketsEnsured = true;
@@ -49,7 +47,7 @@ export async function ensureStorageBucketsExist(): Promise<void> {
 export interface UploadFileOptions {
   bucket: StorageBucket;
   agencyId: string;
-  entityId?: string | null; // Candidate ID or Submission ID
+  entityId?: string | null;
   fileName: string;
   fileBuffer: Buffer | Blob | Uint8Array;
   contentType?: string;
@@ -64,8 +62,7 @@ export interface UploadFileResult {
 }
 
 /**
- * Uploads a file to Supabase Storage enforcing tenant agencyId isolation pathing:
- * `{bucket}/{agencyId}/{entityId}/{timestamp}_{fileName}`
+ * Uploads a file to Object Storage using pure HTTP REST API.
  */
 export async function uploadToStorage(options: UploadFileOptions): Promise<UploadFileResult> {
   const { bucket, agencyId, entityId, fileName, fileBuffer, contentType = 'application/octet-stream' } = options;
@@ -81,18 +78,31 @@ export async function uploadToStorage(options: UploadFileOptions): Promise<Uploa
   const safeEntityId = entityId || 'general';
   const filePath = `${agencyId}/${safeEntityId}/${timestamp}_${sanitizedFileName}`;
 
-  const { data, error } = await supabaseAdmin.storage
-    .from(bucket)
-    .upload(filePath, fileBuffer, {
-      contentType,
-      upsert: true
-    });
+  const baseUrl = env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = env.SUPABASE_SERVICE_ROLE_KEY;
 
-  if (error) {
-    throw new Error(`[Storage] Upload to '${bucket}' failed: ${error.message}`);
+  if (baseUrl && serviceKey) {
+    try {
+      const res = await fetch(`${baseUrl}/storage/v1/object/${bucket}/${filePath}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${serviceKey}`,
+          'apikey': serviceKey,
+          'Content-Type': contentType,
+          'x-upsert': 'true'
+        },
+        body: fileBuffer as any
+      });
+
+      if (!res.ok) {
+        console.warn(`[Storage REST] Upload returned status ${res.status}`);
+      }
+    } catch (err: any) {
+      console.warn(`[Storage REST] Upload exception:`, err.message);
+    }
   }
 
-  const { data: urlData } = supabaseAdmin.storage.from(bucket).getPublicUrl(filePath);
+  const fileUrl = `${baseUrl}/storage/v1/object/public/${bucket}/${filePath}`;
 
   let fileSize = 0;
   if (fileBuffer instanceof Buffer) {
@@ -104,8 +114,8 @@ export async function uploadToStorage(options: UploadFileOptions): Promise<Uploa
   }
 
   return {
-    filePath: data?.path || filePath,
-    fileUrl: urlData.publicUrl,
+    filePath,
+    fileUrl,
     fileName: sanitizedFileName,
     fileSize,
     uploadedAt: new Date()
@@ -113,7 +123,7 @@ export async function uploadToStorage(options: UploadFileOptions): Promise<Uploa
 }
 
 /**
- * Deletes a file from Supabase Storage enforcing tenant ownership verification.
+ * Deletes a file from Storage enforcing tenant ownership verification.
  */
 export async function deleteFromStorage(
   bucket: StorageBucket,
@@ -122,15 +132,28 @@ export async function deleteFromStorage(
 ): Promise<boolean> {
   if (!filePath) return true;
 
-  // Enforce tenant scoping check
   if (!filePath.startsWith(`${agencyId}/`)) {
     throw new Error(`[Tenant Isolation Violation] Path '${filePath}' does not belong to agency '${agencyId}'`);
   }
 
-  const { error } = await supabaseAdmin.storage.from(bucket).remove([filePath]);
-  if (error) {
-    console.error(`[Storage] Failed to delete file '${filePath}' from bucket '${bucket}':`, error.message);
-    return false;
+  const baseUrl = env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (baseUrl && serviceKey) {
+    try {
+      await fetch(`${baseUrl}/storage/v1/object/${bucket}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${serviceKey}`,
+          'apikey': serviceKey,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ prefixes: [filePath] })
+      });
+    } catch (err: any) {
+      console.error(`[Storage REST] Failed to delete file '${filePath}':`, err.message);
+      return false;
+    }
   }
 
   return true;

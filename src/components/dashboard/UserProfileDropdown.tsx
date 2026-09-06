@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { User, LogOut, Shield, ChevronDown, KeyRound } from 'lucide-react';
 import { UserContextType } from '@/types/dashboard';
-import { createClient } from '@/lib/supabase/client';
+import { logoutAction } from '@/app/actions/auth';
 
 interface UserProfileDropdownProps {
   user: UserContextType;
@@ -31,8 +31,7 @@ export const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({ user, 
       if (onLogout) {
         onLogout();
       }
-      const supabase = createClient();
-      await supabase.auth.signOut();
+      await logoutAction();
     } catch (err) {
       console.error('Sign Out Error:', err);
     } finally {

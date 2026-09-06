@@ -1,6 +1,7 @@
 import { cache } from 'react';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
+import { getSession } from '@/lib/auth/session';
 import { ROLE_DEFAULT_PERMISSIONS, AVAILABLE_PERMISSIONS } from './permissions';
 
 export interface UserPermissionItem {
@@ -156,8 +157,20 @@ export function hasRole(user: UserWithRoleAndPermissions | null | undefined, rol
  */
 export const getCurrentUser = cache(async (): Promise<UserWithRoleAndPermissions | null> => {
   try {
+    const session = await getSession();
+
+    if (!session || (!session.userId && !session.email)) {
+      return null;
+    }
+
+    const email = session.email.toLowerCase();
+
     const user = await prisma.user.findFirst({
       where: {
+        OR: [
+          { id: session.userId },
+          { email: email }
+        ],
         deletedAt: null,
         status: 'ACTIVE'
       },
@@ -167,8 +180,7 @@ export const getCurrentUser = cache(async (): Promise<UserWithRoleAndPermissions
         },
         permissions: { select: { resource: true, action: true } },
         userRoles: { select: { roleName: true } }
-      },
-      orderBy: { createdAt: 'asc' }
+      }
     });
 
     return user as any;

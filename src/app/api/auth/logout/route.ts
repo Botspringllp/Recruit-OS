@@ -1,11 +1,9 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { clearSession } from '@/lib/auth/session';
 
 export async function POST() {
   try {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-
+    await clearSession();
     return NextResponse.json({ success: true, message: 'Logged out successfully' });
   } catch (error: any) {
     return NextResponse.json(
@@ -16,7 +14,6 @@ export async function POST() {
 }
 
 export async function GET() {
-  const supabase = createClient();
-  await supabase.auth.signOut();
+  await clearSession();
   return NextResponse.redirect(new URL('/login', process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'));
 }

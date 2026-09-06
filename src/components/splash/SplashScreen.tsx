@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ShieldCheck } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
 import { TESTING_MODE } from '@/lib/config';
 
 export default function SplashScreen() {
@@ -37,20 +36,7 @@ export default function SplashScreen() {
         // Perform navigation check at the end of splash screen duration
         setTimeout(async () => {
           try {
-            if (TESTING_MODE) {
-              // Testing Mode: Always force routing to Login Page so user manually clicks Login
-              router.replace('/login');
-            } else {
-              // Production Mode: Check session and auto-route if authenticated
-              const supabase = createClient();
-              const { data: { user } } = await supabase.auth.getUser();
-
-              if (user) {
-                router.replace('/cockpit');
-              } else {
-                router.replace('/login');
-              }
-            }
+            router.replace('/login');
           } catch (error) {
             router.replace('/login');
           }

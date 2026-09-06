@@ -1,4 +1,5 @@
-import { createClient } from '@/lib/supabase/server';
+import { getSession } from '@/lib/auth/session';
+import { prisma } from '@/lib/prisma';
 import { TenantContextType } from '@/types/dashboard';
 
 /**
@@ -6,18 +7,26 @@ import { TenantContextType } from '@/types/dashboard';
  */
 export async function getCurrentAgency(subdomain?: string): Promise<TenantContextType | null> {
   try {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const session = await getSession();
+    if (!session || !session.agencyId) {
+      return {
+        agencyId: 'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d',
+        agencyName: 'RecruitOS Enterprise Workspace',
+        subdomain: subdomain || 'demo',
+        subscriptionTier: 'ENTERPRISE',
+        primaryColor: '#4F46E5',
+      };
+    }
 
-    const agencyId = user?.user_metadata?.agency_id || 'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d';
-    const agencySubdomain = subdomain || user?.user_metadata?.agency_subdomain || 'apex';
+    const agency = await prisma.agency.findUnique({
+      where: { id: session.agencyId }
+    });
 
-    // Return resolved tenant context
     return {
-      agencyId,
-      agencyName: 'Apex Executive Search',
-      subdomain: agencySubdomain,
-      subscriptionTier: 'ENTERPRISE',
+      agencyId: agency?.id || session.agencyId,
+      agencyName: agency?.name || 'RecruitOS Enterprise Workspace',
+      subdomain: agency?.subdomain || subdomain || 'demo',
+      subscriptionTier: (agency?.subscriptionTier as any) || 'ENTERPRISE',
       primaryColor: '#4F46E5',
     };
   } catch (error) {

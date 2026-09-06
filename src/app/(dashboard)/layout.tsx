@@ -16,20 +16,20 @@ export default async function DashboardLayout({
   const dbUser = await getCurrentUser();
 
   const tenantContext: TenantContextType = {
-    agencyId: dbUser?.agencyId || 'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d',
-    agencyName: 'Apex Executive Search',
-    subdomain: 'apex',
+    agencyId: dbUser?.agencyId || '',
+    agencyName: dbUser?.agency?.name || 'RecruitOS Workspace',
+    subdomain: 'demo',
     subscriptionTier: 'ENTERPRISE',
     logoUrl: null,
     primaryColor: '#4F46E5',
   };
 
   const userContext: UserContextType = {
-    userId: dbUser?.id || 'u1v2w3x4-y5z6-7a8b-9c0d-1e2f3a4b5c6d',
-    email: dbUser?.email || 'sarah.sharma@apexrecruitment.com',
-    firstName: dbUser?.firstName || 'Sarah',
-    lastName: dbUser?.lastName || 'Sharma',
-    role: (dbUser?.role as any) || 'AGENCY_FOUNDER',
+    userId: dbUser?.id || '',
+    email: dbUser?.email || '',
+    firstName: dbUser?.firstName || dbUser?.email?.split('@')[0] || 'User',
+    lastName: dbUser?.lastName || '',
+    role: (dbUser?.role as any) || 'RECRUITER',
   };
 
   const userPermissions = getCurrentUserPermissions(dbUser);

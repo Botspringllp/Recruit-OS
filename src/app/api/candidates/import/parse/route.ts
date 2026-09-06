@@ -1,23 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { parseResumeBuffer } from '@/lib/parser';
-import { updateSession } from '@/lib/supabase/middleware';
 import { getResolvedAgencyId } from '@/lib/agency/resolver';
 import { hasPermission, getCurrentUser } from '@/lib/rbac';
 import { logger } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
   try {
-    let user: any = null;
-    try {
-      const sessionResult = await updateSession(request);
-      user = sessionResult?.user || null;
-    } catch (e) {
-      console.warn('Supabase session fetch bypassed in parse route:', e);
-    }
-
-    if (!user) {
-      user = await getCurrentUser();
-    }
+    const user = await getCurrentUser();
 
     if (!user || !hasPermission(user, 'candidate.create')) {
       logger.warn({

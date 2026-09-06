@@ -5,8 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/rbac';
 import { logger } from '@/lib/logger';
 import { AgencyStatus, SubscriptionTier, UserRole, UserStatus } from '@prisma/client';
-import { createClient as createSupabaseAdminClient } from '@supabase/supabase-js';
-import crypto from 'crypto';
+import { hashPassword } from '@/lib/auth/password';
 
 export type CreateAgencyPayload = {
   name: string;
@@ -24,14 +23,7 @@ export type ActionResult<T = any> = {
   errors?: Record<string, string>;
 };
 
-function getSupabaseAdmin() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://hadrlwfcsoouttnzeoye.supabase.co';
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!serviceKey) return null;
-  return createSupabaseAdminClient(url, serviceKey, {
-    auth: { autoRefreshToken: false, persistSession: false }
-  });
-}
+
 
 async function requireSuperAdmin(userOverride?: any) {
   const currentUser = userOverride || await getCurrentUser();
@@ -169,44 +161,20 @@ export async function createAgencyAction(payload: CreateAgencyPayload, userOverr
       }
     });
 
-    // 2. Provision Supabase Auth User if available
-    let supabaseUserId: string | null = null;
-    const supabaseAdmin = getSupabaseAdmin();
-    if (supabaseAdmin) {
-      const { data: sbData, error: sbError } = await supabaseAdmin.auth.admin.createUser({
-        email: ownerEmail,
-        password: temporaryPassword,
-        email_confirm: true,
-        user_metadata: {
-          agency_id: agency.id,
-          role: UserRole.AGENCY_OWNER,
-          first_name: firstName,
-          last_name: lastName
-        }
-      });
-      if (!sbError && sbData?.user) {
-        supabaseUserId = sbData.user.id;
-      }
-    }
+    const passwordHash = await hashPassword(temporaryPassword);
 
-    const passwordHash = `$sha256$${crypto.createHash('sha256').update(temporaryPassword).digest('hex')}`;
-    const createUserData: any = {
-      agencyId: agency.id,
-      email: ownerEmail,
-      passwordHash,
-      firstName,
-      lastName,
-      role: UserRole.AGENCY_OWNER,
-      status: UserStatus.ACTIVE,
-      isActive: true
-    };
-    if (supabaseUserId) {
-      createUserData.id = supabaseUserId;
-    }
-
-    // 3. Create Agency Owner User
+    // 2. Create Agency Owner User
     const ownerUser = await prisma.user.create({
-      data: createUserData
+      data: {
+        agencyId: agency.id,
+        email: ownerEmail,
+        passwordHash,
+        firstName,
+        lastName,
+        role: UserRole.AGENCY_OWNER,
+        status: UserStatus.ACTIVE,
+        isActive: true
+      }
     });
 
     // 4. Link Owner to Agency & UserRoleAssignment

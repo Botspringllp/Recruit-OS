@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Lock, Mail, ArrowRight, ShieldCheck, AlertCircle } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
+import { loginAction } from '@/app/actions/auth';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -18,20 +18,19 @@ export default function LoginPage() {
     setErrorMsg(null);
 
     try {
-      const supabase = createClient();
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      const formData = new FormData();
+      formData.append('email', email);
+      formData.append('password', password);
 
-      if (error) {
-        setErrorMsg(error.message);
+      const result = await loginAction(formData);
+
+      if (!result.success) {
+        setErrorMsg(result.error || 'Login failed.');
         setLoading(false);
         return;
       }
 
-      // Successful login redirect to recruiter cockpit
-      router.push('/cockpit');
+      router.push(result.redirectTo || '/cockpit');
       router.refresh();
     } catch (err: any) {
       setErrorMsg(err.message || 'An unexpected error occurred during sign in.');
