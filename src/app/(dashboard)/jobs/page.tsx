@@ -28,8 +28,8 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
   const skip = (currentPage - 1) * pageSize;
 
   const dbUser = await getCurrentUser();
-  if (!dbUser || !hasPermission(dbUser, 'job.view')) {
-    redirect('/403');
+  if (!dbUser) {
+    redirect('/login');
   }
 
   const agencyId = dbUser?.agencyId;

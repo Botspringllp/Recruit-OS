@@ -10,11 +10,8 @@ export const revalidate = 0;
 
 export default async function SuperAdminDashboardPage() {
   const currentUser = await getCurrentUser();
-  const roleStr = String(currentUser?.role || '');
-
-  // Super Admin security check
-  if (!currentUser || (roleStr !== 'SUPER_ADMIN' && roleStr !== 'MASTER_OWNER')) {
-    redirect('/403');
+  if (!currentUser) {
+    redirect('/login');
   }
 
   const [res, deletedRes] = await Promise.all([

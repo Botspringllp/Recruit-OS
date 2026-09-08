@@ -14,12 +14,12 @@ export default async function CockpitPage() {
 
   // Fetch agency context
   const dbUser = await getCurrentUser();
-  if (dbUser?.role === 'SUPER_ADMIN') {
-    redirect('/super-admin');
+  if (!dbUser) {
+    redirect('/login');
   }
-
-  if (dbUser?.agency?.status === 'SUSPENDED') {
-    redirect('/403');
+  const roleStr = String(dbUser?.role || '').toUpperCase();
+  if (roleStr === 'SUPER_ADMIN' || roleStr === 'MASTER_OWNER') {
+    redirect('/super-admin');
   }
 
   const agencyId = dbUser?.agencyId;

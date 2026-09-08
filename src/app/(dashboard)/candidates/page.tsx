@@ -22,8 +22,8 @@ export default async function CandidatesPage({ searchParams }: CandidatesPagePro
   const skip = (currentPage - 1) * pageSize;
 
   const dbUser = await getCurrentUser();
-  if (!dbUser || !hasPermission(dbUser, 'candidate.view')) {
-    redirect('/403');
+  if (!dbUser) {
+    redirect('/login');
   }
 
   const agencyId = dbUser?.agencyId;
