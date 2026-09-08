@@ -65,6 +65,7 @@ export async function createJobMandateAction(prevState: any, formData: FormData,
     const skills = (formData.get('skills') as string || '').trim();
     const description = (formData.get('description') as string || '').trim();
     const companyOverview = (formData.get('companyOverview') as string || '').trim();
+    const location = (formData.get('location') as string || '').trim();
 
     // Mandatory Field Validations
     if (!rawTitle) return { success: false, error: 'Position Title is mandatory' };
@@ -76,6 +77,7 @@ export async function createJobMandateAction(prevState: any, formData: FormData,
     if (!skills) return { success: false, error: 'Key Skills Required is mandatory' };
     if (!description) return { success: false, error: 'Job Description is mandatory' };
     if (!companyOverview) return { success: false, error: 'Company Overview is mandatory' };
+    if (!location) return { success: false, error: 'Job Location is mandatory' };
 
     // Resolve or create Client record automatically
     const clientId = await resolveOrCreateClient(agencyId, companyName, industry);
@@ -172,6 +174,7 @@ export async function updateJobMandateAction(jobId: string, prevState: any, form
     const skills = (formData.get('skills') as string || '').trim();
     const description = (formData.get('description') as string || '').trim();
     const companyOverview = (formData.get('companyOverview') as string || '').trim();
+    const location = (formData.get('location') as string || '').trim();
 
     // Mandatory Field Validations
     if (!rawTitle) return { success: false, error: 'Position Title is mandatory' };
@@ -183,6 +186,7 @@ export async function updateJobMandateAction(jobId: string, prevState: any, form
     if (!skills) return { success: false, error: 'Key Skills Required is mandatory' };
     if (!description) return { success: false, error: 'Job Description is mandatory' };
     if (!companyOverview) return { success: false, error: 'Company Overview is mandatory' };
+    if (!location) return { success: false, error: 'Job Location is mandatory' };
 
     const existing = await prisma.jobMandate.findFirst({
       where: { id: jobId, agencyId }

@@ -23,7 +23,7 @@ export interface ExtractedMandateResult {
   warning?: string;
 }
 
-// Skill normalization map for standardizing extracted technology names
+// Canonical Skill Normalization Dictionary
 const SKILL_NORMALIZATION_MAP: Record<string, string> = {
   'reactjs': 'React',
   'react.js': 'React',
@@ -54,13 +54,25 @@ const SKILL_NORMALIZATION_MAP: Record<string, string> = {
   'angularjs': 'Angular'
 };
 
+// Known Technology and Functional Skills Dictionary for Document Scanning
+const KNOWN_SKILLS_DICTIONARY = [
+  'React', 'Node.js', 'TypeScript', 'JavaScript', 'Python', 'Java', 'C++', 'C#', '.NET',
+  'Spring Boot', 'AWS', 'Azure', 'Google Cloud', 'PostgreSQL', 'MySQL', 'MongoDB',
+  'Redis', 'Docker', 'Kubernetes', 'GraphQL', 'REST API', 'Next.js', 'Express.js',
+  'HTML', 'CSS', 'TailwindCSS', 'Redux', 'Git', 'CI/CD', 'Jenkins', 'Terraform',
+  'Kafka', 'Elasticsearch', 'Microservices', 'System Design', 'Figma', 'UI/UX',
+  'Machine Learning', 'Data Science', 'SQL', 'NoSQL', 'Linux', 'Agile', 'Scrum',
+  'Sales', 'Lead Generation', 'Business Development', 'Digital Marketing', 'SEO',
+  'Accounting', 'Tally', 'Financial Analysis', 'Excel', 'Customer Support'
+];
+
 /**
-  * Standardize and clean skills list
-  */
+ * Standardize and clean extracted skills without inventing unmentioned skills
+ */
 function normalizeSkills(rawSkillsStr: string): string {
   if (!rawSkillsStr) return '';
   
-  const tokens = rawSkillsStr.split(/[,;\n|/]/).map(s => s.trim()).filter(Boolean);
+  const tokens = rawSkillsStr.split(/[,;\n|/•\t]/).map(s => s.trim()).filter(Boolean);
   const normalizedSet = new Set<string>();
 
   for (const token of tokens) {
@@ -68,9 +80,8 @@ function normalizeSkills(rawSkillsStr: string): string {
     if (SKILL_NORMALIZATION_MAP[key]) {
       normalizedSet.add(SKILL_NORMALIZATION_MAP[key]);
     } else {
-      // Capitalize properly if unknown
       const cleanToken = token.replace(/^[^\w]+|[^\w]+$/g, '');
-      if (cleanToken.length > 1) {
+      if (cleanToken.length >= 2 && !/^(and|or|with|the|in|for|to|of|on|a|an)$/i.test(cleanToken)) {
         normalizedSet.add(cleanToken);
       }
     }
@@ -148,11 +159,11 @@ function inferIndustryType(text: string): { industry: string; confidence: number
 }
 
 /**
- * Intelligent AI & Regex Parser for Job Mandate Documents (Phase JM-02B)
- * Enhanced coverage for all 9 recruiter fields with contextual AI inference.
+ * High-Precision AI & Regex Parser for Job Mandates
+ * Enhanced focus on exact Skills, Qualification/Education, bounded Job Description, and Location.
  */
 export async function parseJobMandateText(rawText: string): Promise<ExtractedMandateResult> {
-  const text = (rawText || '').trim();
+  const text = (rawText || '').replace(/\u00A0/g, ' ').trim();
   const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
 
   let title = '';
@@ -162,7 +173,7 @@ export async function parseJobMandateText(rawText: string): Promise<ExtractedMan
   let experience = '';
   let education = '';
   let skills = '';
-  let description = text;
+  let description = '';
   let companyOverview = '';
   let headcount = 1;
   let minCtcLpa = '';
@@ -232,7 +243,6 @@ export async function parseJobMandateText(rawText: string): Promise<ExtractedMan
   }
 
   if (!title && lines.length > 0) {
-    // Fallback: search top 5 lines for a likely job title
     const candidateLine = lines.slice(0, 8).find(l => 
       l.length < 80 && 
       !/description|overview|company|client|about|table|requirements|mandate|hiring|date/i.test(l) &&
@@ -242,7 +252,6 @@ export async function parseJobMandateText(rawText: string): Promise<ExtractedMan
       title = candidateLine.trim();
       confidence.title = 0.78;
     } else {
-      // General top line fallback
       const topFirstLine = lines[0];
       if (topFirstLine && topFirstLine.length < 75) {
         title = topFirstLine.trim();
@@ -253,8 +262,8 @@ export async function parseJobMandateText(rawText: string): Promise<ExtractedMan
 
   // 2. Company Name Detection
   const clientPatterns = [
-    /(?:Client Name|Company Name|Client|Company|Employer|Organization|Hiring Company|About)\s*[:|-]\s*([^\r\n]+)/i,
-    /(?:Client|Company)\s*[:|-]\s*([^\r\n]+)/i
+    /(?:Client Name|Company Name|Client|Company|Employer|Organization|Hiring Company)\s*[:|-]\s*([^\r\n]+)/i,
+    /(?:Hiring Client|About Us|Company Profile)\s*[:|-]\s*([^\r\n]+)/i
   ];
 
   for (const pattern of clientPatterns) {
@@ -267,7 +276,6 @@ export async function parseJobMandateText(rawText: string): Promise<ExtractedMan
   }
 
   if (!clientName) {
-    // Scan for company brand indicators (Inc, Ltd, Pvt Ltd, Technologies, Solutions, Corp)
     const companyLine = lines.slice(0, 10).find(l => 
       /\b(Pvt\.?\s*Ltd\.?|Private\s*Limited|Limited|Inc\.?|LLC|Technologies|Solutions|Corporation|Corp\.?|Services|Group|Software)\b/i.test(l)
     );
@@ -277,19 +285,37 @@ export async function parseJobMandateText(rawText: string): Promise<ExtractedMan
     }
   }
 
-  // 3. Industry Type Detection (Explicit + Contextual AI NLP Inference)
+  // 3. Location Detection
+  const locPatterns = [
+    /(?:Location|Job Location|Work Location|Base Location|City|Place of Posting|Posting Location)\s*[:|-]\s*([^\r\n]+)/i,
+    /\b(Bangalore|Bengaluru|Mumbai|Delhi|NCR|Gurgaon|Gurugram|Noida|Hyderabad|Pune|Chennai|Kolkata|Ahmedabad|Remote|Hybrid)\b/i
+  ];
+
+  for (const pattern of locPatterns) {
+    const match = text.match(pattern);
+    if (match && match[1]) {
+      location = match[1].trim();
+      confidence.location = 0.92;
+      break;
+    } else if (match && match[0]) {
+      location = match[0].trim();
+      confidence.location = 0.85;
+      break;
+    }
+  }
+
+  // 4. Industry Type Detection (Explicit + Contextual AI NLP Inference)
   const explicitIndustryMatch = text.match(/(?:Industry Type|Industry|Domain|Sector|Business Domain)\s*[:|-]\s*([^\r\n]+)/i);
   if (explicitIndustryMatch && explicitIndustryMatch[1]) {
     industry = explicitIndustryMatch[1].trim();
     confidence.industry = 0.95;
   } else {
-    // AI Contextual Inference
     const inferred = inferIndustryType(text);
     industry = inferred.industry;
     confidence.industry = inferred.confidence;
   }
 
-  // 4. Employment Type Detection
+  // 5. Employment Type Detection
   const empTypeMatch = text.match(/(?:Employment Type|Job Type|Work Type|Engagement Type)\s*[:|-]\s*([^\r\n]+)/i);
   if (empTypeMatch && empTypeMatch[1]) {
     const val = empTypeMatch[1].trim();
@@ -310,7 +336,7 @@ export async function parseJobMandateText(rawText: string): Promise<ExtractedMan
     confidence.employmentType = 0.88;
   }
 
-  // 5. Experience Required Detection
+  // 6. Experience Required Detection
   const expMatch = text.match(/(?:Experience Required|Experience|Relevant Experience|Exp|YOE|Years of Exp)\s*[:|-]\s*([^\r\n]+)/i) ||
                    text.match(/(\d+)\s*(?:-|to|–)\s*(\d+)\s*(?:years|yrs)?/i) ||
                    text.match(/(\d+)\+\s*(?:years|yrs)\s*(?:of)?\s*experience/i);
@@ -326,66 +352,74 @@ export async function parseJobMandateText(rawText: string): Promise<ExtractedMan
     }
   }
 
-  // 6. Education Requirements Detection
-  const eduPatterns = [
-    /(?:Education Requirements|Education|Qualification|Academic Requirements|Academic Qualification|Degree)\s*[:|-]\s*([^\r\n]+)/i,
-    /\b(B\.?Tech|B\.?E\.?|M\.?Tech|M\.?C\.?A\.?|B\.?C\.?A\.?|M\.?B\.?A\.?|B\.?Sc|M\.?Sc|Bachelor'?s|Master'?s|Graduation|Post-Graduation|Diploma)\b[^\r\n]*/i
-  ];
+  // 7. HIGH-PRECISION EDUCATION / QUALIFICATION EXTRACTION
+  const eduHeaderMatch = text.match(/(?:Education Requirements|Education|Qualifications?|Academic Requirements|Academic Qualification|Degree|Eligibility)\s*[:|-]\s*([^\r\n]+)/i);
 
-  for (const pattern of eduPatterns) {
-    const match = text.match(pattern);
-    if (match && match[1]) {
-      education = match[1].trim();
-      confidence.education = 0.90;
-      break;
-    } else if (match && match[0]) {
-      education = match[0].trim();
-      confidence.education = 0.85;
-      break;
-    }
-  }
-
-  // 7. Key Skills Extraction & Normalization
-  const skillMatch = text.match(/(?:Key Skills|Primary Skills|Must Have|Required Skills|Skills Required|Technical Skills|Mandatory Skills|Tech Stack)\s*[:|-]\s*([^\r\n]+)/i);
-  if (skillMatch && skillMatch[1]) {
-    skills = normalizeSkills(skillMatch[1]);
-    confidence.skills = 0.94;
+  if (eduHeaderMatch && eduHeaderMatch[1]) {
+    education = eduHeaderMatch[1].trim();
+    confidence.education = 0.95;
   } else {
-    // Search common tech terms throughout document
-    const commonSkills = [
-      'React', 'Node.js', 'TypeScript', 'JavaScript', 'Python', 'Java', 'Spring Boot',
-      'AWS', 'PostgreSQL', 'MongoDB', 'Docker', 'Kubernetes', 'GraphQL', 'Next.js',
-      'Express', 'HTML', 'CSS', 'REST API', 'Redux', 'TailwindCSS', 'Git', 'CI/CD', 'SQL'
-    ];
-    const foundSkills = commonSkills.filter(sk => new RegExp(`\\b${sk}\\b`, 'i').test(text));
-    if (foundSkills.length > 0) {
-      skills = foundSkills.join(', ');
-      confidence.skills = 0.82;
+    // Search explicit degree mentions without inventing
+    const eduDegreeMatch = text.match(/\b(B\.?Tech|B\.?E\.?|M\.?Tech|M\.?C\.?A\.?|B\.?C\.?A\.?|M\.?B\.?A\.?|B\.?Sc|M\.?Sc|Bachelor'?s(?:\s+degree)?|Master'?s(?:\s+degree)?|Graduation|Post-Graduation|Diploma|Ph\.?D)\b[^\r\n]*/i);
+    if (eduDegreeMatch && eduDegreeMatch[0]) {
+      education = eduDegreeMatch[0].trim();
+      confidence.education = 0.88;
     }
   }
 
-  // 8. Company Overview Detection (Explicit + Contextual AI Heuristic)
+  // 8. STRICT & HIGH-PRECISION SKILLS EXTRACTION (NO HALLUCINATION)
+  const explicitSkillHeaderMatch = text.match(/(?:Key Skills|Primary Skills|Must Have Skills|Required Skills|Skills Required|Technical Skills|Mandatory Skills|Tech Stack|Tools & Technologies|Technologies|Competencies|Skill Requirements|Core Skills|Skill Set)\s*[:|-]?\s*([^\r\n]+(?:\n[•\-\*].+)*)/i);
+
+  if (explicitSkillHeaderMatch && explicitSkillHeaderMatch[1]) {
+    skills = normalizeSkills(explicitSkillHeaderMatch[1]);
+    confidence.skills = 0.96;
+  } else {
+    // Exact matching against known skills dictionary present in document
+    const presentSkills = KNOWN_SKILLS_DICTIONARY.filter(sk => 
+      new RegExp(`\\b${sk.replace('.', '\\.')}\\b`, 'i').test(text)
+    );
+    if (presentSkills.length > 0) {
+      skills = presentSkills.join(', ');
+      confidence.skills = 0.88;
+    } else {
+      // Leave blank if no skills mentioned in PDF! Do NOT invent skills!
+      skills = '';
+      confidence.skills = 0.0;
+    }
+  }
+
+  // 9. BOUNDED JOB DESCRIPTION EXTRACTION (NOT THE FULL DOCUMENT)
+  const jdSectionMatch = text.match(/(?:Job Description|Responsibilities|Roles & Responsibilities|Key Responsibilities|Duties & Responsibilities|What you will do|Key Deliverables)\s*[:|-]?\s*([\s\S]*?)(?=\n\n(?:About Company|About Us|Company Overview|Key Skills|Skills|Education|Qualifications|Compensation|Salary|Location|How to Apply|Contact)|$)/i);
+
+  if (jdSectionMatch && jdSectionMatch[1] && jdSectionMatch[1].trim().length > 20) {
+    description = jdSectionMatch[1].trim().slice(0, 1500);
+    confidence.description = 0.94;
+  } else {
+    // Extract max 3-4 bullet lines or paragraphs instead of full PDF dump
+    const bulletLines = lines.filter(l => /^[•\-\*]/.test(l) || /responsib|develop|build|manage|lead|create|design/i.test(l));
+    if (bulletLines.length > 0) {
+      description = bulletLines.slice(0, 6).join('\n');
+      confidence.description = 0.75;
+    } else {
+      description = lines.slice(0, 5).join('\n');
+      confidence.description = 0.65;
+    }
+  }
+
+  // 10. Company Overview Detection
   const overviewMatch = text.match(/(?:Company Overview|About Company|About Us|Organization Overview|Organization Profile|Who We Are|Company Profile)\s*[:|-]?\s*([\s\S]*?)(?=\n\n|\n[A-Z][a-z]+:|$)/i);
 
   if (overviewMatch && overviewMatch[1] && overviewMatch[1].trim().length > 15) {
-    companyOverview = overviewMatch[1].trim().slice(0, 1000);
+    companyOverview = overviewMatch[1].trim().slice(0, 800);
     confidence.companyOverview = 0.90;
   } else {
-    // Contextual AI Overview Generation Heuristic
     const displayCompany = clientName || 'Client Organization';
     const displayTitle = title || 'Hiring Position';
-    companyOverview = `${displayCompany} is a leading ${industry} enterprise actively seeking an experienced professional for the ${displayTitle} role.`;
+    companyOverview = `${displayCompany} is a leading ${industry} enterprise hiring for the ${displayTitle} role.`;
     confidence.companyOverview = 0.75;
   }
 
-  // 9. Job Description Extraction
-  const jdMatch = text.match(/(?:Job Description|Responsibilities|Role Overview|Position Overview|Duties & Responsibilities|What you will do)\s*[:|-]?\s*([\s\S]*?)(?=\n\n[A-Z]|$)/i);
-  if (jdMatch && jdMatch[1] && jdMatch[1].trim().length > 30) {
-    description = jdMatch[1].trim();
-    confidence.description = 0.94;
-  }
-
-  // Advanced metadata extraction
+  // Advanced details
   const headcountMatch = text.match(/(?:Positions|Headcount|Vacancies|Openings|No\. of Openings)\s*[:|-]\s*(\d+)/i);
   if (headcountMatch && headcountMatch[1]) {
     headcount = parseInt(headcountMatch[1], 10) || 1;
@@ -397,12 +431,9 @@ export async function parseJobMandateText(rawText: string): Promise<ExtractedMan
     maxCtcLpa = salaryMatch[2];
   }
 
-  const locMatch = text.match(/(?:Location|City)\s*[:|-]\s*([^\r\n]+)/i);
-  if (locMatch) location = locMatch[1].trim();
-
   let warningMessage: string | undefined = undefined;
-  if (!title && !skills) {
-    warningMessage = 'Some fields could not be automatically extracted. Please review and fill them manually.';
+  if (!title || !skills) {
+    warningMessage = 'Some mandate details could not be extracted automatically. Please review and fill them manually.';
   }
 
   return {

@@ -17,7 +17,8 @@ import {
   Globe,
   GraduationCap,
   Sparkles,
-  FileText
+  FileText,
+  MapPin
 } from 'lucide-react';
 import { MandateStatus } from '@prisma/client';
 import { JobActionResult } from '@/app/actions/jobs';
@@ -39,6 +40,7 @@ export type JobInitialData = {
   skills?: string;
   description?: string;
   companyOverview?: string;
+  location?: string;
   headcount?: number;
   minCtcLpa?: number | null | any;
   maxCtcLpa?: number | null | any;
@@ -69,6 +71,7 @@ export function JobForm({ clients, initialData, action, isEdit = false }: JobFor
   const [skills, setSkills] = useState(initialData?.skills || '');
   const [description, setDescription] = useState(initialData?.description || '');
   const [companyOverview, setCompanyOverview] = useState(initialData?.companyOverview || '');
+  const [location, setLocation] = useState(initialData?.location || '');
 
   // Advanced Optional Fields
   const [headcount, setHeadcount] = useState(initialData?.headcount ? String(initialData.headcount) : '1');
@@ -92,6 +95,7 @@ export function JobForm({ clients, initialData, action, isEdit = false }: JobFor
     formData.append('skills', skills.trim());
     formData.append('description', description.trim());
     formData.append('companyOverview', companyOverview.trim());
+    formData.append('location', location.trim());
 
     formData.append('headcount', headcount || '1');
     if (minCtcLpa) formData.append('minCtcLpa', minCtcLpa);
@@ -220,6 +224,23 @@ export function JobForm({ clients, initialData, action, isEdit = false }: JobFor
               onChange={e => setExperience(e.target.value)}
               placeholder="e.g. 3 - 5 Years"
               className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 font-bold placeholder:text-slate-400 focus:outline-none focus:border-amber-500 focus:bg-white transition-all"
+            />
+          </div>
+
+          {/* Job Location */}
+          <div className="space-y-1.5">
+            <label className="text-slate-900 font-extrabold uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+              <MapPin className="h-3.5 w-3.5 text-amber-600" />
+              Job Location <span className="text-rose-500 font-bold ml-0.5">*</span>
+            </label>
+            <input
+              type="text"
+              name="location"
+              required
+              value={location}
+              onChange={e => setLocation(e.target.value)}
+              placeholder="e.g. Bangalore, Mumbai, Remote, Hybrid, Delhi NCR..."
+              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 font-bold placeholder:text-slate-400 focus:outline-none focus:border-amber-500 focus:bg-white focus:ring-2 focus:ring-amber-500/20 transition-all"
             />
           </div>
 
