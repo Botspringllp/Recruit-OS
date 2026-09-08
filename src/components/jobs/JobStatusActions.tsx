@@ -33,7 +33,7 @@ export function JobStatusActions({ jobId, currentStatus }: JobStatusActionsProps
 
   return (
     <div className="flex items-center gap-2">
-      {loading && <Loader2 className="h-4 w-4 animate-spin text-brand-400" />}
+      {loading && <Loader2 className="h-4 w-4 animate-spin text-amber-600" />}
 
       {/* Pause Button */}
       {currentStatus !== MandateStatus.PAUSED && currentStatus !== MandateStatus.CLOSED && currentStatus !== MandateStatus.CANCELLED && (
@@ -41,9 +41,9 @@ export function JobStatusActions({ jobId, currentStatus }: JobStatusActionsProps
           onClick={() => handleStatusChange(MandateStatus.PAUSED)}
           disabled={loading}
           title="Pause Mandate Hiring"
-          className="px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 disabled:opacity-50"
+          className="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 rounded-xl text-xs font-black transition flex items-center gap-1.5 shadow-sm disabled:opacity-50 cursor-pointer"
         >
-          <Pause className="h-3.5 w-3.5" />
+          <Pause className="h-3.5 w-3.5 fill-current" />
           Pause
         </button>
       )}
@@ -54,9 +54,9 @@ export function JobStatusActions({ jobId, currentStatus }: JobStatusActionsProps
           onClick={() => handleStatusChange(MandateStatus.ACTIVE)}
           disabled={loading}
           title="Activate Mandate"
-          className="px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 disabled:opacity-50"
+          className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black transition flex items-center gap-1.5 shadow-sm disabled:opacity-50 cursor-pointer"
         >
-          <Play className="h-3.5 w-3.5" />
+          <Play className="h-3.5 w-3.5 fill-current" />
           Activate
         </button>
       )}
@@ -67,9 +67,9 @@ export function JobStatusActions({ jobId, currentStatus }: JobStatusActionsProps
           onClick={() => handleStatusChange(MandateStatus.CLOSED)}
           disabled={loading}
           title="Soft Close Mandate"
-          className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 disabled:opacity-50"
+          className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-black transition flex items-center gap-1.5 shadow-sm disabled:opacity-50 cursor-pointer"
         >
-          <CheckCircle className="h-3.5 w-3.5 text-cyan-400" />
+          <CheckCircle className="h-3.5 w-3.5 text-emerald-400" />
           Close
         </button>
       )}
@@ -80,7 +80,7 @@ export function JobStatusActions({ jobId, currentStatus }: JobStatusActionsProps
           onClick={() => handleStatusChange(MandateStatus.CANCELLED)}
           disabled={loading}
           title="Cancel Mandate"
-          className="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 disabled:opacity-50"
+          className="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-black transition flex items-center gap-1.5 shadow-sm disabled:opacity-50 cursor-pointer"
         >
           <XCircle className="h-3.5 w-3.5" />
           Cancel

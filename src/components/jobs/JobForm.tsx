@@ -282,7 +282,7 @@ export function JobForm({ clients, initialData, action, isEdit = false }: JobFor
           <div className="space-y-1.5 md:col-span-2">
             <label className="text-slate-900 font-extrabold uppercase tracking-wider text-[11px] flex items-center gap-1.5">
               <FileText className="h-3.5 w-3.5 text-amber-600" />
-              Job Description & Responsibilities <span className="text-rose-500 font-bold ml-0.5">*</span>
+              Job Description <span className="text-rose-500 font-bold ml-0.5">*</span>
             </label>
             <textarea
               name="description"

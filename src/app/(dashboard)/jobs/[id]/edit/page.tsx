@@ -25,7 +25,11 @@ export default async function JobEditPage({ params }: JobEditPageProps) {
 
   const [job, clients] = await Promise.all([
     prisma.jobMandate.findFirst({
-      where: { id: params.id, agencyId }
+      where: { id: params.id, agencyId },
+      include: {
+        client: true,
+        prepKits: true
+      }
     }).catch(() => null),
     prisma.client.findMany({
       where: { agencyId },
@@ -37,6 +41,9 @@ export default async function JobEditPage({ params }: JobEditPageProps) {
   if (!job) {
     notFound();
   }
+
+  const prepKit = job.prepKits?.[0];
+  const processDetails = prepKit?.interviewProcess ? parsePrepKitDetails(prepKit.interviewProcess) : {};
 
   const boundUpdateAction = updateJobMandateAction.bind(null, job.id);
 
@@ -68,7 +75,16 @@ export default async function JobEditPage({ params }: JobEditPageProps) {
         initialData={{
           id: job.id,
           clientId: job.clientId,
+          clientName: job.client?.companyName || '',
           title: job.title,
+          industry: job.client?.industry || processDetails.industry || '',
+          employmentType: processDetails.employmentType || 'Full-Time',
+          experience: processDetails.experience || '',
+          education: processDetails.education || '',
+          skills: prepKit?.behavioralTips || processDetails.skills || '',
+          description: prepKit?.technicalFaqs || processDetails.description || '',
+          companyOverview: prepKit?.companyOverview || '',
+          location: processDetails.location || '',
           headcount: job.headcount,
           minCtcLpa: job.minCtcLpa,
           maxCtcLpa: job.maxCtcLpa,
@@ -80,4 +96,26 @@ export default async function JobEditPage({ params }: JobEditPageProps) {
       />
     </div>
   );
+}
+
+function parsePrepKitDetails(processText?: string) {
+  if (!processText) return {};
+  const map: Record<string, string> = {};
+  const lines = processText.split(/\n+/);
+  for (const line of lines) {
+    const match = line.match(/^([^:]+):\s*(.*)$/);
+    if (match) {
+      const key = match[1].trim().toLowerCase();
+      map[key] = match[2].trim();
+    }
+  }
+  return {
+    industry: map['industry'] || '',
+    employmentType: map['employment type'] || 'Full-Time',
+    experience: map['experience'] || '',
+    education: map['education'] || '',
+    skills: map['key skills'] || '',
+    description: map['job description'] || '',
+    location: map['location'] || ''
+  };
 }

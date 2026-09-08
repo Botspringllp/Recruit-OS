@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { MandateStatus } from '@prisma/client';
-import { requirePermission } from '@/lib/rbac';
+import { requirePermission, getCurrentUser } from '@/lib/rbac';
 import { getResolvedAgencyId } from '@/lib/agency/resolver';
 
 export type JobActionResult = {
@@ -310,5 +310,39 @@ export async function updateJobStatusAction(jobId: string, newStatus: MandateSta
     return { success: true, jobId };
   } catch (err: any) {
     return { success: false, error: err.message || 'Failed to update status transition' };
+  }
+}
+
+export async function submitCandidateToMandateAction(jobId: string, candidateId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const user = await getCurrentUser();
+    if (!user || !user.agencyId) {
+      return { success: false, error: 'Unauthorized user session.' };
+    }
+    await requirePermission('job.edit', user);
+    const agencyId = user.agencyId;
+
+    const existing = await prisma.candidateSubmission.findFirst({
+      where: { agencyId, jobId, candidateId }
+    });
+
+    if (existing) {
+      return { success: false, error: 'Candidate is already submitted to this job mandate.' };
+    }
+
+    await prisma.candidateSubmission.create({
+      data: {
+        agencyId,
+        jobId,
+        candidateId,
+        stage: 'SCREENED',
+        slaStatus: 'HEALTHY'
+      }
+    });
+
+    revalidatePath(`/jobs/${jobId}`);
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to submit candidate to mandate' };
   }
 }
