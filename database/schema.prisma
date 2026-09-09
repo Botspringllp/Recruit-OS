@@ -430,6 +430,7 @@ model CandidateRecord {
   commLogs               CommunicationLog[]
   partnerSubmissions     PartnerCandidateSubmission[]
   storefrontShowcases    StorefrontTalentShowcase[]
+  discussionNote         CandidateDiscussionNote?
 
   @@unique([agencyId, phone], name: "ux_candidate_agency_phone")
   @@unique([agencyId, email], name: "ux_candidate_agency_email")
@@ -1182,4 +1183,31 @@ model FileStorageRecord {
   agency Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
 
   @@map("file_storage_records")
+}
+
+model CandidateDiscussionNote {
+  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @map("note_id") @db.Uuid
+  agencyId           String   @map("agency_id") @db.Uuid
+  candidateId        String   @map("candidate_id") @db.Uuid
+  readyToRelocate    String?  @default("Yes") @map("ready_to_relocate") @db.VarChar(64)
+  totalExperience    String?  @map("total_experience") @db.VarChar(64)
+  relevantExperience String?  @map("relevant_experience") @db.VarChar(64)
+  currentDesignation String?  @map("current_designation") @db.VarChar(255)
+  qualification      String?  @map("qualification") @db.VarChar(255)
+  currentCompany     String?  @map("current_company") @db.VarChar(255)
+  currentSalary      String?  @map("current_salary") @db.VarChar(128)
+  expectedSalary     String?  @map("expected_salary") @db.VarChar(128)
+  noticePeriod       String?  @map("notice_period") @db.VarChar(128)
+  reasonOfLeaving    String?  @map("reason_of_leaving") @db.Text
+  offerInHand        String?  @default("No") @map("offer_in_hand") @db.VarChar(32)
+  offerDetails       String?  @map("offer_details") @db.Text
+  recruiterNotes     String?  @map("recruiter_notes") @db.Text
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  candidate CandidateRecord @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  @@unique([candidateId])
+  @@index([agencyId, candidateId])
+  @@map("candidate_discussion_notes")
 }

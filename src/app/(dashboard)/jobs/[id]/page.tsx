@@ -22,6 +22,7 @@ import { prisma } from '@/lib/prisma';
 import { JobStatusActions } from '@/components/jobs/JobStatusActions';
 import { JobCandidatePipeline } from '@/components/jobs/JobCandidatePipeline';
 import { getCurrentUser, hasPermission } from '@/lib/rbac';
+import { serializeDecimals } from '@/lib/serialize';
 import { redirect } from 'next/navigation';
 
 export const revalidate = 0;
@@ -377,8 +378,8 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
             jobSkills={skillsList}
             jobExperience={displayExperience}
             jobLocation={displayLocation}
-            submissions={job.submissions}
-            allCandidates={allCandidates}
+            submissions={serializeDecimals(job.submissions)}
+            allCandidates={serializeDecimals(allCandidates)}
           />
 
         </div>

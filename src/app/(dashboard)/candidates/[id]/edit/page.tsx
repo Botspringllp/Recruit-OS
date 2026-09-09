@@ -58,7 +58,7 @@ export default async function CandidateEditPage({ params }: CandidateEditPagePro
           phone: candidate.phone,
           currentCompany: candidate.currentCompany,
           currentDesignation: candidate.currentDesignation,
-          totalExperienceYears: candidate.totalExperienceYears,
+          totalExperienceYears: candidate.totalExperienceYears ? Number(candidate.totalExperienceYears) : undefined,
           currentLocation: candidate.currentLocation,
           source: candidate.source
         }}

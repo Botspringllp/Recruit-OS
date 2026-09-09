@@ -86,9 +86,9 @@ export default async function JobEditPage({ params }: JobEditPageProps) {
           companyOverview: prepKit?.companyOverview || '',
           location: processDetails.location || '',
           headcount: job.headcount,
-          minCtcLpa: job.minCtcLpa,
-          maxCtcLpa: job.maxCtcLpa,
-          feePercentage: job.feePercentage,
+          minCtcLpa: job.minCtcLpa ? Number(job.minCtcLpa) : undefined,
+          maxCtcLpa: job.maxCtcLpa ? Number(job.maxCtcLpa) : undefined,
+          feePercentage: job.feePercentage ? Number(job.feePercentage) : undefined,
           status: job.status
         }}
         action={boundUpdateAction}

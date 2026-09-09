@@ -4,6 +4,8 @@ import { notFound } from 'next/navigation';
 import { User, Mail, Phone, Building, Briefcase, MapPin, Award, Layers, ArrowLeft, Edit3, Clock, CheckCircle2, FileText, Download, Eye, Paperclip } from 'lucide-react';
 import { prisma } from '@/lib/prisma';
 import { DeleteCandidateButton } from '@/components/candidates/DeleteCandidateButton';
+import { CandidateDiscussionNotesSection } from '@/components/candidates/CandidateDiscussionNotesSection';
+import { serializeDecimals } from '@/lib/serialize';
 
 import { getCurrentUser, hasPermission } from '@/lib/rbac';
 import { redirect } from 'next/navigation';
@@ -39,6 +41,7 @@ export default async function CandidateDetailPage({ params }: CandidateDetailPag
       deletedAt: null
     },
     include: {
+      discussionNote: true,
       submissions: {
         orderBy: { createdAt: 'desc' },
         include: {
@@ -256,6 +259,12 @@ export default async function CandidateDetailPage({ params }: CandidateDetailPag
               )}
             </div>
           </div>
+
+          {/* Phase CD-01: Candidate Discussion Notes */}
+          <CandidateDiscussionNotesSection
+            candidateId={candidate.id}
+            initialNote={serializeDecimals(candidate.discussionNote)}
+          />
         </div>
       </div>
     </div>
