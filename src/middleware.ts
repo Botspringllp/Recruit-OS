@@ -35,7 +35,7 @@ export async function middleware(request: NextRequest) {
   // Route definitions
   const isLoginRoute = pathname === '/login';
   const isSplashRoute = pathname === '/';
-  const isPublicRoute = isLoginRoute || isSplashRoute || pathname.startsWith('/portal/review');
+  const isPublicRoute = isLoginRoute || isSplashRoute || pathname.startsWith('/portal/review') || pathname.startsWith('/client-review');
 
   // =========================================================================
   // TESTING MODE AUTHENTICATION BEHAVIOR (TESTING_MODE = true)

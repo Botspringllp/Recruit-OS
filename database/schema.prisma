@@ -302,6 +302,7 @@ model User {
   ownershipLogsPrevious  CandidateOwnershipLog[]         @relation("PreviousRecruiterOwnership")
   ownershipLogsNew       CandidateOwnershipLog[]         @relation("NewRecruiterOwnership")
   sentCommLogs           CommunicationLog[]
+  candidateSubmissions   CandidateSubmission[]           @relation("SubmissionRecruiter")
   verifiedComplianceDocs CandidateComplianceDoc[]
   auditedOfferAudits     JobOfferAudit[]
   arbitrationsAsExisting CandidateOwnershipArbitration[] @relation("ArbitrationExistingRecruiter")
@@ -507,10 +508,11 @@ model Client {
   updatedAt             DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt             DateTime? @map("deleted_at") @db.Timestamptz
 
-  agency   Agency          @relation(fields: [agencyId], references: [id], onDelete: Restrict)
+  agency   Agency                @relation(fields: [agencyId], references: [id], onDelete: Restrict)
   contacts ClientContact[]
   mandates JobMandate[]
   invoices InvoiceRecord[]
+  submissions CandidateSubmission[]
 
   @@index([agencyId, companyName])
   @@map("clients")
@@ -574,20 +576,27 @@ model JobPrepKit {
 }
 
 model CandidateSubmission {
-  id            String        @id @default(dbgenerated("gen_random_uuid()")) @map("submission_id") @db.Uuid
-  agencyId      String        @map("agency_id") @db.Uuid
-  jobId         String        @map("mandate_id") @db.Uuid
-  candidateId   String        @map("candidate_id") @db.Uuid
-  stage         PipelineStage @default(SCREENED)
-  slaStatus     SlaStatus     @default(HEALTHY) @map("sla_status")
-  offeredCtcLpa Decimal?      @map("offered_ctc_lpa") @db.Decimal(10, 2)
-  joiningDate   DateTime?     @map("joining_date") @db.Date
-  createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt     DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  id                String        @id @default(dbgenerated("gen_random_uuid()")) @map("submission_id") @db.Uuid
+  agencyId          String        @map("agency_id") @db.Uuid
+  jobId             String        @map("mandate_id") @db.Uuid
+  candidateId       String        @map("candidate_id") @db.Uuid
+  clientId          String?       @map("client_id") @db.Uuid
+  recruiterId       String?       @map("recruiter_id") @db.Uuid
+  status            String        @default("PENDING") @db.VarChar(32)
+  secureReviewToken String?       @map("secure_review_token") @db.VarChar(255)
+  recruiterMessage  String?       @map("recruiter_message") @db.Text
+  stage             PipelineStage @default(SCREENED)
+  slaStatus         SlaStatus     @default(HEALTHY) @map("sla_status")
+  offeredCtcLpa     Decimal?      @map("offered_ctc_lpa") @db.Decimal(10, 2)
+  joiningDate       DateTime?     @map("joining_date") @db.Date
+  createdAt         DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   agency             Agency                     @relation(fields: [agencyId], references: [id], onDelete: Restrict)
   job                JobMandate                 @relation(fields: [jobId], references: [id], onDelete: Restrict)
   candidate          CandidateRecord            @relation(fields: [candidateId], references: [id], onDelete: Restrict)
+  client             Client?                    @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  recruiter          User?                      @relation("SubmissionRecruiter", fields: [recruiterId], references: [id], onDelete: SetNull)
   slaLogs            PipelineSlaLog[]
   proposedSlots      ProposedInterviewSlot[]
   interviewSchedules InterviewSchedule[]
@@ -601,6 +610,7 @@ model CandidateSubmission {
   @@unique([jobId, candidateId], name: "ux_submission_job_candidate")
   @@index([agencyId, stage])
   @@index([stage])
+  @@index([secureReviewToken])
   @@map("candidate_submissions")
 }
 

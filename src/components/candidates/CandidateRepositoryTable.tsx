@@ -16,6 +16,7 @@ import {
   X
 } from 'lucide-react';
 import { DeleteCandidateButton } from '@/components/candidates/DeleteCandidateButton';
+import { ShareToClientModal } from '@/components/candidates/ShareToClientModal';
 
 export interface CandidateItem {
   id: string;
@@ -49,9 +50,10 @@ export function CandidateRepositoryTable({
   skip,
   query
 }: CandidateRepositoryTableProps) {
-  // Candidate selection state
+  // Candidate selection & modal state
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
+  const [isShareModalOpen, setIsShareModalOpen] = useState<boolean>(false);
 
   // Check if all candidates on current page are selected
   const currentPageIds = candidateList.map(c => c.id);
@@ -83,10 +85,7 @@ export function CandidateRepositoryTable({
 
   // Handle "Share to Client" entry action
   function handleShareToClient() {
-    setInfoMessage(
-      `Share to Client initiated for ${selectedIds.length} selected candidate(s). Selection state active.`
-    );
-    setTimeout(() => setInfoMessage(null), 5000);
+    setIsShareModalOpen(true);
   }
 
   return (
@@ -310,6 +309,17 @@ export function CandidateRepositoryTable({
           </div>
         )}
       </div>
+
+      {/* Share to Client Modal */}
+      <ShareToClientModal
+        isOpen={isShareModalOpen}
+        selectedCandidateIds={selectedIds}
+        onClose={() => setIsShareModalOpen(false)}
+        onSuccess={() => {
+          setIsShareModalOpen(false);
+          setSelectedIds([]);
+        }}
+      />
     </div>
   );
 }
