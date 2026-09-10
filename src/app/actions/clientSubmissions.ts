@@ -9,8 +9,6 @@ import crypto from 'crypto';
 export interface ShareToClientPayload {
   candidateIds: string[];
   jobId: string;
-  recipientEmail?: string;
-  emailSubject?: string;
   recruiterMessage?: string;
 }
 
@@ -19,7 +17,6 @@ export interface ActiveJobOption {
   title: string;
   companyName: string;
   clientId: string | null;
-  defaultContactEmail: string;
   candidateCount: number;
 }
 
@@ -48,13 +45,7 @@ export async function getActiveMandatesForShareAction(): Promise<{
         clientId: true,
         client: {
           select: {
-            companyName: true,
-            contacts: {
-              select: {
-                email: true
-              },
-              take: 1
-            }
+            companyName: true
           }
         },
         _count: {
@@ -71,7 +62,6 @@ export async function getActiveMandatesForShareAction(): Promise<{
       title: j.title,
       companyName: j.client?.companyName || 'General Client',
       clientId: j.clientId,
-      defaultContactEmail: j.client?.contacts?.[0]?.email || '',
       candidateCount: j._count.submissions
     }));
 
@@ -282,8 +272,8 @@ export async function createCandidateSubmissionsAction(payload: ShareToClientPay
     `;
 
     // Send email using Nodemailer (or log fallback if SMTP server is not set)
-    const targetRecipient = payload.recipientEmail?.trim() || 'client@acme.com';
-    const emailSubject = payload.emailSubject?.trim() || `Candidate Profiles for Review – ${positionTitle}`;
+    const targetRecipient = 'divyanshu@botspring.in';
+    const emailSubject = `Candidate Profiles for Review – ${positionTitle}`;
 
     try {
       if (process.env.SMTP_HOST && process.env.SMTP_USER) {

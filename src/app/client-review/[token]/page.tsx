@@ -17,16 +17,16 @@ export default async function ClientReviewPage({ params }: ClientReviewPageProps
 
   if (!res.success || !res.candidates) {
     return (
-      <div className="min-h-screen bg-slate-50 text-slate-900 flex items-center justify-center p-6 font-sans">
-        <div className="max-w-md w-full bg-white border border-slate-200 rounded-3xl p-8 text-center space-y-5 shadow-xl">
-          <div className="h-16 w-16 rounded-3xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto border border-rose-200">
+      <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-6 font-sans">
+        <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-8 text-center space-y-5 shadow-2xl">
+          <div className="h-16 w-16 rounded-3xl bg-rose-500/10 text-rose-500 flex items-center justify-center mx-auto border border-rose-500/20">
             <Lock className="h-8 w-8" />
           </div>
           <div className="space-y-2">
-            <h1 className="text-xl font-black text-slate-900 tracking-tight">
+            <h1 className="text-xl font-black text-white tracking-tight">
               Link Expired or Invalid Access Token
             </h1>
-            <p className="text-xs font-semibold text-slate-500 leading-relaxed">
+            <p className="text-xs font-semibold text-slate-400 leading-relaxed">
               {res.error || 'This candidate review link is invalid, expired, or has been revoked. Please request an updated review link from your account recruiter.'}
             </p>
           </div>
