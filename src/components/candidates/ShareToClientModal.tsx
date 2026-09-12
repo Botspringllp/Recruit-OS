@@ -8,9 +8,7 @@ import {
   Building2,
   MessageSquare,
   Loader2,
-  CheckCircle2,
-  AlertCircle,
-  ExternalLink
+  AlertCircle
 } from 'lucide-react';
 import {
   getActiveMandatesForShareAction,
@@ -38,16 +36,11 @@ export function ShareToClientModal({
   const [isLoadingJobs, setIsLoadingJobs] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [successData, setSuccessData] = useState<{
-    count: number;
-    reviewUrl: string;
-  } | null>(null);
 
   // Fetch active mandates when modal opens
   useEffect(() => {
     if (isOpen) {
       setError(null);
-      setSuccessData(null);
       setSelectedJobId('');
       setRecruiterMessage('');
       fetchJobs();
@@ -90,13 +83,20 @@ export function ShareToClientModal({
     setIsSubmitting(false);
 
     if (res.success && res.reviewUrl) {
-      setSuccessData({
-        count: res.count || selectedCandidateIds.length,
-        reviewUrl: res.reviewUrl
-      });
-      setTimeout(() => {
-        onSuccess();
-      }, 4000);
+      const mailtoUrl = `mailto:?subject=${encodeURIComponent(
+        res.emailSubject || ''
+      )}&body=${encodeURIComponent(res.emailBodyText || '')}`;
+
+      // 1. Immediately trigger Email App draft
+      try {
+        window.location.href = mailtoUrl;
+      } catch (err) {
+        console.warn('Mailto trigger warning:', err);
+      }
+
+      // 2. Immediately close modal and clear selection (no intermediate success page)
+      onSuccess();
+      onClose();
     } else {
       setError(res.error || 'Failed to submit candidates to client.');
     }
@@ -132,136 +132,108 @@ export function ShareToClientModal({
           </button>
         </div>
 
-        {/* Modal Body */}
+        {/* Modal Body Form */}
         <div className="p-6 space-y-5">
-          {successData ? (
-            <div className="py-6 text-center space-y-4">
-              <div className="h-14 w-14 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto border border-emerald-200">
-                <CheckCircle2 className="h-8 w-8" />
+          <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+            {error && (
+              <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl text-rose-900 font-extrabold flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
+                <span>{error}</span>
               </div>
-              <div className="space-y-1">
-                <h4 className="font-black text-lg text-slate-900">Candidates Shared Successfully!</h4>
-                <p className="text-xs font-semibold text-slate-600">
-                  {successData.count} candidate profile(s) submitted to <strong>{selectedJob?.companyName}</strong>.
-                </p>
-              </div>
+            )}
 
-              <div className="pt-2">
-                <a
-                  href={successData.reviewUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold inline-flex items-center gap-2 transition shadow"
+            {/* 1. Job Mandate Selection */}
+            <div>
+              <label className="block text-[11px] font-extrabold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                <Briefcase className="h-3.5 w-3.5 text-amber-500" />
+                Job Mandate (Required)
+              </label>
+              {isLoadingJobs ? (
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-500 font-bold flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin text-amber-500" />
+                  <span>Loading active mandates...</span>
+                </div>
+              ) : jobs.length > 0 ? (
+                <select
+                  value={selectedJobId}
+                  onChange={e => setSelectedJobId(e.target.value)}
+                  required
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-amber-500 transition"
                 >
-                  <ExternalLink className="h-4 w-4 text-amber-400" />
-                  <span>Preview Client Review Portal</span>
-                </a>
-              </div>
+                  {jobs.map(job => (
+                    <option key={job.id} value={job.id}>
+                      {job.title} ({job.companyName})
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 font-bold">
+                  No active job mandates found. Please create an active job mandate first.
+                </div>
+              )}
             </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="space-y-5 text-xs">
-              {error && (
-                <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl text-rose-900 font-extrabold flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
-                  <span>{error}</span>
-                </div>
-              )}
 
-              {/* 1. Job Mandate Selection */}
-              <div>
-                <label className="block text-[11px] font-extrabold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                  <Briefcase className="h-3.5 w-3.5 text-amber-500" />
-                  Job Mandate (Required)
-                </label>
-                {isLoadingJobs ? (
-                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-500 font-bold flex items-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin text-amber-500" />
-                    <span>Loading active mandates...</span>
+            {/* 2. Client Auto-Resolution */}
+            {selectedJob && (
+              <div className="p-3.5 bg-amber-50/80 border border-amber-200/80 rounded-2xl flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <Building2 className="h-4 w-4 text-amber-600 shrink-0" />
+                  <div>
+                    <span className="text-[10px] font-extrabold text-amber-800 uppercase tracking-wider block">Target Client</span>
+                    <span className="font-black text-slate-900 text-xs">{selectedJob.companyName}</span>
                   </div>
-                ) : jobs.length > 0 ? (
-                  <select
-                    value={selectedJobId}
-                    onChange={e => setSelectedJobId(e.target.value)}
-                    required
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-amber-500 transition"
-                  >
-                    {jobs.map(job => (
-                      <option key={job.id} value={job.id}>
-                        {job.title} ({job.companyName})
-                      </option>
-                    ))}
-                  </select>
+                </div>
+                <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-white text-slate-800 border border-amber-300">
+                  Auto-Resolved
+                </span>
+              </div>
+            )}
+
+            {/* 3. Recruiter Message */}
+            <div>
+              <label className="block text-[11px] font-extrabold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                <MessageSquare className="h-3.5 w-3.5 text-amber-500" />
+                Recruiter Message / Cover Note (Optional)
+              </label>
+              <textarea
+                rows={3}
+                value={recruiterMessage}
+                onChange={e => setRecruiterMessage(e.target.value)}
+                placeholder="e.g. Please find shortlisted profiles for Frontend Developer. All candidates are available for round 1 interviews this week."
+                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-amber-500 transition resize-y text-xs"
+              />
+            </div>
+
+            {/* Form Action Buttons */}
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={isSubmitting}
+                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-extrabold transition cursor-pointer disabled:opacity-50"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="submit"
+                disabled={isSubmitting || !selectedJobId}
+                className="px-5 py-2.5 bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-slate-950 rounded-xl text-xs font-black transition flex items-center gap-2 shadow-md shadow-amber-500/20 cursor-pointer disabled:opacity-50"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Opening Email App...</span>
+                  </>
                 ) : (
-                  <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 font-bold">
-                    No active job mandates found. Please create an active job mandate first.
-                  </div>
+                  <>
+                    <Share2 className="h-4 w-4 stroke-[2.5]" />
+                    <span>Share to Client ({selectedCandidateIds.length})</span>
+                  </>
                 )}
-              </div>
-
-              {/* 2. Client Auto-Resolution */}
-              {selectedJob && (
-                <div className="p-3.5 bg-amber-50/80 border border-amber-200/80 rounded-2xl flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <Building2 className="h-4 w-4 text-amber-600 shrink-0" />
-                    <div>
-                      <span className="text-[10px] font-extrabold text-amber-800 uppercase tracking-wider block">Target Client</span>
-                      <span className="font-black text-slate-900 text-xs">{selectedJob.companyName}</span>
-                    </div>
-                  </div>
-                  <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-white text-slate-800 border border-amber-300">
-                    Auto-Resolved
-                  </span>
-                </div>
-              )}
-
-              {/* 3. Recruiter Message */}
-              <div>
-                <label className="block text-[11px] font-extrabold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                  <MessageSquare className="h-3.5 w-3.5 text-amber-500" />
-                  Recruiter Message / Cover Note (Optional)
-                </label>
-                <textarea
-                  rows={3}
-                  value={recruiterMessage}
-                  onChange={e => setRecruiterMessage(e.target.value)}
-                  placeholder="e.g. Please find shortlisted profiles for Frontend Developer. All candidates are available for round 1 interviews this week."
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-amber-500 transition resize-y text-xs"
-                />
-              </div>
-
-
-
-              {/* Form Action Buttons */}
-              <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  disabled={isSubmitting}
-                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-extrabold transition cursor-pointer disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="submit"
-                  disabled={isSubmitting || !selectedJobId}
-                  className="px-5 py-2.5 bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-slate-950 rounded-xl text-xs font-black transition flex items-center gap-2 shadow-md shadow-amber-500/20 cursor-pointer disabled:opacity-50"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      <span>Submitting...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Share2 className="h-4 w-4 stroke-[2.5]" />
-                      <span>Share to Client ({selectedCandidateIds.length})</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
-          )}
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     </div>

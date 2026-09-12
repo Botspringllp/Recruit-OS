@@ -9,6 +9,7 @@ import crypto from 'crypto';
 export interface ShareToClientPayload {
   candidateIds: string[];
   jobId: string;
+  clientEmail?: string;
   recruiterMessage?: string;
 }
 
@@ -17,6 +18,7 @@ export interface ActiveJobOption {
   title: string;
   companyName: string;
   clientId: string | null;
+  clientEmail?: string;
   candidateCount: number;
 }
 
@@ -45,7 +47,13 @@ export async function getActiveMandatesForShareAction(): Promise<{
         clientId: true,
         client: {
           select: {
-            companyName: true
+            companyName: true,
+            contacts: {
+              select: {
+                email: true
+              },
+              take: 1
+            }
           }
         },
         _count: {
@@ -62,6 +70,7 @@ export async function getActiveMandatesForShareAction(): Promise<{
       title: j.title,
       companyName: j.client?.companyName || 'General Client',
       clientId: j.clientId,
+      clientEmail: j.client?.contacts[0]?.email || '',
       candidateCount: j._count.submissions
     }));
 
@@ -80,6 +89,9 @@ export async function createCandidateSubmissionsAction(payload: ShareToClientPay
   count?: number;
   token?: string;
   reviewUrl?: string;
+  clientEmail?: string;
+  emailSubject?: string;
+  emailBodyText?: string;
   error?: string;
 }> {
   try {
@@ -271,12 +283,21 @@ export async function createCandidateSubmissionsAction(payload: ShareToClientPay
       </html>
     `;
 
-    // Send email using Nodemailer (or log fallback if SMTP server is not set)
-    const targetRecipient = 'divyanshu@botspring.in';
+    const targetRecipient = payload.clientEmail?.trim() || '';
     const emailSubject = `Candidate Profiles for Review – ${positionTitle}`;
+    
+    // Construct Plain Text Email Body for mailto: trigger and clipboard copying
+    const candidateSummaryText = candidates.map((c: any, i: number) => {
+      const note = c.discussionNote;
+      const desig = note?.currentDesignation || c.currentDesignation || 'Candidate';
+      const exp = note?.totalExperience || (c.totalExperienceYears ? `${c.totalExperienceYears} Yrs` : 'N/A');
+      return `${i + 1}. ${c.firstName} ${c.lastName} - ${desig} (${exp} Exp)`;
+    }).join('\n');
+
+    const emailBodyText = `Dear ${clientName} Team,\n\nPlease find shortlisted candidate profiles for ${positionTitle}.\n${payload.recruiterMessage ? `\nRecruiter Note: "${payload.recruiterMessage}"\n` : ''}\nTotal Shortlisted Candidates: ${candidates.length}\n\nReview submitted candidates and record your decisions here:\n${reviewUrl}\n\nCandidate Overview:\n${candidateSummaryText}\n\nBest regards,\nRecruitment Team`;
 
     try {
-      if (process.env.SMTP_HOST && process.env.SMTP_USER) {
+      if (targetRecipient && process.env.SMTP_HOST && process.env.SMTP_USER) {
         const transporter = nodemailer.createTransport({
           host: process.env.SMTP_HOST,
           port: parseInt(process.env.SMTP_PORT || '587', 10),
@@ -291,22 +312,26 @@ export async function createCandidateSubmissionsAction(payload: ShareToClientPay
           from: process.env.SMTP_FROM || `"RecruitOS Talent Platform" <noreply@recruitos.dev>`,
           to: targetRecipient,
           subject: emailSubject,
-          html: emailHtml
+          html: emailHtml,
+          text: emailBodyText
         });
       } else {
-        console.log(`[CLIENT_SUBMISSION_EMAIL] Sent to: ${targetRecipient}`);
+        console.log(`[CLIENT_SUBMISSION_EMAIL] Target Recipient: ${targetRecipient || 'Manual mailto trigger'}`);
         console.log(`[CLIENT_SUBMISSION_EMAIL] Subject: ${emailSubject}`);
-        console.log(`[CLIENT_SUBMISSION_EMAIL] Secure Review Link: ${reviewUrl}`);
+        console.log(`[CLIENT_SUBMISSION_EMAIL] Review Link: ${reviewUrl}`);
       }
     } catch (mailErr) {
-      console.warn('Mail transport execution warning (logging fallback active):', mailErr);
+      console.warn('Mail transport execution warning:', mailErr);
     }
 
     return {
       success: true,
       count: candidates.length,
       token: secureReviewToken,
-      reviewUrl
+      reviewUrl,
+      clientEmail: targetRecipient,
+      emailSubject,
+      emailBodyText
     };
   } catch (err: any) {
     console.error('Error in createCandidateSubmissionsAction:', err);
