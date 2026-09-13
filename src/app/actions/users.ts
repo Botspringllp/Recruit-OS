@@ -160,11 +160,11 @@ export async function createUserAction(payload: UserFormData, agencyIdInput?: st
     }
 
     const existingUser = await prisma.user.findFirst({
-      where: { email, agencyId }
+      where: { email }
     });
 
     if (existingUser) {
-      return { success: false, error: 'A user with this email already exists in this agency.' };
+      return { success: false, error: 'A user with this email address already exists in the system.' };
     }
 
     if (managerId) {
@@ -238,6 +238,9 @@ export async function createUserAction(payload: UserFormData, agencyIdInput?: st
     revalidatePath('/settings/users');
     return { success: true, data: { userId: newUser.id } };
   } catch (error: any) {
+    if (error?.code === 'P2002' || error?.message?.includes('Unique constraint failed')) {
+      return { success: false, error: 'A user with this email address already exists in the system.' };
+    }
     logger.error({ event: 'CREATE_USER_FAILED', error: error.message }, 'Failed to create user');
     return { success: false, error: error.message || 'Failed to create user' };
   }
@@ -274,6 +277,15 @@ export async function updateUserAction(userId: string, payload: UserFormData, ag
 
     if (managerId && managerId === userId) {
       return { success: false, error: 'User cannot be assigned as their own manager.' };
+    }
+
+    if (email !== existingUser.email) {
+      const emailConflict = await prisma.user.findFirst({
+        where: { email }
+      });
+      if (emailConflict) {
+        return { success: false, error: 'A user with this email address already exists in the system.' };
+      }
     }
 
     await prisma.user.update({
@@ -329,6 +341,9 @@ export async function updateUserAction(userId: string, payload: UserFormData, ag
     revalidatePath(`/settings/users/${userId}`);
     return { success: true, data: { userId } };
   } catch (error: any) {
+    if (error?.code === 'P2002' || error?.message?.includes('Unique constraint failed')) {
+      return { success: false, error: 'A user with this email address already exists in the system.' };
+    }
     logger.error({ event: 'UPDATE_USER_FAILED', userId, error: error.message }, 'Failed to update user');
     return { success: false, error: error.message || 'Failed to update user' };
   }

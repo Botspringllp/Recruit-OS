@@ -8,7 +8,8 @@ import {
   restoreAgencyAction,
   permanentlyDeleteAgencyAction
 } from '@/app/actions/agencies';
-import { Building2, PauseCircle, PlayCircle, Trash2, RotateCcw, ShieldAlert } from 'lucide-react';
+import Link from 'next/link';
+import { Building2, PauseCircle, PlayCircle, Trash2, RotateCcw, ShieldAlert, Globe, ExternalLink } from 'lucide-react';
 
 export interface AgencyItem {
   id: string;
@@ -16,6 +17,10 @@ export interface AgencyItem {
   subdomain: string;
   status: 'ACTIVE' | 'SUSPENDED' | 'TRIAL' | 'EXPIRED';
   plan: string;
+  websiteUrl?: string | null;
+  websiteBuilderEnabled?: boolean;
+  widgetEnabled?: boolean;
+  subscriptionExpiryDate?: string | Date | null;
   createdAt: string | Date;
   deletedAt?: string | Date | null;
   ownerName: string;
@@ -184,12 +189,37 @@ export const SuperAdminDashboardClient: React.FC<SuperAdminDashboardClientProps>
                   <tr key={agency.id} className="hover:bg-slate-50/80 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 rounded-xl bg-slate-900 text-amber-500 flex items-center justify-center font-black text-xs shadow-2xs">
+                        <div className="h-9 w-9 rounded-xl bg-slate-900 text-amber-500 flex items-center justify-center font-black text-xs shadow-2xs shrink-0">
                           {agency.name.charAt(0).toUpperCase()}
                         </div>
-                        <div>
-                          <div className="font-extrabold text-slate-900 text-sm">{agency.name}</div>
+                        <div className="space-y-0.5">
+                          <Link
+                            href={`/super-admin/agencies/${agency.id}`}
+                            className="font-black text-slate-900 text-sm hover:text-amber-600 transition-colors flex items-center gap-1.5"
+                          >
+                            <span>{agency.name}</span>
+                          </Link>
                           <div className="text-[11px] font-mono text-slate-500">{agency.subdomain}.recruitos.com</div>
+
+                          {/* Part 5: Website URL Display Rule */}
+                          <div className="pt-0.5">
+                            {agency.websiteUrl ? (
+                              <a
+                                href={agency.websiteUrl.startsWith('http') ? agency.websiteUrl : `https://${agency.websiteUrl}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-600 hover:text-amber-700 hover:underline"
+                              >
+                                <Globe className="h-3 w-3" />
+                                <span>{agency.websiteUrl}</span>
+                                <ExternalLink className="h-2.5 w-2.5" />
+                              </a>
+                            ) : (
+                              <span className="text-[11px] text-slate-400 font-medium italic">
+                                No Website Configured
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </td>

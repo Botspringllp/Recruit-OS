@@ -223,6 +223,32 @@ model Agency {
   status           AgencyStatus     @default(ACTIVE)
   subscriptionTier SubscriptionTier @default(ENTERPRISE) @map("tier")
   ownerId          String?          @map("owner_id") @db.Uuid
+
+  // Feature Access Controls (SA-01 Part 1 & Part 7)
+  websiteBuilderEnabled Boolean   @default(false) @map("website_builder_enabled")
+  widgetEnabled         Boolean   @default(false) @map("widget_enabled")
+
+  // Business Information (SA-01 Part 2)
+  websiteUrl         String?   @map("website_url") @db.VarChar(512)
+  businessEmail      String?   @map("business_email") @db.VarChar(255)
+  supportEmail       String?   @map("support_email") @db.VarChar(255)
+  phone              String?   @db.VarChar(32)
+  alternatePhone     String?   @map("alternate_phone") @db.VarChar(32)
+  address            String?   @db.Text
+  city               String?   @db.VarChar(128)
+  state              String?   @db.VarChar(128)
+  country            String?   @db.VarChar(128)
+  companyDescription String?   @map("company_description") @db.Text
+
+  // Legal Information (SA-01 Part 2)
+  gstNumber          String?   @map("gst_number") @db.VarChar(64)
+  cinNumber          String?   @map("cin_number") @db.VarChar(64)
+  panNumber          String?   @map("pan_number") @db.VarChar(64)
+
+  // Subscription Details (SA-01 Part 2)
+  subscriptionStartDate  DateTime? @map("subscription_start_date") @db.Timestamptz
+  subscriptionExpiryDate DateTime? @map("subscription_expiry_date") @db.Timestamptz
+
   createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz
   updatedAt        DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt        DateTime?        @map("deleted_at") @db.Timestamptz

@@ -2,7 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/rbac';
-import { getAgenciesAction, getDeletedAgenciesAction } from '@/app/actions/agencies';
+import { getAgenciesAction, getDeletedAgenciesAction, checkSubscriptionExpirationsAction } from '@/app/actions/agencies';
 import { SuperAdminDashboardClient } from './SuperAdminDashboardClient';
 import { Building2, Plus, CheckCircle2, PauseCircle, Clock, Trash2 } from 'lucide-react';
 
@@ -13,6 +13,9 @@ export default async function SuperAdminDashboardPage() {
   if (!currentUser) {
     redirect('/login');
   }
+
+  // Part 6: Subscription Expiration Check
+  await checkSubscriptionExpirationsAction(currentUser);
 
   const [res, deletedRes] = await Promise.all([
     getAgenciesAction(currentUser),
