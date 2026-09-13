@@ -83,18 +83,32 @@ export function ShareToClientModal({
     setIsSubmitting(false);
 
     if (res.success && res.reviewUrl) {
-      const mailtoUrl = `mailto:?subject=${encodeURIComponent(
-        res.emailSubject || ''
-      )}&body=${encodeURIComponent(res.emailBodyText || '')}`;
+      // 1. Write generated HTML email template directly to clipboard (HTML rendering)
+      if (res.emailHtml && typeof window !== 'undefined' && navigator.clipboard && window.ClipboardItem) {
+        try {
+          const textBlob = new Blob([res.emailBodyText || ''], { type: 'text/plain' });
+          const htmlBlob = new Blob([res.emailHtml], { type: 'text/html' });
+          await navigator.clipboard.write([
+            new ClipboardItem({
+              'text/plain': textBlob,
+              'text/html': htmlBlob
+            })
+          ]);
+        } catch (clipErr) {
+          console.warn('Clipboard write warning:', clipErr);
+        }
+      }
 
-      // 1. Immediately trigger Email App draft
+      // 2. Open Mail compose directly with HTML email subject (No EML download, No plain-text list)
+      const mailtoUrl = `mailto:?subject=${encodeURIComponent(res.emailSubject || '')}`;
+
       try {
         window.location.href = mailtoUrl;
       } catch (err) {
         console.warn('Mailto trigger warning:', err);
       }
 
-      // 2. Immediately close modal and clear selection (no intermediate success page)
+      // 3. Close modal & reset selection directly
       onSuccess();
       onClose();
     } else {

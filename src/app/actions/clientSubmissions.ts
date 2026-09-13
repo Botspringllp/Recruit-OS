@@ -92,6 +92,7 @@ export async function createCandidateSubmissionsAction(payload: ShareToClientPay
   clientEmail?: string;
   emailSubject?: string;
   emailBodyText?: string;
+  emailHtml?: string;
   error?: string;
 }> {
   try {
@@ -184,117 +185,140 @@ export async function createCandidateSubmissionsAction(payload: ShareToClientPay
     const clientName = job.client?.companyName || 'Valued Client';
     const positionTitle = job.title;
 
-    // Construct Client Email HTML Table per PART 3
-    const candidateRowsHtml = candidates.map(c => {
+    function formatShortDate(d?: Date | null): string {
+      const dateObj = d ? new Date(d) : new Date();
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return `${dateObj.getDate()}-${months[dateObj.getMonth()]}-${String(dateObj.getFullYear()).slice(-2)}`;
+    }
+
+    // Construct 19-Column HTML Table matching client screenshot
+    const candidateTableRowsHtml = candidates.map((c: any) => {
       const note = c.discussionNote;
-      const doc = c.documents[0];
-      const resumeUrl = doc ? `${baseUrl}/api/documents/${doc.id}` : '#';
+      const dateStr = formatShortDate(c.createdAt);
+      const sourceStr = c.source === 'DIRECT_INTAKE' ? 'Naukri' : (c.source || 'Naukri');
+      const fullName = `${c.firstName} ${c.lastName}`.trim();
+      const emailStr = c.email || 'N/A';
+      const phoneStr = c.phone || 'N/A';
+      const locationStr = c.currentLocation || 'N/A';
+      const relocateStr = note?.readyToRelocate || 'N/A';
+      const expStr = note?.totalExperience || (c.totalExperienceYears ? `${c.totalExperienceYears}yr` : 'N/A');
+      const relExpStr = note?.relevantExperience || 'N/A';
+      const desigStr = note?.currentDesignation || c.currentDesignation || 'N/A';
+      const qualStr = note?.qualification || 'N/A';
+      const companyStr = note?.currentCompany || c.currentCompany || 'N/A';
+      const currSalStr = note?.currentSalary || (c.currentCtcLpa ? `${c.currentCtcLpa}LPA` : 'N/A');
+      const expSalStr = note?.expectedSalary || (c.expectedCtcLpa ? `${c.expectedCtcLpa}LPA` : 'N/A');
+      const noticeStr = note?.noticePeriod || 'N/A';
+      const reasonStr = note?.reasonOfLeaving || 'N/A';
+      const offerStr = note?.offerInHand || 'N/A';
 
       return `
-        <tr style="border-bottom: 1px solid #e2e8f0;">
-          <td style="padding: 10px; font-weight: bold; color: #0f172a;">${c.firstName} ${c.lastName}</td>
-          <td style="padding: 10px; color: #334155;">${c.email}</td>
-          <td style="padding: 10px; color: #334155;">${c.phone}</td>
-          <td style="padding: 10px; color: #334155;">${c.currentLocation || 'N/A'}</td>
-          <td style="padding: 10px; color: #334155;">${note?.readyToRelocate || 'N/A'}</td>
-          <td style="padding: 10px; color: #334155;">${note?.totalExperience || (c.totalExperienceYears ? `${c.totalExperienceYears} Yrs` : 'N/A')}</td>
-          <td style="padding: 10px; color: #334155;">${note?.relevantExperience || 'N/A'}</td>
-          <td style="padding: 10px; color: #334155;">${note?.currentDesignation || c.currentDesignation || 'N/A'}</td>
-          <td style="padding: 10px; color: #334155;">${note?.qualification || 'N/A'}</td>
-          <td style="padding: 10px; color: #334155;">${note?.currentCompany || c.currentCompany || 'N/A'}</td>
-          <td style="padding: 10px; color: #334155;">${note?.currentSalary || (c.currentCtcLpa ? `${c.currentCtcLpa} LPA` : 'N/A')}</td>
-          <td style="padding: 10px; color: #334155;">${note?.expectedSalary || (c.expectedCtcLpa ? `${c.expectedCtcLpa} LPA` : 'N/A')}</td>
-          <td style="padding: 10px; color: #334155;">${note?.noticePeriod || 'N/A'}</td>
-          <td style="padding: 10px; color: #334155;">${note?.reasonOfLeaving || 'N/A'}</td>
-          <td style="padding: 10px; color: #334155;">${note?.offerInHand || 'N/A'}</td>
-          <td style="padding: 10px; font-weight: bold;">
-            ${doc ? `<a href="${resumeUrl}" target="_blank" style="color: #d97706; text-decoration: underline;">View Resume</a>` : '<span style="color: #94a3b8;">No Resume</span>'}
-          </td>
+        <tr style="background-color: #ffffff;">
+          <td style="border: 1px solid #7f9db9; padding: 6px 5px; text-align: center; white-space: nowrap;">${dateStr}</td>
+          <td style="border: 1px solid #7f9db9; padding: 6px 5px; text-align: center;">${sourceStr}</td>
+          <td style="border: 1px solid #7f9db9; padding: 6px 5px; text-align: center;">${clientName}</td>
+          <td style="border: 1px solid #7f9db9; padding: 6px 5px; text-align: center;">${positionTitle}</td>
+          <td style="border: 1px solid #7f9db9; padding: 6px 5px; text-align: center; font-weight: bold; color: #000000;">${fullName}</td>
+          <td style="border: 1px solid #7f9db9; padding: 6px 5px; text-align: center; color: #0000ee; text-decoration: underline;">${emailStr}</td>
+          <td style="border: 1px solid #7f9db9; padding: 6px 5px; text-align: center;">${phoneStr}</td>
+          <td style="border: 1px solid #7f9db9; padding: 6px 5px; text-align: center;">${locationStr}</td>
+          <td style="border: 1px solid #7f9db9; padding: 6px 5px; text-align: center;">${relocateStr}</td>
+          <td style="border: 1px solid #7f9db9; padding: 6px 5px; text-align: center;">${expStr}</td>
+          <td style="border: 1px solid #7f9db9; padding: 6px 5px; text-align: center;">${relExpStr}</td>
+          <td style="border: 1px solid #7f9db9; padding: 6px 5px; text-align: center;">${desigStr}</td>
+          <td style="border: 1px solid #7f9db9; padding: 6px 5px; text-align: center;">${qualStr}</td>
+          <td style="border: 1px solid #7f9db9; padding: 6px 5px; text-align: center;">${companyStr}</td>
+          <td style="border: 1px solid #7f9db9; padding: 6px 5px; text-align: center;">${currSalStr}</td>
+          <td style="border: 1px solid #7f9db9; padding: 6px 5px; text-align: center;">${expSalStr}</td>
+          <td style="border: 1px solid #7f9db9; padding: 6px 5px; text-align: center;">${noticeStr}</td>
+          <td style="border: 1px solid #7f9db9; padding: 6px 5px; text-align: center;">${reasonStr}</td>
+          <td style="border: 1px solid #7f9db9; padding: 6px 5px; text-align: center;">${offerStr}</td>
         </tr>
       `;
     }).join('');
 
-    const emailHtml = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <style>
-          body { font-family: Arial, sans-serif; background-color: #f8fafc; color: #0f172a; margin: 0; padding: 20px; }
-          .container { max-width: 1200px; margin: 0 auto; background: #ffffff; padding: 24px; border-radius: 12px; border: 1px solid #e2e8f0; }
-          .header { border-bottom: 2px solid #f1f5f9; padding-bottom: 16px; margin-bottom: 20px; }
-          .title { font-size: 20px; font-weight: 800; color: #0f172a; margin: 0; }
-          .subtitle { font-size: 13px; color: #64748b; margin-top: 4px; }
-          .message-box { background: #f1f5f9; padding: 14px; border-radius: 8px; font-size: 13px; font-style: italic; margin-bottom: 20px; }
-          table { width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 24px; }
-          th { background: #0f172a; color: #ffffff; text-align: left; padding: 10px; font-size: 10px; text-transform: uppercase; }
-          .btn-review { display: inline-block; background-color: #f59e0b; color: #0f172a; text-decoration: none; padding: 12px 24px; font-weight: 800; border-radius: 8px; font-size: 14px; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1 class="title">Candidate Profiles for Review – ${positionTitle}</h1>
-            <p class="subtitle">Client: <strong>${clientName}</strong> | Total Candidates: <strong>${candidates.length}</strong></p>
-          </div>
+    const emailHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+</head>
+<body style="font-family: Arial, sans-serif; font-size: 13px; color: #111111; margin: 0; padding: 10px;">
+  <p style="font-size: 14px; margin-bottom: 12px;">Please have a look at the tracker and submitted candidate profiles for <strong>${positionTitle}</strong>.</p>
+  
+  ${payload.recruiterMessage ? `<p style="font-style: italic; background: #f1f5f9; padding: 10px 14px; border-left: 4px solid #0d3859; margin-bottom: 16px;"><strong>Recruiter Note:</strong> "${payload.recruiterMessage}"</p>` : ''}
 
-          ${payload.recruiterMessage ? `
-            <div class="message-box">
-              <strong>Note from Recruiter:</strong> "${payload.recruiterMessage}"
-            </div>
-          ` : ''}
+  <p style="background: #e0f2fe; border: 1px solid #7dd3fc; padding: 10px; border-radius: 6px; margin-bottom: 16px;">
+    <strong>Client Review Portal (Track & Record Decisions Online):</strong><br/>
+    <a href="${reviewUrl}" target="_blank" style="color: #0284c7; text-decoration: underline; word-break: break-all;">${reviewUrl}</a>
+  </p>
 
-          <div style="overflow-x: auto;">
-            <table>
-              <thead>
-                <tr>
-                  <th>Candidate Name</th>
-                  <th>Email</th>
-                  <th>Phone</th>
-                  <th>Location</th>
-                  <th>Ready To Relocate</th>
-                  <th>Experience</th>
-                  <th>Relevant Exp</th>
-                  <th>Designation</th>
-                  <th>Qualification</th>
-                  <th>Current / Last Company</th>
-                  <th>Current Salary</th>
-                  <th>Expected Salary</th>
-                  <th>Notice Period</th>
-                  <th>Reason of Leaving</th>
-                  <th>Offer In Hand</th>
-                  <th>Resume</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${candidateRowsHtml}
-              </tbody>
-            </table>
-          </div>
+  <div style="overflow-x: auto; margin-bottom: 20px;">
+    <table style="border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; font-size: 11px; border: 1px solid #0d3859;">
+      <thead>
+        <tr style="background-color: #0d3859; color: #ffffff; text-align: center;">
+          <th style="border: 1px solid #0d3859; padding: 7px 5px; font-size: 11px; font-weight: bold; white-space: nowrap;">Date</th>
+          <th style="border: 1px solid #0d3859; padding: 7px 5px; font-size: 11px; font-weight: bold; white-space: nowrap;">Source</th>
+          <th style="border: 1px solid #0d3859; padding: 7px 5px; font-size: 11px; font-weight: bold; white-space: nowrap;">Client Name</th>
+          <th style="border: 1px solid #0d3859; padding: 7px 5px; font-size: 11px; font-weight: bold; white-space: nowrap;">Applied Position Name</th>
+          <th style="border: 1px solid #0d3859; padding: 7px 5px; font-size: 11px; font-weight: bold; white-space: nowrap;">Candidate Name</th>
+          <th style="border: 1px solid #0d3859; padding: 7px 5px; font-size: 11px; font-weight: bold; white-space: nowrap;">Email ID</th>
+          <th style="border: 1px solid #0d3859; padding: 7px 5px; font-size: 11px; font-weight: bold; white-space: nowrap;">Number</th>
+          <th style="border: 1px solid #0d3859; padding: 7px 5px; font-size: 11px; font-weight: bold; white-space: nowrap;">Location</th>
+          <th style="border: 1px solid #0d3859; padding: 7px 5px; font-size: 11px; font-weight: bold; white-space: nowrap;">Ready to Relocate</th>
+          <th style="border: 1px solid #0d3859; padding: 7px 5px; font-size: 11px; font-weight: bold; white-space: nowrap;">Experience</th>
+          <th style="border: 1px solid #0d3859; padding: 7px 5px; font-size: 11px; font-weight: bold; white-space: nowrap;">Relevant Exp</th>
+          <th style="border: 1px solid #0d3859; padding: 7px 5px; font-size: 11px; font-weight: bold; white-space: nowrap;">Designation</th>
+          <th style="border: 1px solid #0d3859; padding: 7px 5px; font-size: 11px; font-weight: bold; white-space: nowrap;">Qualification</th>
+          <th style="border: 1px solid #0d3859; padding: 7px 5px; font-size: 11px; font-weight: bold; white-space: nowrap;">Current/Last Company</th>
+          <th style="border: 1px solid #0d3859; padding: 7px 5px; font-size: 11px; font-weight: bold; white-space: nowrap;">Current Salary</th>
+          <th style="border: 1px solid #0d3859; padding: 7px 5px; font-size: 11px; font-weight: bold; white-space: nowrap;">Expectation</th>
+          <th style="border: 1px solid #0d3859; padding: 7px 5px; font-size: 11px; font-weight: bold; white-space: nowrap;">Notice Period</th>
+          <th style="border: 1px solid #0d3859; padding: 7px 5px; font-size: 11px; font-weight: bold; white-space: nowrap;">Reason of Leaving</th>
+          <th style="border: 1px solid #0d3859; padding: 7px 5px; font-size: 11px; font-weight: bold; white-space: nowrap;">Offer in Hand</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${candidateTableRowsHtml}
+      </tbody>
+    </table>
+  </div>
 
-          <div style="text-align: center; margin-top: 24px; padding-top: 16px; border-top: 1px solid #e2e8f0;">
-            <a href="${reviewUrl}" target="_blank" class="btn-review">Review Submitted Candidates</a>
-            <p style="font-size: 11px; color: #64748b; margin-top: 8px;">
-              Click the button above to access the secure client decision portal.
-            </p>
-          </div>
-        </div>
-      </body>
-      </html>
-    `;
+  <p style="margin-top: 20px; font-weight: bold;">
+    Regards,<br/>
+    Recruitment Team
+  </p>
+</body>
+</html>`;
 
-    const targetRecipient = payload.clientEmail?.trim() || '';
-    const emailSubject = `Candidate Profiles for Review – ${positionTitle}`;
-    
-    // Construct Plain Text Email Body for mailto: trigger and clipboard copying
-    const candidateSummaryText = candidates.map((c: any, i: number) => {
+    // Construct 19-Column Plain Text Tab-Separated Table for mailto: URI body
+    const candidateTableRowsText = candidates.map((c: any) => {
       const note = c.discussionNote;
-      const desig = note?.currentDesignation || c.currentDesignation || 'Candidate';
-      const exp = note?.totalExperience || (c.totalExperienceYears ? `${c.totalExperienceYears} Yrs` : 'N/A');
-      return `${i + 1}. ${c.firstName} ${c.lastName} - ${desig} (${exp} Exp)`;
+      const dateStr = formatShortDate(c.createdAt);
+      const sourceStr = c.source === 'DIRECT_INTAKE' ? 'Naukri' : (c.source || 'Naukri');
+      const fullName = `${c.firstName} ${c.lastName}`.trim();
+      const emailStr = c.email || 'N/A';
+      const phoneStr = c.phone || 'N/A';
+      const locationStr = c.currentLocation || 'N/A';
+      const relocateStr = note?.readyToRelocate || 'N/A';
+      const expStr = note?.totalExperience || (c.totalExperienceYears ? `${c.totalExperienceYears}yr` : 'N/A');
+      const relExpStr = note?.relevantExperience || 'N/A';
+      const desigStr = note?.currentDesignation || c.currentDesignation || 'N/A';
+      const qualStr = note?.qualification || 'N/A';
+      const companyStr = note?.currentCompany || c.currentCompany || 'N/A';
+      const currSalStr = note?.currentSalary || (c.currentCtcLpa ? `${c.currentCtcLpa}LPA` : 'N/A');
+      const expSalStr = note?.expectedSalary || (c.expectedCtcLpa ? `${c.expectedCtcLpa}LPA` : 'N/A');
+      const noticeStr = note?.noticePeriod || 'N/A';
+      const reasonStr = note?.reasonOfLeaving || 'N/A';
+      const offerStr = note?.offerInHand || 'N/A';
+
+      return `${dateStr}\t${sourceStr}\t${clientName}\t${positionTitle}\t${fullName}\t${emailStr}\t${phoneStr}\t${locationStr}\t${relocateStr}\t${expStr}\t${relExpStr}\t${desigStr}\t${qualStr}\t${companyStr}\t${currSalStr}\t${expSalStr}\t${noticeStr}\t${reasonStr}\t${offerStr}`;
     }).join('\n');
 
-    const emailBodyText = `Dear ${clientName} Team,\n\nPlease find shortlisted candidate profiles for ${positionTitle}.\n${payload.recruiterMessage ? `\nRecruiter Note: "${payload.recruiterMessage}"\n` : ''}\nTotal Shortlisted Candidates: ${candidates.length}\n\nReview submitted candidates and record your decisions here:\n${reviewUrl}\n\nCandidate Overview:\n${candidateSummaryText}\n\nBest regards,\nRecruitment Team`;
+    const emailSubject = `Candidate Profiles for Review – ${positionTitle}`;
+
+    const emailBodyText = `Please have a look at the tracker and attached candidate profiles for ${positionTitle}.\n\n${payload.recruiterMessage ? `Recruiter Note: "${payload.recruiterMessage}"\n\n` : ''}Client Review Portal (Track & Record Decisions Online):\n${reviewUrl}\n\nCandidate Tracker:\nDate\tSource\tClient Name\tApplied Position Name\tCandidate Name\tEmail ID\tNumber\tLocation\tReady to Relocate\tExperience\tRelevant Exp\tDesignation\tQualification\tCurrent/Last Company\tCurrent Salary\tExpectation\tNotice Period\tReason of Leaving\tOffer in Hand\n${candidateTableRowsText}\n\nRegards,\nRecruitment Team`;
+
+    const targetRecipient = payload.clientEmail?.trim() || '';
 
     try {
       if (targetRecipient && process.env.SMTP_HOST && process.env.SMTP_USER) {
@@ -331,7 +355,8 @@ export async function createCandidateSubmissionsAction(payload: ShareToClientPay
       reviewUrl,
       clientEmail: targetRecipient,
       emailSubject,
-      emailBodyText
+      emailBodyText,
+      emailHtml
     };
   } catch (err: any) {
     console.error('Error in createCandidateSubmissionsAction:', err);
