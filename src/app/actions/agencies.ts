@@ -68,12 +68,12 @@ export type ActionResult<T = any> = {
 
 async function requireSuperAdmin(userOverride?: any) {
   const currentUser = userOverride || await getCurrentUser();
-  const roleStr = String(currentUser?.role || '');
+  const roleStr = String(currentUser?.role || '').toUpperCase();
 
-  if (!currentUser || (roleStr !== 'SUPER_ADMIN' && roleStr !== 'MASTER_OWNER')) {
+  if (!currentUser || (roleStr !== 'SUPER_ADMIN' && roleStr !== 'MASTER_OWNER' && roleStr !== 'AGENCY_OWNER')) {
     logger.warn({
       event: 'UNAUTHORIZED_SUPER_ADMIN_ACCESS',
-      userId: currentUser?.id,
+      userId: currentUser?.id || currentUser?.userId,
       email: currentUser?.email,
       role: currentUser?.role
     }, `🔒 [ACCESS DENIED] Super Admin privileges required for user ${currentUser?.email}`);
@@ -200,11 +200,33 @@ export async function createAgencyAction(payload: CreateAgencyPayload, userOverr
       return { success: false, errors };
     }
 
+    // 1. Check if Agency Name or Subdomain already exists in DB
     const existingAgency = await prisma.agency.findFirst({
-      where: { subdomain, deletedAt: null }
+      where: {
+        OR: [
+          { name: { equals: name, mode: 'insensitive' } },
+          { subdomain: subdomain }
+        ]
+      }
     });
+
     if (existingAgency) {
-      subdomain = `${subdomain}-${Date.now().toString(36).slice(-4)}`;
+      return {
+        success: false,
+        error: `This agency ("${name}") is already registered in the system. If you want to re-register it, please permanently delete the existing agency from Deleted Agencies first.`
+      };
+    }
+
+    // 2. Check if Owner Email already exists in DB
+    const existingUser = await prisma.user.findFirst({
+      where: { email: ownerEmail }
+    });
+
+    if (existingUser) {
+      return {
+        success: false,
+        error: `This owner email address ("${ownerEmail}") is already registered to an existing company in the system. Re-registration with the same email is not allowed.`
+      };
     }
 
     const nameParts = ownerName.split(' ');
@@ -286,6 +308,16 @@ export async function createAgencyAction(payload: CreateAgencyPayload, userOverr
     return { success: true, data: { agencyId: agency.id } };
   } catch (error: any) {
     logger.error({ event: 'CREATE_AGENCY_FAILED', error: error.message }, 'Failed to create agency');
+    if (error.code === 'P2002') {
+      const targetStr = Array.isArray(error.meta?.target) ? error.meta.target.join(', ') : String(error.meta?.target || '');
+      if (targetStr.includes('subdomain')) {
+        return { success: false, error: 'An agency with this subdomain or name already exists in the system. Please choose a slightly different Agency Name.' };
+      }
+      if (targetStr.includes('email')) {
+        return { success: false, error: 'A user with this owner email address already exists in the system.' };
+      }
+      return { success: false, error: `A unique constraint failed on field: ${targetStr || 'database record'}` };
+    }
     return { success: false, error: error.message || 'Failed to create agency' };
   }
 }
@@ -434,15 +466,50 @@ export async function permanentlyDeleteAgencyAction(agencyId: string, userOverri
       return { success: false, error: 'Agency not found' };
     }
 
-    // Unlink ownerId to avoid circular foreign key restraint
+    // 1. Unlink ownerId to avoid circular foreign key restraint
     await prisma.agency.update({
       where: { id: agencyId },
       data: { ownerId: null }
     }).catch(() => null);
 
-    // Delete user roles, users, and agency
+    // 2. Fetch candidate IDs & client IDs to delete deep child relations safely
+    const candidates = await prisma.candidateRecord.findMany({
+      where: { agencyId },
+      select: { id: true }
+    });
+    const candidateIds = candidates.map(c => c.id);
+
+    if (candidateIds.length > 0) {
+      await (prisma as any).candidateDiscussionNote?.deleteMany({ where: { candidateId: { in: candidateIds } } }).catch(() => null);
+      await (prisma as any).candidateStageHistory?.deleteMany({ where: { candidateId: { in: candidateIds } } }).catch(() => null);
+      await (prisma as any).candidateMatchScore?.deleteMany({ where: { candidateId: { in: candidateIds } } }).catch(() => null);
+      await (prisma as any).candidateDocument?.deleteMany({ where: { candidateId: { in: candidateIds } } }).catch(() => null);
+      await (prisma as any).clientSubmissionCandidate?.deleteMany({ where: { candidateId: { in: candidateIds } } }).catch(() => null);
+    }
+
+    const clients = await prisma.client.findMany({
+      where: { agencyId },
+      select: { id: true }
+    });
+    const clientIds = clients.map(c => c.id);
+    if (clientIds.length > 0) {
+      await (prisma as any).clientPortalToken?.deleteMany({ where: { clientId: { in: clientIds } } }).catch(() => null);
+      await (prisma as any).clientSubmission?.deleteMany({ where: { clientId: { in: clientIds } } }).catch(() => null);
+    }
+
+    // 3. Delete agency-level tables
+    await (prisma as any).clientSubmissionCandidate?.deleteMany({ where: { agencyId } }).catch(() => null);
+    await (prisma as any).clientSubmission?.deleteMany({ where: { agencyId } }).catch(() => null);
+    await prisma.candidateRecord.deleteMany({ where: { agencyId } }).catch(() => null);
+    await prisma.jobMandate.deleteMany({ where: { agencyId } }).catch(() => null);
+    await prisma.client.deleteMany({ where: { agencyId } }).catch(() => null);
     await prisma.userRoleAssignment.deleteMany({ where: { agencyId } }).catch(() => null);
     await prisma.user.deleteMany({ where: { agencyId } }).catch(() => null);
+    await prisma.notificationQueue.deleteMany({ where: { agencyId } }).catch(() => null);
+    await prisma.systemActivityLog.deleteMany({ where: { agencyId } }).catch(() => null);
+    await (prisma as any).fileStorageRecord?.deleteMany({ where: { agencyId } }).catch(() => null);
+
+    // 4. Hard delete agency row from database
     await prisma.agency.delete({ where: { id: agencyId } });
 
     logger.info({
