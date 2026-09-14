@@ -77,7 +77,7 @@ export const getCurrentUser = cache(async (): Promise<UserWithRoleAndPermissions
       },
       include: {
         agency: {
-          select: { id: true, name: true, status: true }
+          select: { id: true, name: true, status: true, deletedAt: true }
         },
         permissions: { select: { resource: true, action: true } },
         userRoles: { select: { roleName: true } }
@@ -87,12 +87,23 @@ export const getCurrentUser = cache(async (): Promise<UserWithRoleAndPermissions
     const resolvedRole = String(dbUser?.role || session.role || 'SUPER_ADMIN').toUpperCase();
 
     if (dbUser) {
+      const isSuperAdmin = resolvedRole === 'SUPER_ADMIN' || resolvedRole === 'MASTER_OWNER';
+      const agencySuspended = dbUser.agency ? (
+        dbUser.agency.status === 'SUSPENDED' || (dbUser.agency as any).deletedAt !== null
+      ) : false;
+
+      const isSuspended = !isSuperAdmin && agencySuspended;
+
       return {
         ...dbUser,
         role: resolvedRole,
-        status: 'ACTIVE',
-        isActive: true,
-        agency: dbUser.agency ? { ...dbUser.agency, status: 'ACTIVE' } : { id: session.agencyId || '00000000-0000-0000-0000-000000000001', name: 'Botspring Recruitment', status: 'ACTIVE' }
+        status: isSuspended ? 'SUSPENDED' : 'ACTIVE',
+        isActive: !isSuspended,
+        agency: dbUser.agency ? {
+          id: dbUser.agency.id,
+          name: dbUser.agency.name,
+          status: agencySuspended ? 'SUSPENDED' : dbUser.agency.status
+        } : { id: session.agencyId || '00000000-0000-0000-0000-000000000001', name: 'RecruitOS Platform', status: 'ACTIVE' }
       } as any;
     }
 
@@ -106,7 +117,7 @@ export const getCurrentUser = cache(async (): Promise<UserWithRoleAndPermissions
       role: resolvedRole,
       status: 'ACTIVE',
       isActive: true,
-      agency: { id: session.agencyId || '00000000-0000-0000-0000-000000000001', name: 'Botspring Recruitment', status: 'ACTIVE' },
+      agency: { id: session.agencyId || '00000000-0000-0000-0000-000000000001', name: 'RecruitOS Platform', status: 'ACTIVE' },
       permissions: [],
       userRoles: []
     } as any;

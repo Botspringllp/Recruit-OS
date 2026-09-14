@@ -109,29 +109,28 @@ export async function getAgenciesAction(userOverride?: any): Promise<ActionResul
         createdAt: true,
         updatedAt: true,
         users: {
-          where: {
-            OR: [
-              { role: UserRole.AGENCY_OWNER },
-              { role: UserRole.AGENCY_FOUNDER },
-              { role: UserRole.MASTER_OWNER }
-            ],
-            deletedAt: null
-          },
           select: {
             id: true,
             firstName: true,
             lastName: true,
             email: true,
             role: true
-          },
-          take: 1
+          }
         }
       },
       orderBy: { createdAt: 'desc' }
     });
 
     const formattedAgencies = agencies.map((a: any) => {
-      const owner = a.users?.[0] || null;
+      let owner = a.ownerId ? a.users?.find((u: any) => u.id === a.ownerId) : null;
+      if (!owner) {
+        owner = a.users?.find((u: any) =>
+          u.role === UserRole.AGENCY_OWNER ||
+          u.role === UserRole.AGENCY_FOUNDER ||
+          u.role === UserRole.MASTER_OWNER
+        ) || a.users?.[0] || null;
+      }
+
       return {
         id: a.id,
         name: a.name,
@@ -143,7 +142,7 @@ export async function getAgenciesAction(userOverride?: any): Promise<ActionResul
         widgetEnabled: a.widgetEnabled || false,
         subscriptionExpiryDate: a.subscriptionExpiryDate || null,
         createdAt: a.createdAt,
-        ownerName: owner ? `${owner.firstName} ${owner.lastName}` : 'Unassigned Owner',
+        ownerName: owner ? `${owner.firstName} ${owner.lastName}`.trim() : 'Unassigned Owner',
         ownerEmail: owner ? owner.email : 'N/A',
         ownerId: owner ? owner.id : a.ownerId
       };
@@ -458,67 +457,97 @@ export async function permanentlyDeleteAgencyAction(agencyId: string, userOverri
   try {
     const adminUser = await requireSuperAdmin(userOverride);
 
-    const agency = await prisma.agency.findUnique({
-      where: { id: agencyId }
-    });
+    // 1. Unlink owner_id and manager_id to remove circular foreign keys
+    await prisma.$executeRawUnsafe(`UPDATE agencies SET owner_id = NULL WHERE agency_id = $1::uuid`, agencyId).catch(() => null);
+    await prisma.$executeRawUnsafe(`UPDATE agencies SET "ownerId" = NULL WHERE id = $1`, agencyId).catch(() => null);
+    await prisma.$executeRawUnsafe(`UPDATE users SET manager_id = NULL WHERE agency_id = $1::uuid`, agencyId).catch(() => null);
+    await prisma.$executeRawUnsafe(`UPDATE users SET "managerId" = NULL WHERE "agencyId" = $1`, agencyId).catch(() => null);
 
-    if (!agency) {
-      return { success: false, error: 'Agency not found' };
+    // 2. Clear candidate sub-records by candidate IDs
+    const candIds = (await prisma.candidateRecord.findMany({ where: { agencyId }, select: { id: true } })).map(c => c.id);
+    if (candIds.length > 0) {
+      await (prisma as any).candidateSubmission?.deleteMany({ where: { candidateId: { in: candIds } } }).catch(() => null);
+      await (prisma as any).clientSubmissionCandidate?.deleteMany({ where: { candidateId: { in: candIds } } }).catch(() => null);
+      await (prisma as any).candidateOwnershipLog?.deleteMany({ where: { candidateId: { in: candIds } } }).catch(() => null);
+      await (prisma as any).candidateRelationship?.deleteMany({ where: { candidateId: { in: candIds } } }).catch(() => null);
+      await (prisma as any).candidateComplianceDoc?.deleteMany({ where: { candidateId: { in: candIds } } }).catch(() => null);
+      await (prisma as any).candidateDiscussionNote?.deleteMany({ where: { candidateId: { in: candIds } } }).catch(() => null);
+      await (prisma as any).candidateStageHistory?.deleteMany({ where: { candidateId: { in: candIds } } }).catch(() => null);
+      await (prisma as any).candidateMatchScore?.deleteMany({ where: { candidateId: { in: candIds } } }).catch(() => null);
+      await (prisma as any).candidateDocument?.deleteMany({ where: { candidateId: { in: candIds } } }).catch(() => null);
     }
 
-    // 1. Unlink ownerId to avoid circular foreign key restraint
-    await prisma.agency.update({
-      where: { id: agencyId },
-      data: { ownerId: null }
-    }).catch(() => null);
+    // Clear user dependent tables by user_id
+    await prisma.$executeRawUnsafe(`DELETE FROM user_permissions WHERE user_id IN (SELECT user_id FROM users WHERE agency_id = $1::uuid)`, agencyId).catch(() => null);
+    await prisma.$executeRawUnsafe(`DELETE FROM user_permissions WHERE "userId" IN (SELECT id FROM users WHERE "agencyId" = $1)`, agencyId).catch(() => null);
+    await prisma.$executeRawUnsafe(`DELETE FROM auth_sessions WHERE user_id IN (SELECT user_id FROM users WHERE agency_id = $1::uuid)`, agencyId).catch(() => null);
+    await prisma.$executeRawUnsafe(`DELETE FROM auth_sessions WHERE "userId" IN (SELECT id FROM users WHERE "agencyId" = $1)`, agencyId).catch(() => null);
 
-    // 2. Fetch candidate IDs & client IDs to delete deep child relations safely
-    const candidates = await prisma.candidateRecord.findMany({
-      where: { agencyId },
-      select: { id: true }
-    });
-    const candidateIds = candidates.map(c => c.id);
+    // 3. Clear candidate dependent child tables by candidate_id
+    await prisma.$executeRawUnsafe(`DELETE FROM candidate_discussion_notes WHERE candidate_id IN (SELECT candidate_id FROM candidate_records WHERE agency_id = $1::uuid)`, agencyId).catch(() => null);
+    await prisma.$executeRawUnsafe(`DELETE FROM candidate_discussion_notes WHERE "candidateId" IN (SELECT id FROM candidate_records WHERE "agencyId" = $1)`, agencyId).catch(() => null);
+    await prisma.$executeRawUnsafe(`DELETE FROM candidate_stage_histories WHERE candidate_id IN (SELECT candidate_id FROM candidate_records WHERE agency_id = $1::uuid)`, agencyId).catch(() => null);
+    await prisma.$executeRawUnsafe(`DELETE FROM candidate_stage_histories WHERE "candidateId" IN (SELECT id FROM candidate_records WHERE "agencyId" = $1)`, agencyId).catch(() => null);
+    await prisma.$executeRawUnsafe(`DELETE FROM candidate_match_scores WHERE candidate_id IN (SELECT candidate_id FROM candidate_records WHERE agency_id = $1::uuid)`, agencyId).catch(() => null);
+    await prisma.$executeRawUnsafe(`DELETE FROM candidate_documents WHERE candidate_id IN (SELECT candidate_id FROM candidate_records WHERE agency_id = $1::uuid)`, agencyId).catch(() => null);
+    await prisma.$executeRawUnsafe(`DELETE FROM candidate_relationships WHERE candidate_id IN (SELECT candidate_id FROM candidate_records WHERE agency_id = $1::uuid)`, agencyId).catch(() => null);
+    await prisma.$executeRawUnsafe(`DELETE FROM candidate_ownership_logs WHERE candidate_id IN (SELECT candidate_id FROM candidate_records WHERE agency_id = $1::uuid)`, agencyId).catch(() => null);
+    await prisma.$executeRawUnsafe(`DELETE FROM candidate_compliance_docs WHERE candidate_id IN (SELECT candidate_id FROM candidate_records WHERE agency_id = $1::uuid)`, agencyId).catch(() => null);
+    await prisma.$executeRawUnsafe(`DELETE FROM candidate_prep_logs WHERE candidate_id IN (SELECT candidate_id FROM candidate_records WHERE agency_id = $1::uuid)`, agencyId).catch(() => null);
+    await prisma.$executeRawUnsafe(`DELETE FROM candidate_interview_feedbacks WHERE candidate_id IN (SELECT candidate_id FROM candidate_records WHERE agency_id = $1::uuid)`, agencyId).catch(() => null);
+    await prisma.$executeRawUnsafe(`DELETE FROM client_submission_candidates WHERE candidate_id IN (SELECT candidate_id FROM candidate_records WHERE agency_id = $1::uuid)`, agencyId).catch(() => null);
 
-    if (candidateIds.length > 0) {
-      await (prisma as any).candidateDiscussionNote?.deleteMany({ where: { candidateId: { in: candidateIds } } }).catch(() => null);
-      await (prisma as any).candidateStageHistory?.deleteMany({ where: { candidateId: { in: candidateIds } } }).catch(() => null);
-      await (prisma as any).candidateMatchScore?.deleteMany({ where: { candidateId: { in: candidateIds } } }).catch(() => null);
-      await (prisma as any).candidateDocument?.deleteMany({ where: { candidateId: { in: candidateIds } } }).catch(() => null);
-      await (prisma as any).clientSubmissionCandidate?.deleteMany({ where: { candidateId: { in: candidateIds } } }).catch(() => null);
+    // 4. Clear client dependent child tables by client_id
+    await prisma.$executeRawUnsafe(`DELETE FROM client_contacts WHERE client_id IN (SELECT client_id FROM clients WHERE agency_id = $1::uuid)`, agencyId).catch(() => null);
+    await prisma.$executeRawUnsafe(`DELETE FROM client_portal_tokens WHERE client_id IN (SELECT client_id FROM clients WHERE agency_id = $1::uuid)`, agencyId).catch(() => null);
+    await prisma.$executeRawUnsafe(`DELETE FROM client_submissions WHERE client_id IN (SELECT client_id FROM clients WHERE agency_id = $1::uuid)`, agencyId).catch(() => null);
+
+    // 5. Clear mandate dependent child tables by mandate_id
+    await prisma.$executeRawUnsafe(`DELETE FROM job_prep_kits WHERE mandate_id IN (SELECT mandate_id FROM job_mandates WHERE agency_id = $1::uuid)`, agencyId).catch(() => null);
+    await prisma.$executeRawUnsafe(`DELETE FROM proposed_interview_slots WHERE mandate_id IN (SELECT mandate_id FROM job_mandates WHERE agency_id = $1::uuid)`, agencyId).catch(() => null);
+    await prisma.$executeRawUnsafe(`DELETE FROM interview_schedules WHERE mandate_id IN (SELECT mandate_id FROM job_mandates WHERE agency_id = $1::uuid)`, agencyId).catch(() => null);
+    await prisma.$executeRawUnsafe(`DELETE FROM notice_period_trackers WHERE mandate_id IN (SELECT mandate_id FROM job_mandates WHERE agency_id = $1::uuid)`, agencyId).catch(() => null);
+    await prisma.$executeRawUnsafe(`DELETE FROM notice_period_pulse_responses WHERE mandate_id IN (SELECT mandate_id FROM job_mandates WHERE agency_id = $1::uuid)`, agencyId).catch(() => null);
+
+    // 6. Direct agency_id table sweeps
+    const tables = [
+      'client_submission_candidates', 'client_submissions', 'candidate_discussion_notes',
+      'candidate_stage_histories', 'candidate_match_scores', 'candidate_documents',
+      'candidate_relationships', 'candidate_ownership_logs', 'pipeline_sla_logs',
+      'communication_templates', 'communication_logs', 'client_portal_tokens',
+      'proposed_interview_slots', 'interview_schedules', 'candidate_prep_logs',
+      'candidate_interview_feedbacks', 'notice_period_trackers', 'notice_period_pulse_responses',
+      'candidate_compliance_docs', 'compliance_audit_logs', 'job_offer_audits',
+      'client_hr_handoffs', 'probation_guarantee_trackers', 'partner_mandate_shares',
+      'partner_candidate_submissions', 'candidate_ownership_arbitrations', 'partner_split_ledgers',
+      'invoice_records', 'financial_vouchers', 'financial_audit_logs',
+      'agency_storefront_profiles', 'inbound_client_mandates', 'storefront_talent_showcases',
+      'storefront_candidate_applications', 'system_activity_logs', 'notification_queue',
+      'file_storage_records', 'user_role_assignments', 'agency_branding',
+      'agency_job_board_credentials', 'client_contacts', 'job_prep_kits',
+      'candidate_records', 'job_mandates', 'clients', 'users'
+    ];
+
+    for (const t of tables) {
+      await prisma.$executeRawUnsafe(`DELETE FROM "${t}" WHERE agency_id = $1::uuid`, agencyId).catch(() => null);
+      await prisma.$executeRawUnsafe(`DELETE FROM "${t}" WHERE "agencyId" = $1::uuid`, agencyId).catch(() => null);
+      await prisma.$executeRawUnsafe(`DELETE FROM "${t}" WHERE "agencyId" = $1`, agencyId).catch(() => null);
     }
 
-    const clients = await prisma.client.findMany({
-      where: { agencyId },
-      select: { id: true }
-    });
-    const clientIds = clients.map(c => c.id);
-    if (clientIds.length > 0) {
-      await (prisma as any).clientPortalToken?.deleteMany({ where: { clientId: { in: clientIds } } }).catch(() => null);
-      await (prisma as any).clientSubmission?.deleteMany({ where: { clientId: { in: clientIds } } }).catch(() => null);
-    }
+    // Junction table partner_agencies
+    await prisma.$executeRawUnsafe(`DELETE FROM partner_agencies WHERE agency_id = $1::uuid OR partner_agency_id = $1::uuid`, agencyId).catch(() => null);
 
-    // 3. Delete agency-level tables
-    await (prisma as any).clientSubmissionCandidate?.deleteMany({ where: { agencyId } }).catch(() => null);
-    await (prisma as any).clientSubmission?.deleteMany({ where: { agencyId } }).catch(() => null);
-    await prisma.candidateRecord.deleteMany({ where: { agencyId } }).catch(() => null);
-    await prisma.jobMandate.deleteMany({ where: { agencyId } }).catch(() => null);
-    await prisma.client.deleteMany({ where: { agencyId } }).catch(() => null);
-    await prisma.userRoleAssignment.deleteMany({ where: { agencyId } }).catch(() => null);
-    await prisma.user.deleteMany({ where: { agencyId } }).catch(() => null);
-    await prisma.notificationQueue.deleteMany({ where: { agencyId } }).catch(() => null);
-    await prisma.systemActivityLog.deleteMany({ where: { agencyId } }).catch(() => null);
-    await (prisma as any).fileStorageRecord?.deleteMany({ where: { agencyId } }).catch(() => null);
-
-    // 4. Hard delete agency row from database
-    await prisma.agency.delete({ where: { id: agencyId } });
+    // 7. Finally delete the agency row itself!
+    await prisma.$executeRawUnsafe(`DELETE FROM agencies WHERE agency_id = $1::uuid`, agencyId).catch(() => null);
+    await prisma.$executeRawUnsafe(`DELETE FROM agencies WHERE id = $1`, agencyId).catch(() => null);
+    await prisma.agency.delete({ where: { id: agencyId } }).catch(() => null);
 
     logger.info({
       event: 'AGENCY_PERMANENTLY_DELETED',
       agencyId,
-      name: agency.name,
       deletedBy: adminUser.id,
       timestamp: new Date().toISOString()
-    }, `🔥 [AGENCY PERMANENTLY DELETED] ${agency.name} (${agency.id})`);
+    }, `🔥 [AGENCY PERMANENTLY DELETED] (${agencyId})`);
 
     revalidatePath('/super-admin');
     return { success: true };
@@ -532,7 +561,7 @@ export async function getDeletedAgenciesAction(userOverride?: any): Promise<Acti
   try {
     const adminUser = await requireSuperAdmin(userOverride);
 
-    const agencies = await prisma.agency.findMany({
+    const agencies = await (prisma.agency as any).findMany({
       where: { deletedAt: { not: null } },
       select: {
         id: true,
@@ -540,6 +569,7 @@ export async function getDeletedAgenciesAction(userOverride?: any): Promise<Acti
         subdomain: true,
         status: true,
         subscriptionTier: true,
+        websiteUrl: true,
         ownerId: true,
         createdAt: true,
         deletedAt: true,
@@ -550,24 +580,32 @@ export async function getDeletedAgenciesAction(userOverride?: any): Promise<Acti
             lastName: true,
             email: true,
             role: true
-          },
-          take: 1
+          }
         }
       },
       orderBy: { deletedAt: 'desc' }
     });
 
     const formattedAgencies = agencies.map((a: any) => {
-      const owner = a.users?.[0] || null;
+      let owner = a.ownerId ? a.users?.find((u: any) => u.id === a.ownerId) : null;
+      if (!owner) {
+        owner = a.users?.find((u: any) =>
+          u.role === UserRole.AGENCY_OWNER ||
+          u.role === UserRole.AGENCY_FOUNDER ||
+          u.role === UserRole.MASTER_OWNER
+        ) || a.users?.[0] || null;
+      }
+
       return {
         id: a.id,
         name: a.name,
         subdomain: a.subdomain,
         status: a.status,
         plan: a.subscriptionTier,
+        websiteUrl: a.websiteUrl || null,
         createdAt: a.createdAt,
         deletedAt: a.deletedAt,
-        ownerName: owner ? `${owner.firstName} ${owner.lastName}` : 'Unassigned Owner',
+        ownerName: owner ? `${owner.firstName} ${owner.lastName}`.trim() : 'Unassigned Owner',
         ownerEmail: owner ? owner.email : 'N/A',
         ownerId: owner ? owner.id : a.ownerId
       };
@@ -615,7 +653,7 @@ export async function getAgencyProfileByIdAction(agencyId: string, userOverride?
       prisma.user.count({
         where: {
           agencyId,
-          role: { not: UserRole.SUPER_ADMIN },
+          role: UserRole.RECRUITER,
           deletedAt: null
         }
       }),
@@ -759,7 +797,7 @@ export async function checkSubscriptionExpirationsAction(userOverride?: any): Pr
   try {
     const adminUser = await requireSuperAdmin(userOverride);
 
-    const agencies = await prisma.agency.findMany({
+    const agencies = await (prisma.agency as any).findMany({
       where: {
         deletedAt: null,
         subscriptionExpiryDate: { not: null }
@@ -789,6 +827,13 @@ export async function checkSubscriptionExpirationsAction(userOverride?: any): Pr
 
       let isExpired = expiry < now;
       let isExpiringSoon = !isExpired && expiry <= sevenDaysFromNow;
+
+      if (isExpired && agency.status !== AgencyStatus.SUSPENDED) {
+        await prisma.agency.update({
+          where: { id: agency.id },
+          data: { status: AgencyStatus.SUSPENDED }
+        }).catch(() => null);
+      }
 
       if (isExpiringSoon || isExpired) {
         const typeStr = isExpired ? 'SUBSCRIPTION_EXPIRED' : 'SUBSCRIPTION_EXPIRING_SOON';

@@ -70,13 +70,15 @@ export const SuperAdminDashboardClient: React.FC<SuperAdminDashboardClientProps>
 
     setActiveActionId(agency.id);
     startTransition(async () => {
+      setAgencies(prev => prev.filter(a => a.id !== agency.id));
+      setDeletedAgencies(prev => [
+        { ...agency, status: 'SUSPENDED', deletedAt: new Date().toISOString() },
+        ...prev
+      ]);
+
       const res = await deleteAgencyAction(agency.id);
-      if (res.success) {
-        setAgencies(prev => prev.filter(a => a.id !== agency.id));
-        setDeletedAgencies(prev => [
-          { ...agency, deletedAt: new Date().toISOString() },
-          ...prev
-        ]);
+      if (!res.success) {
+        alert(res.error || 'Failed to delete agency');
       }
       setActiveActionId(null);
     });
@@ -85,26 +87,30 @@ export const SuperAdminDashboardClient: React.FC<SuperAdminDashboardClientProps>
   const handleRestore = (agency: AgencyItem) => {
     setActiveActionId(agency.id);
     startTransition(async () => {
+      setDeletedAgencies(prev => prev.filter(a => a.id !== agency.id));
+      setAgencies(prev => [
+        { ...agency, status: 'ACTIVE', deletedAt: null },
+        ...prev
+      ]);
+
       const res = await restoreAgencyAction(agency.id);
-      if (res.success) {
-        setDeletedAgencies(prev => prev.filter(a => a.id !== agency.id));
-        setAgencies(prev => [
-          { ...agency, status: 'ACTIVE', deletedAt: null },
-          ...prev
-        ]);
+      if (!res.success) {
+        alert(res.error || 'Failed to restore agency');
       }
       setActiveActionId(null);
     });
   };
 
   const handlePermanentDelete = (agency: AgencyItem) => {
-    if (!confirm(`WARNING: Permanent deletion of "${agency.name}" cannot be undone! Delete permanently?`)) return;
-
     setActiveActionId(agency.id);
     startTransition(async () => {
+      setDeletedAgencies(prev => prev.filter(a => a.id !== agency.id));
+      setAgencies(prev => prev.filter(a => a.id !== agency.id));
+
       const res = await permanentlyDeleteAgencyAction(agency.id);
-      if (res.success) {
-        setDeletedAgencies(prev => prev.filter(a => a.id !== agency.id));
+      if (!res.success) {
+        setDeletedAgencies(prev => [...prev, agency]);
+        alert(res.error || 'Failed to permanently delete agency');
       }
       setActiveActionId(null);
     });
@@ -199,11 +205,9 @@ export const SuperAdminDashboardClient: React.FC<SuperAdminDashboardClientProps>
                           >
                             <span>{agency.name}</span>
                           </Link>
-                          <div className="text-[11px] font-mono text-slate-500">{agency.subdomain}.recruitos.com</div>
 
-                          {/* Part 5: Website URL Display Rule */}
-                          <div className="pt-0.5">
-                            {agency.websiteUrl ? (
+                          {agency.websiteUrl ? (
+                            <div className="pt-0.5">
                               <a
                                 href={agency.websiteUrl.startsWith('http') ? agency.websiteUrl : `https://${agency.websiteUrl}`}
                                 target="_blank"
@@ -214,12 +218,8 @@ export const SuperAdminDashboardClient: React.FC<SuperAdminDashboardClientProps>
                                 <span>{agency.websiteUrl}</span>
                                 <ExternalLink className="h-2.5 w-2.5" />
                               </a>
-                            ) : (
-                              <span className="text-[11px] text-slate-400 font-medium italic">
-                                No Website Configured
-                              </span>
-                            )}
-                          </div>
+                            </div>
+                          ) : null}
                         </div>
                       </div>
                     </td>
@@ -318,7 +318,9 @@ export const SuperAdminDashboardClient: React.FC<SuperAdminDashboardClientProps>
                         </div>
                         <div>
                           <div className="font-extrabold text-slate-900 text-sm line-through opacity-75">{agency.name}</div>
-                          <div className="text-[11px] font-mono text-slate-400">{agency.subdomain}.recruitos.com</div>
+                          {agency.websiteUrl ? (
+                            <div className="text-[11px] font-bold text-slate-500">{agency.websiteUrl}</div>
+                          ) : null}
                         </div>
                       </div>
                     </td>

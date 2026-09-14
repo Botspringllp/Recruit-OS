@@ -180,9 +180,6 @@ export const AgencyProfileClient: React.FC<AgencyProfileClientProps> = ({
               <Building2 className="h-6 w-6 text-amber-500" />
               {agency.name}
             </h1>
-            <p className="text-xs text-slate-400 font-mono">
-              Tenant ID: {agency.id} • {agency.subdomain}.recruitos.com
-            </p>
           </div>
         </div>
 
@@ -265,10 +262,6 @@ export const AgencyProfileClient: React.FC<AgencyProfileClientProps> = ({
               <div>
                 <span className="text-slate-400 font-bold block text-[10px] uppercase">Agency Name</span>
                 <span className="font-extrabold text-slate-900 text-sm">{agency.name}</span>
-              </div>
-              <div>
-                <span className="text-slate-400 font-bold block text-[10px] uppercase">Subdomain</span>
-                <span className="font-mono font-bold text-indigo-600">{agency.subdomain}.recruitos.com</span>
               </div>
               <div>
                 <span className="text-slate-400 font-bold block text-[10px] uppercase">Owner Name</span>

@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/rbac';
 
 export interface GlobalSearchResult {
+  agencies?: Array<{ id: string; name: string; status: string; websiteUrl: string | null }>;
   clients: Array<{ id: string; name: string; industry: string | null; website: string | null }>;
   jobs: Array<{ id: string; title: string; companyName: string; status: string }>;
   candidates: Array<{ id: string; name: string; email: string; company: string | null; designation: string | null }>;
@@ -11,14 +12,49 @@ export interface GlobalSearchResult {
 
 export async function globalSearchAction(query: string): Promise<GlobalSearchResult> {
   if (!query || query.trim().length < 1) {
-    return { clients: [], jobs: [], candidates: [] };
+    return { agencies: [], clients: [], jobs: [], candidates: [] };
   }
 
   const user = await getCurrentUser();
-  if (!user) return { clients: [], jobs: [], candidates: [] };
+  if (!user) return { agencies: [], clients: [], jobs: [], candidates: [] };
+
+  const q = query.trim();
+
+  // If logged in as SUPER_ADMIN, search strictly ONLY Registered Agencies
+  if (user.role === 'SUPER_ADMIN') {
+    try {
+      const agencies = await (prisma.agency as any).findMany({
+        where: {
+          name: { contains: q, mode: 'insensitive' },
+          deletedAt: null
+        },
+        take: 8,
+        select: {
+          id: true,
+          name: true,
+          status: true,
+          websiteUrl: true
+        }
+      }).catch(() => []);
+
+      return {
+        agencies: agencies.map((a: any) => ({
+          id: a.id,
+          name: a.name,
+          status: a.status,
+          websiteUrl: a.websiteUrl
+        })),
+        clients: [],
+        jobs: [],
+        candidates: []
+      };
+    } catch (error) {
+      console.error('Error searching agencies for super admin:', error);
+      return { agencies: [], clients: [], jobs: [], candidates: [] };
+    }
+  }
 
   const agencyId = user.agencyId;
-  const q = query.trim();
 
   try {
     // 1. Search Clients / Companies
@@ -68,6 +104,7 @@ export async function globalSearchAction(query: string): Promise<GlobalSearchRes
     }).catch(() => []);
 
     return {
+      agencies: [],
       clients: clients.map(c => ({
         id: c.id,
         name: c.companyName,
@@ -90,6 +127,6 @@ export async function globalSearchAction(query: string): Promise<GlobalSearchRes
     };
   } catch (error) {
     console.error('Error executing global search action:', error);
-    return { clients: [], jobs: [], candidates: [] };
+    return { agencies: [], clients: [], jobs: [], candidates: [] };
   }
 }

@@ -39,10 +39,6 @@ export const TenantBadge: React.FC<TenantBadgeProps> = ({ tenant }) => {
             {tenant.subscriptionTier}
           </span>
         </div>
-        <div className="flex items-center gap-1 text-[11px] text-slate-500">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="font-mono text-[10px]">{tenant.subdomain}.recruitos.com</span>
-        </div>
       </div>
     </div>
   );

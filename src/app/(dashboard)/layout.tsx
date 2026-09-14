@@ -1,4 +1,5 @@
 import React from 'react';
+import { redirect } from 'next/navigation';
 import { DashboardShell } from '@/components/dashboard/DashboardShell';
 import { TenantContextType, UserContextType } from '@/types/dashboard';
 import { getCurrentUser, getCurrentUserPermissions } from '@/lib/rbac';
@@ -14,6 +15,13 @@ export default async function DashboardLayout({
   children: React.ReactNode;
 }) {
   const dbUser = await getCurrentUser();
+
+  const isSuperAdmin = dbUser?.role === 'SUPER_ADMIN' || dbUser?.role === 'MASTER_OWNER';
+  if (dbUser && !isSuperAdmin) {
+    if (!dbUser.isActive || dbUser.status === 'SUSPENDED' || dbUser.agency?.status === 'SUSPENDED') {
+      redirect('/login?error=suspended');
+    }
+  }
 
   const tenantContext: TenantContextType = {
     agencyId: dbUser?.agencyId || '',

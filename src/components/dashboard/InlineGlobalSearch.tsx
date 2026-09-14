@@ -5,10 +5,14 @@ import { useRouter } from 'next/navigation';
 import { Search, Building2, Briefcase, User, X, Loader2, ExternalLink } from 'lucide-react';
 import { globalSearchAction, GlobalSearchResult } from '@/app/actions/search';
 
-export const InlineGlobalSearch: React.FC = () => {
+interface InlineGlobalSearchProps {
+  isSuperAdmin?: boolean;
+}
+
+export const InlineGlobalSearch: React.FC<InlineGlobalSearchProps> = ({ isSuperAdmin = false }) => {
   const router = useRouter();
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<GlobalSearchResult>({ clients: [], jobs: [], candidates: [] });
+  const [results, setResults] = useState<GlobalSearchResult>({ agencies: [], clients: [], jobs: [], candidates: [] });
   const [loading, setLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
@@ -36,7 +40,7 @@ export const InlineGlobalSearch: React.FC = () => {
   // Search execution with debounce
   useEffect(() => {
     if (!query.trim()) {
-      setResults({ clients: [], jobs: [], candidates: [] });
+      setResults({ agencies: [], clients: [], jobs: [], candidates: [] });
       setLoading(false);
       return;
     }
@@ -58,7 +62,7 @@ export const InlineGlobalSearch: React.FC = () => {
     return () => clearTimeout(timer);
   }, [query]);
 
-  const totalResults = results.clients.length + results.jobs.length + results.candidates.length;
+  const totalResults = (results.agencies?.length || 0) + results.clients.length + results.jobs.length + results.candidates.length;
 
   const handleNavigate = (path: string) => {
     setIsOpen(false);
@@ -70,7 +74,7 @@ export const InlineGlobalSearch: React.FC = () => {
     <div ref={searchRef} className="relative w-full max-w-lg">
       {/* Direct Search Input Field */}
       <div className="relative w-full flex items-center">
-        <Search className="absolute left-3.5 h-4 w-4 text-indigo-600 pointer-events-none" />
+        <Search className="absolute left-3.5 h-4 w-4 text-amber-500 pointer-events-none" />
         <input
           type="text"
           value={query}
@@ -81,12 +85,12 @@ export const InlineGlobalSearch: React.FC = () => {
           onFocus={() => {
             if (query.trim()) setIsOpen(true);
           }}
-          placeholder="Search companies, job mandates, or candidates..."
-          className="w-full pl-10 pr-9 py-2 rounded-xl bg-slate-50 border border-slate-300 text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-600 focus:bg-white focus:ring-2 focus:ring-indigo-600/15 transition-all shadow-2xs"
+          placeholder={isSuperAdmin ? "Search registered agencies by name..." : "Search companies, job mandates, or candidates..."}
+          className="w-full pl-10 pr-9 py-2 rounded-xl bg-slate-50 border border-slate-300 text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-amber-500 focus:bg-white focus:ring-2 focus:ring-amber-500/20 transition-all shadow-2xs"
         />
 
         {loading ? (
-          <Loader2 className="absolute right-3 h-4 w-4 text-indigo-600 animate-spin" />
+          <Loader2 className="absolute right-3 h-4 w-4 text-amber-500 animate-spin" />
         ) : query ? (
           <button
             onClick={() => {
@@ -105,7 +109,7 @@ export const InlineGlobalSearch: React.FC = () => {
         <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden z-50 max-h-96 overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
           {loading && totalResults === 0 && (
             <div className="p-6 text-center text-xs font-semibold text-slate-500 flex items-center justify-center gap-2">
-              <Loader2 className="h-4 w-4 text-indigo-600 animate-spin" />
+              <Loader2 className="h-4 w-4 text-amber-500 animate-spin" />
               <span>Searching database...</span>
             </div>
           )}
@@ -113,7 +117,47 @@ export const InlineGlobalSearch: React.FC = () => {
           {!loading && totalResults === 0 && (
             <div className="p-6 text-center">
               <p className="text-xs font-extrabold text-slate-700">No results found for "{query}"</p>
-              <p className="text-[11px] text-slate-400 mt-1">Try searching for a company name, candidate, or job title.</p>
+              <p className="text-[11px] text-slate-400 mt-1">
+                {isSuperAdmin ? "Try searching for a registered agency name." : "Try searching for a company name, candidate, or job title."}
+              </p>
+            </div>
+          )}
+
+          {/* Registered Agencies Section (for Super Admin) */}
+          {results.agencies && results.agencies.length > 0 && (
+            <div className="p-2 border-b border-slate-100">
+              <div className="px-2 py-1 text-[10px] font-black text-amber-600 uppercase tracking-wider flex items-center gap-1.5">
+                <Building2 className="h-3 w-3 text-amber-500" />
+                <span>Registered Agencies ({results.agencies.length})</span>
+              </div>
+              <div className="space-y-0.5 mt-1">
+                {results.agencies.map((agency) => (
+                  <div
+                    key={agency.id}
+                    onClick={() => handleNavigate(`/super-admin/agencies/${agency.id}`)}
+                    className="flex items-center justify-between p-2.5 rounded-xl hover:bg-amber-50/80 cursor-pointer transition-colors group"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="h-7 w-7 rounded-lg bg-slate-900 text-amber-400 font-black text-xs flex items-center justify-center">
+                        {agency.name.substring(0, 2).toUpperCase()}
+                      </div>
+                      <div>
+                        <div className="text-xs font-extrabold text-slate-900 group-hover:text-amber-950">
+                          {agency.name}
+                        </div>
+                        {agency.websiteUrl ? (
+                          <div className="text-[11px] font-medium text-amber-700">
+                            {agency.websiteUrl}
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                    <span className="px-2 py-0.5 text-[9px] font-black rounded bg-emerald-100 text-emerald-800 border border-emerald-300">
+                      {agency.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 

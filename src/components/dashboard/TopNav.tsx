@@ -22,28 +22,29 @@ export const TopNav: React.FC<TopNavProps> = ({
 }) => {
   return (
     <header className="h-16 sticky top-0 z-30 bg-white border-b border-slate-200/90 px-4 md:px-6 flex items-center justify-between gap-4 shadow-2xs">
-      {/* Left: Mobile Toggle */}
-      <div className="flex items-center gap-3">
+      {/* Left: Mobile Toggle & Left-Shifted Search Bar */}
+      <div className="flex items-center gap-3 flex-1 max-w-lg">
         <button
           onClick={onOpenMobileSidebar}
-          className="lg:hidden p-2 rounded-xl text-slate-600 hover:text-slate-950 hover:bg-slate-100 transition-colors"
+          className="lg:hidden p-2 rounded-xl text-slate-600 hover:text-slate-950 hover:bg-slate-100 transition-colors shrink-0"
           aria-label="Open Mobile Navigation"
         >
           <Menu className="h-5 w-5" />
         </button>
-      </div>
 
-      {/* Middle: Direct Active Inline Search Input */}
-      <div className="hidden md:flex flex-1 max-w-lg mx-4 justify-center">
-        <InlineGlobalSearch />
+        <div className="hidden md:block flex-1">
+          <InlineGlobalSearch isSuperAdmin={user?.role === 'SUPER_ADMIN'} />
+        </div>
       </div>
 
       {/* Right: Tenant Badge, Notification Bell & User Dropdown */}
       <div className="flex items-center gap-3">
-        {/* Tenant Badge */}
-        <div className="hidden xl:block">
-          <TenantBadge tenant={tenant} />
-        </div>
+        {/* Tenant Badge (hidden for SUPER_ADMIN) */}
+        {user?.role !== 'SUPER_ADMIN' && (
+          <div className="hidden xl:block">
+            <TenantBadge tenant={tenant} />
+          </div>
+        )}
 
         {/* Notification Bell */}
         <button
