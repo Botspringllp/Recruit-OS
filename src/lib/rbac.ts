@@ -103,24 +103,11 @@ export const getCurrentUser = cache(async (): Promise<UserWithRoleAndPermissions
           id: dbUser.agency.id,
           name: dbUser.agency.name,
           status: agencySuspended ? 'SUSPENDED' : dbUser.agency.status
-        } : { id: session.agencyId || '00000000-0000-0000-0000-000000000001', name: 'RecruitOS Platform', status: 'ACTIVE' }
+        } : null
       } as any;
     }
 
-    // Resilient fallback for valid active sessions
-    return {
-      id: session.userId || '00000000-0000-0000-0000-000000000099',
-      agencyId: session.agencyId || '00000000-0000-0000-0000-000000000001',
-      email: session.email,
-      firstName: session.email.split('@')[0] || 'User',
-      lastName: 'Admin',
-      role: resolvedRole,
-      status: 'ACTIVE',
-      isActive: true,
-      agency: { id: session.agencyId || '00000000-0000-0000-0000-000000000001', name: 'RecruitOS Platform', status: 'ACTIVE' },
-      permissions: [],
-      userRoles: []
-    } as any;
+    return null;
   } catch (e) {
     return null;
   }

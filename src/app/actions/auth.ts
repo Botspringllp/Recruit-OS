@@ -29,83 +29,31 @@ export async function loginAction(formData: FormData): Promise<LoginResult> {
     return { success: false, error: 'Email and password are required.' };
   }
 
-  const isMasterAdmin = MASTER_ADMIN_EMAILS.includes(email);
-  let user: any = null;
-  let dbError: string | null = null;
+  // 1. Fetch user directly from PostgreSQL database
+  const user = await prisma.user.findFirst({
+    where: {
+      email: { equals: email, mode: 'insensitive' },
+      deletedAt: null
+    },
+    include: { agency: true }
+  }).catch(() => null);
 
-  // 1. Try fetching user from database
-  try {
-    user = await prisma.user.findFirst({
-      where: {
-        email: { equals: email, mode: 'insensitive' },
-        deletedAt: null
-      },
-      include: { agency: true }
-    });
-  } catch (err: any) {
-    console.error('VERCEL_PRISMA_DB_ERROR:', err);
-    dbError = err?.message || 'Database connection error on Vercel';
-  }
-
-  // 2. Fail-Safe Master Admin Login
-  if (!user && isMasterAdmin) {
-    const newPasswordHash = await hashPassword(password);
-    user = {
-      id: '00000000-0000-0000-0000-000000000099',
-      email,
-      passwordHash: newPasswordHash,
-      firstName: 'Super',
-      lastName: 'Admin',
-      role: 'SUPER_ADMIN',
-      status: 'ACTIVE',
-      isActive: true,
-      agencyId: null
-    };
-  }
-
-  // 3. Password Verification & Synchronization
-  let isValid = false;
-  if (user) {
-    isValid = await comparePassword(password, user.passwordHash);
-    if (!isValid) {
-      // Synchronize password hash on Vercel if password was reset or changed
-      try {
-        const newHash = await hashPassword(password);
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { passwordHash: newHash, status: 'ACTIVE', isActive: true }
-        });
-        user.passwordHash = newHash;
-        isValid = true;
-      } catch (updateErr) {
-        // If password update fails, accept entered password for master admins
-        if (isMasterAdmin) isValid = true;
-      }
-    }
-  }
-
-  // 4. Fail-Safe Recovery for Master Admin on Vercel
-  // If database connection fails on Vercel OR user auto-creation is pending, allow master admin login
-  if ((!user || !isValid) && isMasterAdmin) {
-    user = {
-      id: '00000000-0000-0000-0000-000000000099',
-      email,
-      role: email.includes('super') ? 'SUPER_ADMIN' : 'AGENCY_OWNER',
-      agencyId: '00000000-0000-0000-0000-000000000001'
-    };
-    isValid = true;
-  }
-
-  if (!isValid || !user) {
+  if (!user) {
     return { success: false, error: 'Invalid email or password.' };
   }
 
-  // Check Agency Suspension / Deletion / Expiry for non-Super-Admin users
+  // 2. Strict bcrypt password verification
+  const isValid = await comparePassword(password, user.passwordHash);
+  if (!isValid) {
+    return { success: false, error: 'Invalid email or password.' };
+  }
+
+  // 3. Check Agency Suspension / Deletion / Expiry for non-Super-Admin users
   const userRoleStr = String(user.role || '').toUpperCase();
   if (userRoleStr !== 'SUPER_ADMIN' && userRoleStr !== 'MASTER_OWNER') {
     let agencyStatus = user.agency?.status;
     let agencyDeletedAt = user.agency?.deletedAt;
-    let subscriptionExpiry = user.agency?.subscriptionExpiryDate;
+    let subscriptionExpiry = (user.agency as any)?.subscriptionExpiryDate;
 
     if (!user.agency && user.agencyId) {
       const dbAgency = await (prisma.agency as any).findUnique({
@@ -129,40 +77,34 @@ export async function loginAction(formData: FormData): Promise<LoginResult> {
     }
   }
 
-  // 5. Update last login timestamp if real user in DB
-  if (user.id !== '00000000-0000-0000-0000-000000000099') {
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { lastLoginAt: new Date() }
-    }).catch(() => null);
-  }
+  // 4. Update last login timestamp
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { lastLoginAt: new Date() }
+  }).catch(() => null);
 
-  // 6. Set HTTP-only secure session cookie
+  // 5. Set HTTP-only secure session cookie
   await setSessionCookie({
     userId: user.id,
     email: user.email,
     role: user.role,
-    agencyId: user.agencyId || '00000000-0000-0000-0000-000000000001'
+    agencyId: user.agencyId || ''
   });
 
-  // 7. Calculate target redirect route based on role
-  const roleStr = String(user.role || '').toUpperCase();
+  // 6. Calculate target redirect route based on role
   let redirectTo = '/cockpit';
 
-  if (roleStr === 'SUPER_ADMIN' || roleStr === 'MASTER_OWNER') {
+  if (userRoleStr === 'SUPER_ADMIN' || userRoleStr === 'MASTER_OWNER') {
     redirectTo = '/super-admin';
-  } else if (roleStr === 'FINANCE_MANAGER' || roleStr === 'FINANCE_ADMIN') {
+  } else if (userRoleStr === 'FINANCE_MANAGER' || userRoleStr === 'FINANCE_ADMIN') {
     redirectTo = '/finance';
-  } else if (roleStr === 'COMPLIANCE_OFFICER') {
+  } else if (userRoleStr === 'COMPLIANCE_OFFICER') {
     redirectTo = '/compliance';
-  } else if (roleStr === 'INTERVIEW_COORDINATOR') {
+  } else if (userRoleStr === 'INTERVIEW_COORDINATOR') {
     redirectTo = '/interviews';
   }
 
-  return {
-    success: true,
-    redirectTo
-  };
+  return { success: true, redirectTo };
 }
 
 /**
