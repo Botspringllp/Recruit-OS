@@ -1,6 +1,7 @@
 import React from 'react';
 import { redirect } from 'next/navigation';
-import { Calendar, Plus, Clock, Sparkles } from 'lucide-react';
+import Link from 'next/link';
+import { Calendar, Plus, Clock, Sparkles, Inbox, ArrowRight } from 'lucide-react';
 import { KpiMetricStrip } from '@/components/cockpit/KpiMetricStrip';
 import { MandatesGridControl } from '@/components/cockpit/MandatesGridControl';
 import { KpiMetricItem, MandateSummaryCard } from '@/types/cockpit';
@@ -31,6 +32,7 @@ export default async function CockpitPage() {
     slaAlertsCount,
     interviewsTodayCount,
     monthlyPlacementsCount,
+    incomingReqPendingCount,
     dbMandates
   ] = await Promise.all([
     prisma.jobMandate.count({
@@ -59,6 +61,10 @@ export default async function CockpitPage() {
       }
     }).catch(() => 0),
 
+    agencyId ? (prisma as any).incomingRequirement.count({
+      where: { agencyId, status: { in: ['Pending Review', 'Assigned'] } }
+    }).catch(() => 0) : 0,
+
     prisma.jobMandate.findMany({
       where: { agencyId },
       orderBy: { createdAt: 'desc' },
@@ -75,6 +81,16 @@ export default async function CockpitPage() {
   ]);
 
   const kpiMetrics: KpiMetricItem[] = [
+    {
+      id: 'metric-incoming-reqs',
+      title: 'Incoming Reqs Queue',
+      value: incomingReqPendingCount,
+      changeTrend: incomingReqPendingCount > 0 ? 'Pending Review' : 'Queue Clear',
+      isPositiveTrend: true,
+      badgeText: `${incomingReqPendingCount} Pending`,
+      badgeVariant: incomingReqPendingCount > 0 ? 'amber' : 'emerald',
+      icon: 'Inbox',
+    },
     {
       id: 'metric-active-mandates',
       title: 'Active Mandates',
@@ -104,16 +120,6 @@ export default async function CockpitPage() {
       badgeText: slaAlertsCount > 0 ? 'Action Required' : 'Optimal',
       badgeVariant: slaAlertsCount > 0 ? 'amber' : 'emerald',
       icon: 'AlertTriangle',
-    },
-    {
-      id: 'metric-interviews-today',
-      title: 'Interviews Today',
-      value: interviewsTodayCount,
-      changeTrend: 'Scheduled for Today',
-      isPositiveTrend: true,
-      badgeText: `${interviewsTodayCount} Sessions`,
-      badgeVariant: 'brand',
-      icon: 'Calendar',
     },
     {
       id: 'metric-monthly-placements',
@@ -197,10 +203,10 @@ export default async function CockpitPage() {
             <Calendar className="h-4 w-4 text-indigo-600" />
             <span>Today ({now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })})</span>
           </button>
-          <button className="px-4 py-2.5 text-xs font-extrabold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-md shadow-indigo-600/20 interactive-hover flex items-center gap-2">
+          <Link href="/jobs/new" className="px-4 py-2.5 text-xs font-extrabold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-md shadow-indigo-600/20 interactive-hover flex items-center gap-2">
             <Plus className="h-4 w-4" />
             <span>New Mandate</span>
-          </button>
+          </Link>
         </div>
       </div>
 
@@ -216,6 +222,36 @@ export default async function CockpitPage() {
 
         {/* Right Column (1/3 width) */}
         <div className="space-y-6">
+          {/* Owner Intake Queue Card */}
+          <div className="rounded-2xl bg-gradient-to-br from-slate-900 to-slate-950 p-6 border border-slate-800 text-white shadow-xl">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                  <Inbox className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-white">Owner Intake Queue</h3>
+                  <p className="text-[10px] text-slate-400 font-bold">Incoming Client Reqs</p>
+                </div>
+              </div>
+              <span className="px-2.5 py-1 text-[11px] font-black rounded-full bg-amber-500 text-slate-950">
+                {incomingReqPendingCount} Pending
+              </span>
+            </div>
+
+            <p className="text-xs text-slate-300 font-medium leading-relaxed mb-4">
+              Review raw client intake requests, assign recruiters, and convert into formal Job Mandates.
+            </p>
+
+            <Link
+              href="/incoming-requirements"
+              className="w-full py-2.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs flex items-center justify-center gap-2 shadow-md shadow-amber-500/20 transition-all"
+            >
+              <span>Manage Requirements Queue</span>
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+
           <div className="rounded-2xl bg-white p-6 border border-slate-200 shadow-sm shadow-slate-200/50 hover:shadow-md hover:border-indigo-400 transition-all duration-200">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
@@ -228,21 +264,6 @@ export default async function CockpitPage() {
             </div>
             <p className="text-xs text-slate-600 leading-relaxed font-medium">
               SLA Watchdog Countdown Feed & Today's Interview Agenda Widget will be mounted here in Phase RC-01.C.
-            </p>
-          </div>
-
-          <div className="rounded-2xl bg-white p-6 border border-slate-200 shadow-sm shadow-slate-200/50 hover:shadow-md hover:border-indigo-400 transition-all duration-200">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-indigo-600" />
-                <h3 className="text-sm font-extrabold text-slate-900">AI Candidate Matching</h3>
-              </div>
-              <span className="px-2.5 py-0.5 text-[10px] font-extrabold rounded bg-indigo-100 text-indigo-950 border border-indigo-300">
-                Phase RC-01.D
-              </span>
-            </div>
-            <p className="text-xs text-slate-600 leading-relaxed font-medium">
-              AI Candidate Intake & Mandate Creation Modals will be mounted here in Phase RC-01.D.
             </p>
           </div>
         </div>

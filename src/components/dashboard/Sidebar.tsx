@@ -12,6 +12,7 @@ import {
   Receipt,
   Settings,
   Award,
+  Inbox,
   X
 } from 'lucide-react';
 import { UserRoleType } from '@/types/dashboard';

@@ -296,6 +296,7 @@ model Agency {
   activityLogs           SystemActivityLog[]
   notifications          NotificationQueue[]
   fileStorageRecords     FileStorageRecord[]
+  incomingRequirements   IncomingRequirement[]
 
   @@map("agencies")
 }
@@ -323,6 +324,7 @@ model User {
   permissions            UserPermission[]
   userRoles              UserRoleAssignment[]
   authSessions           AuthSession[]
+  assignedRequirements   IncomingRequirement[]           @relation("AssignedRequirementRecruiter")
   assignedCandidates     CandidateRecord[]               @relation("RecruiterCandidateOwner")
   // ledJobMandates JobMandate[]
   ownershipLogsPrevious  CandidateOwnershipLog[]         @relation("PreviousRecruiterOwnership")
@@ -581,6 +583,7 @@ model JobMandate {
   portalTokens      ClientPortalToken[]
   commLogs          CommunicationLog[]
   probationTrackers ProbationGuaranteeTracker[] @relation("ReplacementMandateRel")
+  incomingRequirements IncomingRequirement[]
 
   @@map("job_mandates")
 }
@@ -1246,4 +1249,65 @@ model CandidateDiscussionNote {
   @@unique([candidateId])
   @@index([agencyId, candidateId])
   @@map("candidate_discussion_notes")
+}
+
+// =============================================================================
+// DOMAIN 11: INCOMING REQUIREMENTS (OWNER INTAKE QUEUE)
+// =============================================================================
+
+model IncomingRequirement {
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @map("requirement_id") @db.Uuid
+  agencyId           String    @map("agency_id") @db.Uuid
+  positionTitle      String    @map("position_title") @db.VarChar(255)
+  companyName        String    @map("company_name") @db.VarChar(255)
+
+  contactPerson      String?   @map("contact_person") @db.VarChar(255)
+  contactEmail       String?   @map("contact_email") @db.VarChar(255)
+  contactNumber      String?   @map("contact_number") @db.VarChar(32)
+
+  industryType       String?   @map("industry_type") @db.VarChar(128)
+  employmentType     String?   @map("employment_type") @db.VarChar(64)
+  experienceRequired String?   @map("experience_required") @db.VarChar(64)
+  location           String?   @db.VarChar(255)
+  education          String?   @db.VarChar(255)
+  skills             String?   @db.Text
+  jobDescription     String?   @map("job_description") @db.Text
+  companyOverview    String?   @map("company_overview") @db.Text
+
+  source             String    @default("Manual") @db.VarChar(32) // Website, Email, WhatsApp, Manual, Referral
+  priority           String    @default("Medium") @db.VarChar(32) // Low, Medium, High, Urgent
+  status             String    @default("Pending Review") @db.VarChar(32) // Pending Review, Assigned, Accepted, Rejected, Converted
+
+  assignedRecruiterId String?  @map("assigned_recruiter_id") @db.Uuid
+  convertedMandateId  String?  @map("converted_mandate_id") @db.Uuid
+  createdBy           String?  @map("created_by") @db.Uuid
+
+  receivedDate       DateTime  @default(now()) @map("received_date") @db.Timestamptz
+  reviewedDate       DateTime? @map("reviewed_date") @db.Timestamptz
+  acceptedDate       DateTime? @map("accepted_date") @db.Timestamptz
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  agency            Agency                       @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  assignedRecruiter User?                        @relation("AssignedRequirementRecruiter", fields: [assignedRecruiterId], references: [id], onDelete: SetNull)
+  convertedMandate  JobMandate?                  @relation(fields: [convertedMandateId], references: [id], onDelete: SetNull)
+  timelineEvents    RequirementTimelineEvent[]
+
+  @@index([agencyId, status])
+  @@map("incoming_requirements")
+}
+
+model RequirementTimelineEvent {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @map("event_id") @db.Uuid
+  requirementId String   @map("requirement_id") @db.Uuid
+  title         String   @db.VarChar(255)
+  description   String?  @db.Text
+  actorId       String?  @map("actor_id") @db.Uuid
+  actorName     String?  @map("actor_name") @db.VarChar(255)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  requirement IncomingRequirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+
+  @@index([requirementId])
+  @@map("requirement_timeline_events")
 }

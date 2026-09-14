@@ -8,7 +8,7 @@ export interface KpiMetricItem {
   isPositiveTrend: boolean;
   badgeText?: string;
   badgeVariant?: 'brand' | 'amber' | 'emerald' | 'rose';
-  icon: 'Briefcase' | 'Users' | 'AlertTriangle' | 'Calendar' | 'TrendingUp';
+  icon: 'Briefcase' | 'Users' | 'AlertTriangle' | 'Calendar' | 'TrendingUp' | 'Inbox';
 }
 
 export interface MandateStageCount {

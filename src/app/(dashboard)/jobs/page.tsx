@@ -1,7 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { Briefcase, Search, Filter, Plus, Building2, Users, ArrowUpRight, ChevronLeft, ChevronRight, Edit3 } from 'lucide-react';
+import { Briefcase, Search, Filter, Plus, Building2, Users, ArrowUpRight, ChevronLeft, ChevronRight, Edit3, Inbox } from 'lucide-react';
 import { prisma } from '@/lib/prisma';
 import { MandateStatus } from '@prisma/client';
 
@@ -54,7 +54,7 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
     orderBy = { headcount: 'desc' };
   }
 
-  const [totalJobs, jobList, clients] = await Promise.all([
+  const [totalJobs, jobList, clients, pendingIncomingCount] = await Promise.all([
     prisma.jobMandate.count({ where: whereClause }).catch(() => 0),
     prisma.jobMandate.findMany({
       where: whereClause,
@@ -70,11 +70,17 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
       where: { agencyId },
       select: { id: true, companyName: true },
       orderBy: { companyName: 'asc' }
-    }).catch(() => [])
+    }).catch(() => []),
+    agencyId ? (prisma as any).incomingRequirement.count({
+      where: { agencyId, status: { in: ['Pending Review', 'Assigned'] } }
+    }).catch(() => 0) : 0
   ]);
 
   const totalPages = Math.ceil(totalJobs / pageSize) || 1;
   const statusOptions = ['ALL', 'DRAFT', 'OPEN', 'ACTIVE', 'ON_HOLD', 'PAUSED', 'FILLED', 'CLOSED', 'CANCELLED'];
+
+  const userRoleStr = String(dbUser.role || '').toUpperCase();
+  const isOwnerOrAdmin = ['MASTER_OWNER', 'AGENCY_OWNER', 'AGENCY_FOUNDER', 'SUPER_ADMIN'].includes(userRoleStr);
 
   return (
     <div className="space-y-6 pb-12 font-sans">
@@ -90,7 +96,16 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
           </p>
         </div>
 
-        <div className="flex items-center gap-3 self-start sm:self-auto">
+        <div className="flex flex-wrap items-center gap-3 self-start sm:self-auto">
+          {isOwnerOrAdmin && (
+            <Link
+              href="/incoming-requirements"
+              className="px-3.5 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl text-xs font-black shadow-xs flex items-center gap-2 transition-all"
+            >
+              <Inbox className="h-4 w-4 text-amber-600" />
+              <span>Incoming Requirements ({pendingIncomingCount})</span>
+            </Link>
+          )}
           <UploadJobMandateButton clients={clients} />
           <Link
             href="/jobs/new"

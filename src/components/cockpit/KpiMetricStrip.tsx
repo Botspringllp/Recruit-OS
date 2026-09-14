@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Briefcase, Users, AlertTriangle, Calendar, TrendingUp, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { Briefcase, Users, AlertTriangle, Calendar, TrendingUp, ArrowUpRight, ArrowDownRight, Inbox } from 'lucide-react';
 import { KpiMetricItem } from '@/types/cockpit';
 
 interface KpiMetricStripProps {
@@ -11,6 +11,8 @@ interface KpiMetricStripProps {
 export const KpiMetricStrip: React.FC<KpiMetricStripProps> = ({ metrics }) => {
   const getIcon = (iconName: string) => {
     switch (iconName) {
+      case 'Inbox':
+        return <Inbox className="h-5 w-5 text-amber-600" />;
       case 'Briefcase':
         return <Briefcase className="h-5 w-5 text-indigo-600" />;
       case 'Users':
