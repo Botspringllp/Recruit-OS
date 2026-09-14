@@ -5,6 +5,7 @@ import { getCurrentUser, hasPermission } from '@/lib/rbac';
 import { logger } from '@/lib/logger';
 import { Users, UserPlus, Shield, CheckCircle2, Mail, Ban, Eye, Edit3 } from 'lucide-react';
 import { getUsersAction } from '@/app/actions/users';
+import { SettingsHeaderTabs } from '@/components/settings/SettingsHeaderTabs';
 import { DisableUserButton } from '@/components/users/DisableUserButton';
 
 export const revalidate = 0;
@@ -33,6 +34,7 @@ export default async function UserManagementPage() {
 
   return (
     <div className="bg-white min-h-screen p-6 sm:p-8 space-y-8 text-[#111827]">
+      <SettingsHeaderTabs />
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E5E7EB] pb-6">
         <div>
           <div className="flex items-center gap-2">

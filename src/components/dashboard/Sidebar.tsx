@@ -13,6 +13,7 @@ import {
   Settings,
   Award,
   Inbox,
+  Globe,
   X
 } from 'lucide-react';
 import { UserRoleType } from '@/types/dashboard';
@@ -121,9 +122,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
       requiredPermission: 'finance.view'
     },
     {
+      id: 'website-widget',
+      label: 'Website & Widget',
+      href: '/agency-settings/widget',
+      icon: 'Globe',
+      rolesAllowed: ['MASTER_OWNER', 'AGENCY_OWNER', 'AGENCY_FOUNDER'],
+      requiredPermission: 'user.manage'
+    },
+    {
       id: 'settings',
       label: 'Agency Settings',
-      href: '/settings/users',
+      href: '/settings',
       icon: 'Settings',
       rolesAllowed: ['MASTER_OWNER', 'AGENCY_OWNER', 'AGENCY_FOUNDER'],
       requiredPermission: 'user.manage'
@@ -177,6 +186,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         return <Handshake className="h-4.5 w-4.5" />;
       case 'Receipt':
         return <Receipt className="h-4.5 w-4.5" />;
+      case 'Globe':
+        return <Globe className="h-4.5 w-4.5" />;
       default:
         return <Settings className="h-4.5 w-4.5" />;
     }

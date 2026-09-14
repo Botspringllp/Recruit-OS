@@ -2,7 +2,8 @@ import React from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getCurrentUser, hasPermission } from '@/lib/rbac';
-import { Settings, Building, Save, Users, ArrowRight } from 'lucide-react';
+import { SettingsHeaderTabs } from '@/components/settings/SettingsHeaderTabs';
+import { Settings, Building, Save, Users, ArrowRight, Globe } from 'lucide-react';
 import { prisma } from '@/lib/prisma';
 
 export const revalidate = 0;
@@ -13,36 +14,80 @@ export default async function SettingsPage() {
     redirect('/403');
   }
 
-  const agencyId = dbUser.agencyId;
-  const demoAgency = await prisma.agency.findFirst({
-    where: { id: agencyId },
-    select: { id: true, name: true, subdomain: true, subscriptionTier: true }
-  }).catch(() => null);
+  const roleStr = String(dbUser.role || '').toUpperCase();
+  let agencyId = dbUser.agencyId || dbUser.agency?.id;
+
+  let demoAgency = null;
+  if (agencyId) {
+    demoAgency = await (prisma.agency as any).findFirst({
+      where: { id: agencyId, deletedAt: null },
+      select: { id: true, name: true, subdomain: true, subscriptionTier: true, widgetEnabled: true }
+    }).catch(() => null);
+  }
+
+  if (!demoAgency && (roleStr === 'SUPER_ADMIN' || roleStr === 'MASTER_OWNER')) {
+    demoAgency = await (prisma.agency as any).findFirst({
+      where: { deletedAt: null },
+      select: { id: true, name: true, subdomain: true, subscriptionTier: true, widgetEnabled: true }
+    }).catch(() => null);
+  }
 
   return (
-    <div className="space-y-6 pb-12 text-slate-900">
+    <div className="space-y-6 pb-12 text-slate-900 font-sans">
+      {/* Navigation Tabs */}
+      <SettingsHeaderTabs />
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-5">
         <div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
             <Settings className="h-6 w-6 text-amber-500" />
-            Agency Settings
+            Agency Settings Hub
           </h1>
           <p className="text-xs font-semibold text-slate-600 mt-1">
-            Organization branding, portal domains & team access control
+            Organization branding, portal domains, widget capture & team access control
           </p>
         </div>
 
-        <button className="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-extrabold transition-all duration-200 flex items-center gap-2 shadow-md shadow-amber-500/20 self-start sm:self-auto">
+        <button className="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 rounded-xl text-xs font-black transition-all duration-200 flex items-center gap-2 shadow-md shadow-amber-500/20 self-start sm:self-auto">
           <Save className="h-4 w-4" />
           <span>Save Changes</span>
         </button>
       </div>
 
+      {/* Website & Widget Management Card */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <h2 className="text-base font-black text-slate-900 flex items-center gap-2">
+              <Globe className="h-5 w-5 text-amber-500" />
+              Website & Requirement Capture Widget
+            </h2>
+            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase border ${
+              demoAgency?.widgetEnabled
+                ? 'bg-emerald-100 text-emerald-950 border-emerald-300'
+                : 'bg-slate-100 text-slate-600 border-slate-300'
+            }`}>
+              {demoAgency?.widgetEnabled ? 'Widget Enabled' : 'Widget Access Disabled'}
+            </span>
+          </div>
+          <p className="text-xs font-semibold text-slate-600">
+            Collect hiring requirements directly from client website leads into your RecruitOS Intake Queue. Test preview & download standalone ZIP package.
+          </p>
+        </div>
+        <Link
+          href="/agency-settings/widget"
+          className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-black text-xs rounded-xl transition-all shadow-md flex items-center gap-2 shrink-0"
+        >
+          <span>Open Widget Manager</span>
+          <ArrowRight className="h-4 w-4" />
+        </Link>
+      </div>
+
       {/* User & Team Management Link Card */}
       <div className="bg-white rounded-2xl border border-amber-200 shadow-sm p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="space-y-1">
-          <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+          <h2 className="text-base font-black text-slate-900 flex items-center gap-2">
             <Users className="h-5 w-5 text-amber-500" />
             User & Team Management
           </h2>
@@ -52,7 +97,7 @@ export default async function SettingsPage() {
         </div>
         <Link
           href="/settings/users"
-          className="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-xs rounded-xl transition-all shadow-md shadow-amber-500/20 flex items-center gap-2"
+          className="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs rounded-xl transition-all shadow-md shadow-amber-500/20 flex items-center gap-2 shrink-0"
         >
           <span>Manage Team Users</span>
           <ArrowRight className="h-4 w-4" />
@@ -72,18 +117,18 @@ export default async function SettingsPage() {
             <input
               type="text"
               readOnly
-              defaultValue={demoAgency?.name || 'RecruitOS Demo Agency'}
-              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 font-extrabold focus:outline-none"
+              value={demoAgency?.name || 'RecruitOS Agency'}
+              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800"
             />
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-slate-600 font-extrabold">Agency Subdomain</label>
+            <label className="text-slate-600 font-extrabold">Subdomain</label>
             <input
               type="text"
               readOnly
-              defaultValue={demoAgency?.subdomain || 'demo'}
-              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-amber-700 font-extrabold focus:outline-none"
+              value={`${demoAgency?.subdomain || 'agency'}.recruitos.in`}
+              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800"
             />
           </div>
 
@@ -92,18 +137,18 @@ export default async function SettingsPage() {
             <input
               type="text"
               readOnly
-              defaultValue={demoAgency?.subscriptionTier || 'ENTERPRISE'}
-              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-emerald-800 font-extrabold focus:outline-none"
+              value={demoAgency?.subscriptionTier || 'ENTERPRISE'}
+              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-amber-600"
             />
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-slate-600 font-extrabold">Multi-Tenant Status</label>
+            <label className="text-slate-600 font-extrabold">Agency ID</label>
             <input
               type="text"
               readOnly
-              defaultValue="PostgreSQL RLS Active (Tenant Isolated)"
-              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-indigo-900 font-extrabold focus:outline-none"
+              value={demoAgency?.id || 'N/A'}
+              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-mono font-bold text-slate-800"
             />
           </div>
         </div>
