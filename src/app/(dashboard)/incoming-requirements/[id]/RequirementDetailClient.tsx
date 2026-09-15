@@ -23,12 +23,18 @@ import {
   Loader2,
   Check,
   X,
-  History
+  History,
+  Eye,
+  Download,
+  RotateCcw,
+  Trash2
 } from 'lucide-react';
 import {
   assignRecruiterToRequirementAction,
   acceptAndConvertRequirementAction,
-  rejectRequirementAction
+  rejectRequirementAction,
+  restoreRequirementAction,
+  permanentlyDeleteRequirementAction
 } from '@/app/actions/incomingRequirements';
 
 interface RequirementDetailClientProps {
@@ -49,6 +55,15 @@ export const RequirementDetailClient: React.FC<RequirementDetailClientProps> = (
   const [selectedRecruiterId, setSelectedRecruiterId] = useState(requirement.assignedRecruiterId || '');
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+
+  // Extract PDF Name & Base64 Data if present
+  const extractedPdfName =
+    requirement.pdfName ||
+    (requirement.companyOverview?.match(/📄 \[Attached Requirement PDF: (.*?)\]/)?.[1]) ||
+    (requirement.jobDescription?.match(/Requirement PDF Attached: (.*)/)?.[1]) ||
+    null;
+
+  const pdfData = requirement.pdfUrl || null;
 
   // Save Recruiter Assignment
   const handleSaveAssignment = async () => {
@@ -95,6 +110,36 @@ export const RequirementDetailClient: React.FC<RequirementDetailClientProps> = (
         router.refresh();
       } else {
         setActionError(res.error || 'Failed to reject requirement.');
+      }
+    });
+  };
+
+  // Restore Requirement
+  const handleRestore = async () => {
+    setActionError(null);
+    startTransition(async () => {
+      const res = await restoreRequirementAction(requirement.id);
+      if (res.success) {
+        setActionSuccess('Requirement restored back to Active Intake Queue!');
+        router.push('/incoming-requirements');
+      } else {
+        setActionError(res.error || 'Failed to restore requirement.');
+      }
+    });
+  };
+
+  // Permanent Delete Requirement
+  const handlePermanentDelete = async () => {
+    if (!confirm(`Are you sure you want to PERMANENTLY DELETE requirement "${requirement.positionTitle}"? This cannot be undone.`)) return;
+
+    setActionError(null);
+    startTransition(async () => {
+      const res = await permanentlyDeleteRequirementAction(requirement.id);
+      if (res.success) {
+        setActionSuccess('Requirement permanently deleted.');
+        router.push('/incoming-requirements');
+      } else {
+        setActionError(res.error || 'Failed to delete requirement.');
       }
     });
   };
@@ -190,7 +235,7 @@ export const RequirementDetailClient: React.FC<RequirementDetailClientProps> = (
           </p>
         </div>
 
-        {/* Action Controls */}
+        {/* Action Controls for Active Requirements */}
         {requirement.status !== 'Converted' && requirement.status !== 'Rejected' && (
           <div className="flex flex-wrap items-center gap-3 shrink-0">
             <button
@@ -209,6 +254,29 @@ export const RequirementDetailClient: React.FC<RequirementDetailClientProps> = (
             >
               <XCircle className="h-4.5 w-4.5" />
               <span>Reject</span>
+            </button>
+          </div>
+        )}
+
+        {/* Action Controls for Rejected Requirements */}
+        {requirement.status === 'Rejected' && (
+          <div className="flex flex-wrap items-center gap-3 shrink-0">
+            <button
+              onClick={handleRestore}
+              disabled={isPending}
+              className="px-5 py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs shadow-lg shadow-emerald-500/20 flex items-center gap-2 transition-all transform hover:-translate-y-0.5 active:translate-y-0"
+            >
+              {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4.5 w-4.5 stroke-[2.5]" />}
+              <span>Restore Requirement</span>
+            </button>
+
+            <button
+              onClick={handlePermanentDelete}
+              disabled={isPending}
+              className="px-4 py-3 rounded-2xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 font-bold text-xs border border-rose-500/30 flex items-center gap-1.5 transition-colors"
+            >
+              <Trash2 className="h-4.5 w-4.5" />
+              <span>Permanent Delete</span>
             </button>
           </div>
         )}
@@ -252,63 +320,88 @@ export const RequirementDetailClient: React.FC<RequirementDetailClientProps> = (
             </div>
           </div>
 
-          {/* Section B: Requirement Details */}
-          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-5">
-            <h2 className="text-sm font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-              <Briefcase className="h-4 w-4 text-blue-500" />
-              <span>B. Position Requirement Specifications</span>
-            </h2>
+          {/* Section B: Client Requirement PDF & Document */}
+          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-4 overflow-hidden">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h2 className="text-sm font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                <FileText className="h-4 w-4 text-amber-500" />
+                <span>B. Attached Requirement PDF Document</span>
+              </h2>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
-              <div>
-                <span className="text-slate-400 font-bold block">Industry Type</span>
-                <span className="font-extrabold text-slate-800 mt-0.5 block">{requirement.industryType || 'N/A'}</span>
-              </div>
-
-              <div>
-                <span className="text-slate-400 font-bold block">Employment Type</span>
-                <span className="font-extrabold text-slate-800 mt-0.5 block">{requirement.employmentType || 'Full-time'}</span>
-              </div>
-
-              <div>
-                <span className="text-slate-400 font-bold block">Experience Required</span>
-                <span className="font-extrabold text-slate-800 mt-0.5 block">{requirement.experienceRequired || 'N/A'}</span>
-              </div>
-
-              <div>
-                <span className="text-slate-400 font-bold block">Location</span>
-                <span className="font-extrabold text-slate-800 mt-0.5 block">{requirement.location || 'N/A'}</span>
-              </div>
+              {extractedPdfName && (
+                <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-black border border-emerald-300 flex items-center gap-1">
+                  <CheckCircle className="h-3.5 w-3.5 text-emerald-600" />
+                  <span>PDF Uploaded</span>
+                </span>
+              )}
             </div>
 
-            {requirement.skills && (
-              <div>
-                <span className="text-xs font-bold text-slate-400 block mb-1.5 uppercase">Required Skills</span>
-                <div className="flex flex-wrap gap-1.5">
-                  {requirement.skills.split(',').map((skill: string, idx: number) => (
-                    <span key={idx} className="px-2.5 py-1 rounded-lg bg-amber-50 text-amber-800 border border-amber-200 text-xs font-bold">
-                      {skill.trim()}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
+            {/* Simple, Clean Document Box */}
+            {pdfData || extractedPdfName ? (
+              <div className="space-y-4 max-w-full overflow-hidden">
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 overflow-hidden">
+                  <div className="flex items-center gap-3 min-w-0 flex-1 overflow-hidden">
+                    <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-600 border border-amber-500/20 shrink-0">
+                      <FileText className="h-6 w-6" />
+                    </div>
+                    <div className="min-w-0 flex-1 overflow-hidden">
+                      <h4 className="font-extrabold text-xs text-slate-900 truncate">
+                        {extractedPdfName || 'Requirement Document.pdf'}
+                      </h4>
+                      <span className="text-[11px] text-slate-500 font-bold block mt-0.5">
+                        Client PDF Attachment ({requirement.companyName})
+                      </span>
+                    </div>
+                  </div>
 
-            {requirement.jobDescription && (
-              <div className="pt-3 border-t border-slate-100">
-                <span className="text-xs font-bold text-slate-400 block mb-2 uppercase">Job Description</span>
-                <div className="bg-slate-50 rounded-xl p-4 text-xs text-slate-800 font-medium whitespace-pre-line leading-relaxed border border-slate-200/60">
-                  {requirement.jobDescription}
-                </div>
-              </div>
-            )}
+                  {pdfData && (
+                    <div className="flex items-center gap-2 shrink-0">
+                      <a
+                        href={pdfData}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition-all flex items-center gap-1.5 shadow-xs"
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                        <span>View PDF</span>
+                      </a>
 
-            {requirement.companyOverview && (
-              <div className="pt-3 border-t border-slate-100">
-                <span className="text-xs font-bold text-slate-400 block mb-2 uppercase">Company Overview</span>
-                <p className="text-xs text-slate-700 font-medium leading-relaxed">
-                  {requirement.companyOverview}
-                </p>
+                      <a
+                        href={pdfData}
+                        download={extractedPdfName || 'Requirement.pdf'}
+                        className="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition-colors flex items-center gap-1.5"
+                      >
+                        <Download className="h-3.5 w-3.5" />
+                        <span>Download</span>
+                      </a>
+                    </div>
+                  )}
+                </div>
+
+                {/* Embedded PDF Viewer if pdfData exists */}
+                {pdfData ? (
+                  <div className="rounded-xl overflow-hidden border border-slate-200 shadow-inner bg-slate-100">
+                    <iframe
+                      src={pdfData}
+                      title="Requirement PDF Preview"
+                      className="w-full h-[500px] border-0"
+                    />
+                  </div>
+                ) : (
+                  <div className="p-4 rounded-xl bg-amber-50/90 border border-amber-200 text-amber-900 text-xs font-bold leading-relaxed space-y-1">
+                    <div className="flex items-center gap-2 text-amber-800 font-black">
+                      <FileText className="h-4 w-4 shrink-0 text-amber-600" />
+                      <span>Document File: {extractedPdfName}</span>
+                    </div>
+                    <p className="text-[11px] text-amber-800 font-semibold pl-6">
+                      (Database PDF save ab active ho chuka hai! Please aap abhi ek <strong>naya requirement form submit karein</strong>, wo naya PDF yahan live display hone lagega.)
+                    </p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="py-6 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                <p className="text-xs text-slate-500 font-bold">No PDF document attached with this requirement.</p>
               </div>
             )}
           </div>

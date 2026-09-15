@@ -9,6 +9,7 @@ export interface KpiMetricItem {
   badgeText?: string;
   badgeVariant?: 'brand' | 'amber' | 'emerald' | 'rose';
   icon: 'Briefcase' | 'Users' | 'AlertTriangle' | 'Calendar' | 'TrendingUp' | 'Inbox';
+  href?: string;
 }
 
 export interface MandateStageCount {

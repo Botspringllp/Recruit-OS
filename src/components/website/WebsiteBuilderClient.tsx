@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   Globe,
   Eye,
@@ -17,7 +17,11 @@ import {
   Phone,
   Share2,
   ExternalLink,
-  PowerOff
+  PowerOff,
+  Upload,
+  Trash2,
+  Sparkles,
+  Check
 } from 'lucide-react';
 import {
   saveWebsiteConfigurationAction,
@@ -58,10 +62,64 @@ const ALL_INDUSTRIES = [
   'Logistics'
 ];
 
+const COLOR_PRESETS = [
+  {
+    id: 'light-slate-amber',
+    name: 'Clean Light Slate & Amber Gold',
+    badge: 'Light Theme',
+    primary: '#f59e0b',
+    secondary: '#ffffff'
+  },
+  {
+    id: 'corporate-navy-white',
+    name: 'Corporate Navy & Pearl White',
+    badge: 'Light Theme',
+    primary: '#1e40af',
+    secondary: '#f8fafc'
+  },
+  {
+    id: 'emerald-mint-light',
+    name: 'Emerald Teal & Mint Fresh',
+    badge: 'Light Theme',
+    primary: '#0d9488',
+    secondary: '#f0fdf4'
+  },
+  {
+    id: 'royal-lavender-light',
+    name: 'Royal Indigo & Lavender Cream',
+    badge: 'Light Theme',
+    primary: '#4f46e5',
+    secondary: '#faf5ff'
+  },
+  {
+    id: 'warm-sunset-beige',
+    name: 'Warm Sunset & Sand Beige',
+    badge: 'Light Theme',
+    primary: '#ea580c',
+    secondary: '#fffbeb'
+  },
+  {
+    id: 'cyber-cyan-obsidian',
+    name: 'Cyber Cyan & Deep Obsidian',
+    badge: 'Dark Theme',
+    primary: '#06b6d4',
+    secondary: '#030712'
+  },
+  {
+    id: 'midnight-violet-slate',
+    name: 'Midnight Violet & Dark Slate',
+    badge: 'Dark Theme',
+    primary: '#8b5cf6',
+    secondary: '#0f172a'
+  }
+];
+
 export const WebsiteBuilderClient: React.FC<WebsiteBuilderClientProps> = ({
   agency,
   initialConfig
 }) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [formData, setFormData] = useState({
     agencyName: initialConfig?.agencyName || agency.name || '',
     tagline: initialConfig?.tagline || '',
@@ -72,7 +130,7 @@ export const WebsiteBuilderClient: React.FC<WebsiteBuilderClientProps> = ({
     mission: initialConfig?.mission || '',
     vision: initialConfig?.vision || '',
     primaryColor: initialConfig?.primaryColor || '#f59e0b',
-    secondaryColor: initialConfig?.secondaryColor || '#0f172a',
+    secondaryColor: initialConfig?.secondaryColor || '#ffffff',
     contactEmail: initialConfig?.contactEmail || '',
     supportEmail: initialConfig?.supportEmail || '',
     phone: initialConfig?.phone || '',
@@ -90,9 +148,99 @@ export const WebsiteBuilderClient: React.FC<WebsiteBuilderClientProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [logoError, setLogoError] = useState<string | null>(null);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const [showCustomColor, setShowCustomColor] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    setLogoError(null);
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Size limit check: 4MB max for initial file before compression
+    const MAX_SIZE_BYTES = 4 * 1024 * 1024;
+    if (file.size > MAX_SIZE_BYTES) {
+      setLogoError('Selected image file is too large (Max 4MB). Please select a smaller logo image file.');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
+    setIsUploadingLogo(true);
+
+    try {
+      // Compress and resize image using HTML Canvas
+      const compressedBase64 = await compressAndScaleImage(file);
+      setFormData(prev => ({ ...prev, logoUrl: compressedBase64 }));
+    } catch (err: any) {
+      setLogoError('Failed to process image file. Please try another logo file.');
+    } finally {
+      setIsUploadingLogo(false);
+    }
+  };
+
+  const compressAndScaleImage = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const MAX_WIDTH = 400;
+          const MAX_HEIGHT = 400;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height = Math.round((height * MAX_WIDTH) / width);
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width = Math.round((width * MAX_HEIGHT) / height);
+              height = MAX_HEIGHT;
+            }
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            resolve(event.target?.result as string);
+            return;
+          }
+
+          ctx.drawImage(img, 0, 0, width, height);
+          const mimeType = file.type === 'image/png' || file.type === 'image/svg+xml' ? file.type : 'image/webp';
+          const dataUrl = canvas.toDataURL(mimeType, 0.85);
+          resolve(dataUrl);
+        };
+        img.onerror = (err) => reject(err);
+        img.src = event.target?.result as string;
+      };
+      reader.onerror = (err) => reject(err);
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleRemoveLogo = () => {
+    setFormData(prev => ({ ...prev, logoUrl: '' }));
+    setLogoError(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const selectColorPreset = (preset: typeof COLOR_PRESETS[0]) => {
+    setFormData(prev => ({
+      ...prev,
+      primaryColor: preset.primary,
+      secondaryColor: preset.secondary
+    }));
+    setShowCustomColor(false);
   };
 
   const toggleService = (service: string) => {
@@ -140,8 +288,12 @@ export const WebsiteBuilderClient: React.FC<WebsiteBuilderClientProps> = ({
     setSuccess(null);
 
     try {
-      // Save draft first
-      await saveWebsiteConfigurationAction(agency.id, formData);
+      const saveRes = await saveWebsiteConfigurationAction(agency.id, formData);
+      if (!saveRes.success) {
+        setError(saveRes.error || 'Failed to save website configuration.');
+        setLoading(false);
+        return;
+      }
 
       const res = await publishWebsiteAction(agency.id);
       if (res.success) {
@@ -207,7 +359,7 @@ export const WebsiteBuilderClient: React.FC<WebsiteBuilderClientProps> = ({
           </div>
 
           <p className="text-xs text-slate-400 font-medium">
-            Configure your official agency website branding, content, services, and live job showcase.
+            Configure your agency website logo, content, light & dark theme combinations, services, and live job mandates.
           </p>
 
           {status === 'PUBLISHED' && (
@@ -289,11 +441,11 @@ export const WebsiteBuilderClient: React.FC<WebsiteBuilderClientProps> = ({
 
       {/* Main Configuration Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 text-xs font-medium">
-        {/* SECTION 1: BRANDING */}
-        <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
+        {/* SECTION 1: BRANDING & LOGO UPLOAD */}
+        <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-5">
           <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
             <Building2 className="h-5 w-5 text-amber-500" />
-            <h3 className="text-sm font-black text-slate-900">1. Branding & Identity</h3>
+            <h3 className="text-sm font-black text-slate-900">1. Agency Identity & Logo Upload</h3>
           </div>
 
           <div>
@@ -320,64 +472,229 @@ export const WebsiteBuilderClient: React.FC<WebsiteBuilderClientProps> = ({
             />
           </div>
 
-          <div>
-            <label className="block font-bold text-slate-700 mb-1">Logo Image URL</label>
-            <input
-              type="text"
-              name="logoUrl"
-              value={formData.logoUrl}
-              onChange={handleChange}
-              placeholder="https://example.com/logo.png"
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-900"
-            />
+          {/* LOGO IMAGE UPLOAD ONLY (NO DIRECT URL PASTING) */}
+          <div className="space-y-2 pt-2 border-t border-slate-100">
+            <label className="block font-black text-slate-900">Upload Agency Logo</label>
+
+            {formData.logoUrl ? (
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-14 w-14 rounded-xl bg-white border border-slate-200 p-1 flex items-center justify-center overflow-hidden shrink-0 shadow-2xs">
+                    <img src={formData.logoUrl} alt="Agency Logo" className="max-h-full max-w-full object-contain" />
+                  </div>
+                  <div>
+                    <span className="font-bold text-slate-900 block text-xs">Logo Uploaded Successfully</span>
+                    <span className="text-[10px] text-emerald-600 font-extrabold flex items-center gap-1 mt-0.5">
+                      <CheckCircle2 className="h-3 w-3" /> Auto-optimized for public website
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleRemoveLogo}
+                  className="px-3 py-1.5 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-100 font-extrabold text-xs transition-colors flex items-center gap-1 border border-rose-200 shrink-0"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  <span>Remove Logo</span>
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="border-2 border-dashed border-slate-300 rounded-2xl p-6 text-center hover:border-amber-500 transition-colors bg-slate-50/50">
+                  {isUploadingLogo ? (
+                    <div className="py-2 space-y-2">
+                      <Loader2 className="h-8 w-8 text-amber-500 animate-spin mx-auto" />
+                      <p className="font-extrabold text-slate-800 text-xs">Optimizing and Uploading Logo...</p>
+                    </div>
+                  ) : (
+                    <>
+                      <Upload className="h-8 w-8 text-amber-500 mx-auto mb-2" />
+                      <p className="font-extrabold text-slate-800 text-xs">
+                        Click Below to Select & Upload Agency Logo
+                      </p>
+                      <p className="text-[11px] text-slate-500 font-medium mt-1">
+                        PNG, JPG, WEBP, or SVG
+                      </p>
+
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/png, image/jpeg, image/webp, image/svg+xml"
+                        onChange={handleLogoUpload}
+                        className="hidden"
+                        id="logo-upload-file-input"
+                      />
+
+                      <label
+                        htmlFor="logo-upload-file-input"
+                        className="inline-block mt-3 px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs cursor-pointer transition-all shadow-xs"
+                      >
+                        Choose Logo Image File
+                      </label>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {logoError && (
+              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                <span>{logoError}</span>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* SECTION 2: THEME COLORS */}
-        <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
+        {/* SECTION 2: THEME STYLING & 7 LIGHT/DARK COLOR COMBINATIONS */}
+        <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-5">
           <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
             <Palette className="h-5 w-5 text-amber-500" />
-            <h3 className="text-sm font-black text-slate-900">2. Theme Styling</h3>
+            <h3 className="text-sm font-black text-slate-900">2. Theme Styling & Color Combinations</h3>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block font-bold text-slate-700 mb-1">Primary Color</label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="color"
-                  name="primaryColor"
-                  value={formData.primaryColor}
-                  onChange={handleChange}
-                  className="w-10 h-10 rounded-xl cursor-pointer border border-slate-300 p-1"
-                />
-                <input
-                  type="text"
-                  name="primaryColor"
-                  value={formData.primaryColor}
-                  onChange={handleChange}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 font-mono text-slate-900 font-bold"
-                />
-              </div>
-            </div>
+          <p className="text-xs text-slate-500 font-medium">
+            Choose your preferred website color combination (including Light and Dark background themes):
+          </p>
 
-            <div>
-              <label className="block font-bold text-slate-700 mb-1">Secondary Color</label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="color"
-                  name="secondaryColor"
-                  value={formData.secondaryColor}
-                  onChange={handleChange}
-                  className="w-10 h-10 rounded-xl cursor-pointer border border-slate-300 p-1"
-                />
-                <input
-                  type="text"
-                  name="secondaryColor"
-                  value={formData.secondaryColor}
-                  onChange={handleChange}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 font-mono text-slate-900 font-bold"
-                />
+          {/* 7 Color Palette Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {COLOR_PRESETS.map(preset => {
+              const isSelected =
+                !showCustomColor &&
+                formData.primaryColor.toLowerCase() === preset.primary.toLowerCase() &&
+                formData.secondaryColor.toLowerCase() === preset.secondary.toLowerCase();
+
+              return (
+                <button
+                  key={preset.id}
+                  type="button"
+                  onClick={() => selectColorPreset(preset)}
+                  className={`p-3 rounded-2xl border text-left transition-all relative flex flex-col justify-between gap-2.5 ${
+                    isSelected
+                      ? 'border-amber-500 bg-amber-50/40 ring-2 ring-amber-500/20 shadow-xs'
+                      : 'border-slate-200 hover:border-slate-300 bg-white'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-black text-slate-900 text-xs truncate">{preset.name}</span>
+                    {isSelected && (
+                      <span className="w-5 h-5 rounded-full bg-amber-500 text-slate-950 flex items-center justify-center shrink-0">
+                        <Check className="h-3 w-3 stroke-[3]" />
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Badge & Color Swatches */}
+                  <div className="flex items-center justify-between gap-2 pt-0.5">
+                    <span
+                      className={`text-[9px] px-2 py-0.5 rounded-full font-black uppercase tracking-wider ${
+                        preset.badge === 'Light Theme'
+                          ? 'bg-amber-100 text-amber-800'
+                          : 'bg-slate-900 text-slate-200'
+                      }`}
+                    >
+                      {preset.badge}
+                    </span>
+
+                    <div className="flex items-center gap-1.5">
+                      <div
+                        className="h-5 w-5 rounded-md border border-slate-300 shadow-2xs"
+                        style={{ backgroundColor: preset.primary }}
+                        title={`Accent Color: ${preset.primary}`}
+                      />
+                      <div
+                        className="h-5 w-5 rounded-md border border-slate-400 shadow-2xs"
+                        style={{ backgroundColor: preset.secondary }}
+                        title={`Background Color: ${preset.secondary}`}
+                      />
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+
+            {/* Custom Color Option */}
+            <button
+              type="button"
+              onClick={() => setShowCustomColor(true)}
+              className={`p-3 rounded-2xl border text-left transition-all relative flex flex-col justify-between gap-2 ${
+                showCustomColor
+                  ? 'border-amber-500 bg-amber-50/40 ring-2 ring-amber-500/20 shadow-xs'
+                  : 'border-slate-200 hover:border-slate-300 bg-white'
+              }`}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-black text-slate-900 text-xs">Custom Colors</span>
+                {showCustomColor && (
+                  <span className="w-5 h-5 rounded-full bg-amber-500 text-slate-950 flex items-center justify-center shrink-0">
+                    <Check className="h-3 w-3 stroke-[3]" />
+                  </span>
+                )}
+              </div>
+              <span className="text-[10px] text-amber-600 font-bold">Configure custom brand hex colors below</span>
+            </button>
+          </div>
+
+          {/* CUSTOM COLOR PICKERS */}
+          <div className="pt-3 border-t border-slate-100 space-y-3">
+            <h4 className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+              <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+              <span>Color Hex Settings</span>
+            </h4>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Primary Accent Color</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    name="primaryColor"
+                    value={formData.primaryColor}
+                    onChange={(e) => {
+                      setShowCustomColor(true);
+                      handleChange(e);
+                    }}
+                    className="w-10 h-10 rounded-xl cursor-pointer border border-slate-300 p-1 shrink-0"
+                  />
+                  <input
+                    type="text"
+                    name="primaryColor"
+                    value={formData.primaryColor}
+                    onChange={(e) => {
+                      setShowCustomColor(true);
+                      handleChange(e);
+                    }}
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 font-mono text-slate-900 font-bold text-xs"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Background Color</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    name="secondaryColor"
+                    value={formData.secondaryColor}
+                    onChange={(e) => {
+                      setShowCustomColor(true);
+                      handleChange(e);
+                    }}
+                    className="w-10 h-10 rounded-xl cursor-pointer border border-slate-300 p-1 shrink-0"
+                  />
+                  <input
+                    type="text"
+                    name="secondaryColor"
+                    value={formData.secondaryColor}
+                    onChange={(e) => {
+                      setShowCustomColor(true);
+                      handleChange(e);
+                    }}
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 font-mono text-slate-900 font-bold text-xs"
+                  />
+                </div>
               </div>
             </div>
           </div>

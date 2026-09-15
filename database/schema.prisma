@@ -1275,6 +1275,9 @@ model IncomingRequirement {
   jobDescription     String?   @map("job_description") @db.Text
   companyOverview    String?   @map("company_overview") @db.Text
 
+  pdfName            String?   @map("pdf_name") @db.VarChar(255)
+  pdfUrl             String?   @map("pdf_url") @db.Text
+
   source             String    @default("Manual") @db.VarChar(32) // Website, Email, WhatsApp, Manual, Referral
   priority           String    @default("Medium") @db.VarChar(32) // Low, Medium, High, Urgent
   status             String    @default("Pending Review") @db.VarChar(32) // Pending Review, Assigned, Accepted, Rejected, Converted
@@ -1325,7 +1328,7 @@ model WebsiteConfiguration {
 
   agencyName         String    @map("agency_name") @db.VarChar(255)
   tagline            String?   @db.VarChar(255)
-  logoUrl            String?   @map("logo_url") @db.VarChar(512)
+  logoUrl            String?   @map("logo_url") @db.Text
 
   heroTitle          String?   @map("hero_title") @db.VarChar(255)
   heroSubtitle       String?   @map("hero_subtitle") @db.Text

@@ -209,7 +209,7 @@ export const SuperAdminDashboardClient: React.FC<SuperAdminDashboardClientProps>
                           {agency.websiteUrl ? (
                             <div className="pt-0.5">
                               <a
-                                href={agency.websiteUrl.startsWith('http') ? agency.websiteUrl : `https://${agency.websiteUrl}`}
+                                href={agency.websiteUrl.startsWith('http') ? agency.websiteUrl : `/site/${agency.subdomain}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-600 hover:text-amber-700 hover:underline"

@@ -366,7 +366,7 @@ export const AgencyProfileClient: React.FC<AgencyProfileClientProps> = ({
                 <span className="text-slate-400 font-bold block text-[10px] uppercase">Website URL</span>
                 {agency.websiteUrl ? (
                   <a
-                    href={agency.websiteUrl.startsWith('http') ? agency.websiteUrl : `https://${agency.websiteUrl}`}
+                    href={agency.websiteUrl.startsWith('http') ? agency.websiteUrl : `/site/${agency.subdomain}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="font-bold text-amber-600 hover:underline flex items-center gap-1 mt-0.5"

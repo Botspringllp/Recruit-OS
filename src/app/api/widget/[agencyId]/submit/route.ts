@@ -28,7 +28,7 @@ export async function POST(
 
     const agency = await (prisma.agency as any).findUnique({
       where: { id: agencyId },
-      select: { id: true, name: true, widgetEnabled: true }
+      select: { id: true, name: true, widgetEnabled: true, websiteBuilderEnabled: true }
     });
 
     if (!agency) {
@@ -38,9 +38,10 @@ export async function POST(
       );
     }
 
-    if (agency.widgetEnabled === false) {
+    // Allow submission if websiteBuilderEnabled is true OR widgetEnabled is true
+    if (agency.widgetEnabled === false && agency.websiteBuilderEnabled === false) {
       return NextResponse.json(
-        { success: false, error: 'Requirement Capture Widget is disabled for this agency.' },
+        { success: false, error: 'Requirement Capture is disabled for this agency.' },
         { status: 403, headers: corsHeaders }
       );
     }
@@ -66,7 +67,7 @@ export async function POST(
       pdfBase64
     } = body;
 
-    // Mandatory Field Validation
+    // Mandatory Field Validation (Company & Contact Info)
     if (!companyName || !companyName.trim()) {
       return NextResponse.json({ success: false, error: 'Company Name is required.' }, { status: 400, headers: corsHeaders });
     }
@@ -79,12 +80,13 @@ export async function POST(
     if (!contactNumber || !contactNumber.trim()) {
       return NextResponse.json({ success: false, error: 'Phone Number is required.' }, { status: 400, headers: corsHeaders });
     }
-    if (!positionTitle || !positionTitle.trim()) {
-      return NextResponse.json({ success: false, error: 'Position Title is required.' }, { status: 400, headers: corsHeaders });
-    }
-    if (!jobDescription || !jobDescription.trim()) {
-      return NextResponse.json({ success: false, error: 'Job Description is required.' }, { status: 400, headers: corsHeaders });
-    }
+
+    // Smart defaults for position title & description when optional/pdf-only
+    const finalPositionTitle = positionTitle?.trim() || `Hiring Requirement (${companyName.trim()})`;
+    const defaultDesc = pdfName
+      ? `Requirement PDF Attached: ${pdfName}`
+      : `Hiring requirement submitted by ${contactPerson.trim()} (${companyName.trim()}).`;
+    const finalJobDescription = jobDescription?.trim() || defaultDesc;
 
     let finalCompanyOverview = companyOverview?.trim() || '';
     if (pdfName) {
@@ -95,20 +97,22 @@ export async function POST(
     const requirement = await (prisma as any).incomingRequirement.create({
       data: {
         agencyId,
-        companyName: companyName.trim(),
-        contactPerson: contactPerson.trim(),
-        contactEmail: contactEmail.trim(),
-        contactNumber: contactNumber.trim(),
-        positionTitle: positionTitle.trim(),
-        jobDescription: jobDescription.trim(),
-        industryType: industryType?.trim() || null,
-        employmentType: employmentType?.trim() || 'Full-time',
-        experienceRequired: experienceRequired?.trim() || null,
-        location: location?.trim() || null,
-        education: education?.trim() || null,
+        companyName: companyName.trim().slice(0, 255),
+        contactPerson: contactPerson.trim().slice(0, 255),
+        contactEmail: contactEmail.trim().slice(0, 255),
+        contactNumber: contactNumber.trim().slice(0, 32),
+        positionTitle: finalPositionTitle.slice(0, 255),
+        jobDescription: finalJobDescription,
+        pdfName: pdfName ? pdfName.slice(0, 255) : null,
+        pdfUrl: pdfBase64 || null,
+        industryType: industryType?.trim() ? industryType.trim().slice(0, 128) : null,
+        employmentType: employmentType?.trim() ? employmentType.trim().slice(0, 64) : 'Full-time',
+        experienceRequired: experienceRequired?.trim() ? experienceRequired.trim().slice(0, 64) : null,
+        location: location?.trim() ? location.trim().slice(0, 255) : null,
+        education: education?.trim() ? education.trim().slice(0, 255) : null,
         skills: skills?.trim() || null,
         companyOverview: finalCompanyOverview || null,
-        priority: priority || 'Medium',
+        priority: (priority || 'Medium').slice(0, 32),
         source: 'Website',
         status: 'Pending Review'
       }
@@ -119,8 +123,8 @@ export async function POST(
       data: {
         requirementId: requirement.id,
         title: 'Requirement Received',
-        description: pdfName ? `Requirement Received via Website Widget with PDF Attachment (${pdfName})` : 'Requirement Received via Website Widget',
-        actorName: 'Website Widget Client'
+        description: pdfName ? `Requirement Received via Website with PDF Attachment (${pdfName})` : 'Requirement Received via Website',
+        actorName: 'Website Client'
       }
     });
 

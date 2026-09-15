@@ -27,6 +27,8 @@ export interface CreateRequirementPayload {
   source?: string; // Website, Email, WhatsApp, Manual, Referral
   priority?: string; // Low, Medium, High, Urgent
   assignedRecruiterId?: string;
+  pdfName?: string;
+  pdfBase64?: string;
 }
 
 /**
@@ -195,21 +197,23 @@ export async function createIncomingRequirementAction(payload: CreateRequirement
     const requirement = await (prisma as any).incomingRequirement.create({
       data: {
         agencyId,
-        positionTitle: payload.positionTitle.trim(),
-        companyName: payload.companyName.trim(),
-        contactPerson: payload.contactPerson?.trim() || null,
-        contactEmail: payload.contactEmail?.trim() || null,
-        contactNumber: payload.contactNumber?.trim() || null,
-        industryType: payload.industryType?.trim() || null,
-        employmentType: payload.employmentType?.trim() || 'Full-time',
-        experienceRequired: payload.experienceRequired?.trim() || null,
-        location: payload.location?.trim() || null,
-        education: payload.education?.trim() || null,
+        positionTitle: payload.positionTitle.trim().slice(0, 255),
+        companyName: payload.companyName.trim().slice(0, 255),
+        contactPerson: payload.contactPerson?.trim() ? payload.contactPerson.trim().slice(0, 255) : null,
+        contactEmail: payload.contactEmail?.trim() ? payload.contactEmail.trim().slice(0, 255) : null,
+        contactNumber: payload.contactNumber?.trim() ? payload.contactNumber.trim().slice(0, 32) : null,
+        industryType: payload.industryType?.trim() ? payload.industryType.trim().slice(0, 128) : null,
+        employmentType: payload.employmentType?.trim() ? payload.employmentType.trim().slice(0, 64) : 'Full-time',
+        experienceRequired: payload.experienceRequired?.trim() ? payload.experienceRequired.trim().slice(0, 64) : null,
+        location: payload.location?.trim() ? payload.location.trim().slice(0, 255) : null,
+        education: payload.education?.trim() ? payload.education.trim().slice(0, 255) : null,
         skills: payload.skills?.trim() || null,
         jobDescription: payload.jobDescription?.trim() || null,
         companyOverview: payload.companyOverview?.trim() || null,
-        source: payload.source || 'Manual',
-        priority: payload.priority || 'Medium',
+        pdfName: payload.pdfName ? payload.pdfName.slice(0, 255) : null,
+        pdfUrl: payload.pdfBase64 || null,
+        source: (payload.source || 'Manual').slice(0, 32),
+        priority: (payload.priority || 'Medium').slice(0, 32),
         status: payload.assignedRecruiterId ? 'Assigned' : 'Pending Review',
         assignedRecruiterId: payload.assignedRecruiterId || null,
         createdBy: user.id
@@ -221,7 +225,7 @@ export async function createIncomingRequirementAction(payload: CreateRequirement
       data: {
         requirementId: requirement.id,
         title: 'Requirement Received',
-        description: `Logged via ${payload.source || 'Manual Intake'} by ${user.firstName} ${user.lastName}`,
+        description: `Logged via ${payload.source || 'Manual Intake'} by ${user.firstName} ${user.lastName}${payload.pdfName ? ` (${payload.pdfName})` : ''}`,
         actorId: user.id,
         actorName: `${user.firstName} ${user.lastName}`
       }
@@ -439,6 +443,67 @@ export async function rejectRequirementAction(requirementId: string, reason?: st
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message || 'Failed to reject requirement' };
+  }
+}
+
+/**
+ * Restores a rejected incoming requirement back to Pending Review status.
+ */
+export async function restoreRequirementAction(requirementId: string): Promise<ActionResult> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: 'Unauthorized session' };
+    }
+
+    await (prisma as any).incomingRequirement.update({
+      where: { id: requirementId },
+      data: {
+        status: 'Pending Review',
+        reviewedDate: new Date()
+      }
+    });
+
+    await (prisma as any).requirementTimelineEvent.create({
+      data: {
+        requirementId,
+        title: 'Requirement Restored',
+        description: `Restored back to active intake queue by ${user.firstName} ${user.lastName}`,
+        actorId: user.id,
+        actorName: `${user.firstName} ${user.lastName}`
+      }
+    });
+
+    revalidatePath(`/incoming-requirements/${requirementId}`);
+    revalidatePath('/incoming-requirements');
+    revalidatePath('/cockpit');
+
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Failed to restore requirement' };
+  }
+}
+
+/**
+ * Permanently deletes an incoming requirement from database.
+ */
+export async function permanentlyDeleteRequirementAction(requirementId: string): Promise<ActionResult> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: 'Unauthorized session' };
+    }
+
+    await (prisma as any).incomingRequirement.delete({
+      where: { id: requirementId }
+    });
+
+    revalidatePath('/incoming-requirements');
+    revalidatePath('/cockpit');
+
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Failed to permanently delete requirement' };
   }
 }
 
