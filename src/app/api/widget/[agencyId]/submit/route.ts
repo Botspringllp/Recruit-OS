@@ -61,7 +61,9 @@ export async function POST(
       education,
       skills,
       companyOverview,
-      priority
+      priority,
+      pdfName,
+      pdfBase64
     } = body;
 
     // Mandatory Field Validation
@@ -84,6 +86,11 @@ export async function POST(
       return NextResponse.json({ success: false, error: 'Job Description is required.' }, { status: 400, headers: corsHeaders });
     }
 
+    let finalCompanyOverview = companyOverview?.trim() || '';
+    if (pdfName) {
+      finalCompanyOverview = `${finalCompanyOverview}\n\n📄 [Attached Requirement PDF: ${pdfName}]`.trim();
+    }
+
     // Create Incoming Requirement Record in Database
     const requirement = await (prisma as any).incomingRequirement.create({
       data: {
@@ -100,7 +107,7 @@ export async function POST(
         location: location?.trim() || null,
         education: education?.trim() || null,
         skills: skills?.trim() || null,
-        companyOverview: companyOverview?.trim() || null,
+        companyOverview: finalCompanyOverview || null,
         priority: priority || 'Medium',
         source: 'Website',
         status: 'Pending Review'
@@ -112,7 +119,7 @@ export async function POST(
       data: {
         requirementId: requirement.id,
         title: 'Requirement Received',
-        description: 'Requirement Received via Website Widget',
+        description: pdfName ? `Requirement Received via Website Widget with PDF Attachment (${pdfName})` : 'Requirement Received via Website Widget',
         actorName: 'Website Widget Client'
       }
     });

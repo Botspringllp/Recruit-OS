@@ -122,14 +122,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
       requiredPermission: 'finance.view'
     },
     {
-      id: 'website-widget',
-      label: 'Website & Widget',
-      href: '/agency-settings/widget',
-      icon: 'Globe',
-      rolesAllowed: ['MASTER_OWNER', 'AGENCY_OWNER', 'AGENCY_FOUNDER'],
-      requiredPermission: 'user.manage'
-    },
-    {
       id: 'settings',
       label: 'Agency Settings',
       href: '/settings',

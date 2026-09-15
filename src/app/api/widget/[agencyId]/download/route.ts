@@ -153,6 +153,11 @@ Requirements submitted through this form will immediately appear in your Recruit
           <input type="text" id="skills" name="skills" placeholder="e.g. React, Node.js, PostgreSQL">
         </div>
 
+        <div className="form-group">
+          <label for="pdfFile">Requirement PDF Document (Optional)</label>
+          <input type="file" id="pdfFile" name="pdfFile" accept=".pdf,.doc,.docx">
+        </div>
+
         <div className="form-group font-mandatory">
           <label for="jobDescription">Job Description *</label>
           <textarea id="jobDescription" name="jobDescription" rows="4" required placeholder="Paste or summarize key responsibilities and role specifications..."></textarea>
@@ -236,12 +241,15 @@ document.addEventListener("DOMContentLoaded", function () {
   const errorBanner = document.getElementById("errorMessage");
   const successCard = document.getElementById("successCard");
   const refIdSpan = document.getElementById("refId");
+  const pdfInput = document.getElementById("pdfFile");
 
   const SUBMIT_URL = "${submitUrl}";
 
   form.addEventListener("submit", async function (e) {
     e.preventDefault();
     errorBanner.style.display = "none";
+
+    const pdfFile = pdfInput && pdfInput.files ? pdfInput.files[0] : null;
 
     const formData = {
       companyName: document.getElementById("companyName").value.trim(),
@@ -257,7 +265,8 @@ document.addEventListener("DOMContentLoaded", function () {
       education: document.getElementById("education").value.trim(),
       skills: document.getElementById("skills").value.trim(),
       companyOverview: document.getElementById("companyOverview").value.trim(),
-      priority: document.getElementById("priority").value
+      priority: document.getElementById("priority").value,
+      pdfName: pdfFile ? pdfFile.name : null
     };
 
     if (!formData.companyName || !formData.contactPerson || !formData.contactEmail || !formData.contactNumber || !formData.positionTitle || !formData.jobDescription) {
@@ -273,6 +282,8 @@ document.addEventListener("DOMContentLoaded", function () {
       const response = await fetch(SUBMIT_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData)
+      });
         body: JSON.stringify(formData)
       });
 

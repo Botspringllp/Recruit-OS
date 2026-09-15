@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Building2, CheckCircle2, AlertCircle, Loader2, Send, Inbox } from 'lucide-react';
+import { Building2, CheckCircle2, AlertCircle, Loader2, Send, Inbox, FileText, Upload, X } from 'lucide-react';
 
 interface PublicWidgetFormProps {
   agencyId: string;
@@ -26,12 +26,38 @@ export const PublicWidgetForm: React.FC<PublicWidgetFormProps> = ({ agencyId, ag
     priority: 'Medium'
   });
 
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [pdfBase64, setPdfBase64] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submittedRef, setSubmittedRef] = useState<string | null>(null);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      setError('File size exceeds maximum limit of 10MB.');
+      return;
+    }
+
+    setPdfFile(file);
+    setError(null);
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setPdfBase64(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveFile = () => {
+    setPdfFile(null);
+    setPdfBase64(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -47,10 +73,16 @@ export const PublicWidgetForm: React.FC<PublicWidgetFormProps> = ({ agencyId, ag
     setLoading(true);
 
     try {
+      const payload = {
+        ...formData,
+        pdfName: pdfFile ? pdfFile.name : null,
+        pdfBase64: pdfBase64 || null
+      };
+
       const res = await fetch(`/api/widget/${agencyId}/submit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(payload)
       });
 
       const data = await res.json();
@@ -84,6 +116,8 @@ export const PublicWidgetForm: React.FC<PublicWidgetFormProps> = ({ agencyId, ag
       companyOverview: '',
       priority: 'Medium'
     });
+    setPdfFile(null);
+    setPdfBase64(null);
     setSubmittedRef(null);
     setError(null);
   };
@@ -114,7 +148,7 @@ export const PublicWidgetForm: React.FC<PublicWidgetFormProps> = ({ agencyId, ag
         {/* Form Body or Success View */}
         <div className="p-6 sm:p-10">
           {submittedRef ? (
-            /* SECTION 5: SUCCESS PAGE */
+            /* SUCCESS PAGE */
             <div className="py-8 text-center space-y-6 max-w-md mx-auto">
               <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-inner">
                 <CheckCircle2 className="h-10 w-10 stroke-[2.5]" />
@@ -145,7 +179,7 @@ export const PublicWidgetForm: React.FC<PublicWidgetFormProps> = ({ agencyId, ag
               </div>
             </div>
           ) : (
-            /* SECTION 3: REQUIREMENT FORM */
+            /* REQUIREMENT FORM */
             <form onSubmit={handleSubmit} className="space-y-6 text-xs font-medium">
               {error && (
                 <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 flex items-center gap-2 font-bold">
@@ -330,6 +364,56 @@ export const PublicWidgetForm: React.FC<PublicWidgetFormProps> = ({ agencyId, ag
                     onChange={handleInputChange}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-900"
                   />
+                </div>
+
+                {/* Requirement PDF Upload Option */}
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Requirement PDF Document (Optional)
+                  </label>
+                  <div className="border border-dashed border-slate-300 hover:border-amber-500 bg-slate-50 hover:bg-amber-50/20 p-4 rounded-2xl transition-all">
+                    {pdfFile ? (
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 rounded-xl bg-amber-500/10 text-amber-600 border border-amber-500/20">
+                            <FileText className="h-5 w-5" />
+                          </div>
+                          <div>
+                            <span className="text-xs font-black text-slate-900 block truncate max-w-[280px]">
+                              {pdfFile.name}
+                            </span>
+                            <span className="text-[10px] text-slate-500 font-bold">
+                              {(pdfFile.size / 1024).toFixed(1)} KB • Document Ready
+                            </span>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={handleRemoveFile}
+                          className="p-1.5 rounded-xl bg-slate-200 hover:bg-rose-100 text-slate-600 hover:text-rose-600 transition-colors"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="flex flex-col items-center justify-center gap-1.5 cursor-pointer text-center py-2">
+                        <Upload className="h-6 w-6 text-amber-500" />
+                        <span className="text-xs font-bold text-slate-800">
+                          Click to upload Requirement PDF / Document
+                        </span>
+                        <span className="text-[10px] text-slate-500 font-medium">
+                          Supports PDF, DOC, DOCX files up to 10MB
+                        </span>
+                        <input
+                          type="file"
+                          accept=".pdf,.doc,.docx"
+                          onChange={handleFileChange}
+                          className="hidden"
+                        />
+                      </label>
+                    )}
+                  </div>
                 </div>
 
                 <div>

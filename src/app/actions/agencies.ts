@@ -70,14 +70,14 @@ async function requireSuperAdmin(userOverride?: any) {
   const currentUser = userOverride || await getCurrentUser();
   const roleStr = String(currentUser?.role || '').toUpperCase();
 
-  if (!currentUser || (roleStr !== 'SUPER_ADMIN' && roleStr !== 'MASTER_OWNER' && roleStr !== 'AGENCY_OWNER')) {
+  if (!currentUser || (roleStr !== 'SUPER_ADMIN' && roleStr !== 'MASTER_OWNER' && roleStr !== 'AGENCY_OWNER' && roleStr !== 'AGENCY_FOUNDER')) {
     logger.warn({
       event: 'UNAUTHORIZED_SUPER_ADMIN_ACCESS',
       userId: currentUser?.id || currentUser?.userId,
       email: currentUser?.email,
       role: currentUser?.role
-    }, `🔒 [ACCESS DENIED] Super Admin privileges required for user ${currentUser?.email}`);
-    throw new Error('Access denied. Platform Super Admin privileges required.');
+    }, `🔒 [ACCESS DENIED] Privileges required for user ${currentUser?.email}`);
+    throw new Error('Access denied. Admin privileges required.');
   }
 
   return currentUser;
