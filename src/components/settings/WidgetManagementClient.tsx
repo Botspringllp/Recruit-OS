@@ -8,8 +8,7 @@ import {
   ExternalLink,
   Lock,
   FileText,
-  Sparkles,
-  Layout
+  Sparkles
 } from 'lucide-react';
 
 interface WidgetManagementClientProps {
@@ -139,36 +138,6 @@ export const WidgetManagementClient: React.FC<WidgetManagementClientProps> = ({ 
               </p>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* WEBSITE MANAGEMENT PLACEHOLDER */}
-      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-2xl bg-amber-500/10 text-amber-600 border border-amber-500/20">
-              <Layout className="h-6 w-6" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-lg font-black text-slate-900">Website Management</h3>
-                <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[10px] font-black uppercase border border-slate-200">
-                  Setup Pending
-                </span>
-              </div>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Agency custom website builder & landing page configuration module.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-slate-50 rounded-2xl p-6 border border-slate-200/80 text-center space-y-2">
-          <Sparkles className="h-8 w-8 text-amber-500 mx-auto opacity-70" />
-          <h4 className="text-sm font-black text-slate-900">Website Builder Configuration</h4>
-          <p className="text-xs text-slate-500 max-w-md mx-auto">
-            The full custom Website Builder configuration module will be deployed here in an upcoming release. In the meantime, please utilize the Requirement Capture Widget above for seamless client intake.
-          </p>
         </div>
       </div>
     </div>

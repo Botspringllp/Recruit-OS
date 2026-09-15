@@ -297,6 +297,7 @@ model Agency {
   notifications          NotificationQueue[]
   fileStorageRecords     FileStorageRecord[]
   incomingRequirements   IncomingRequirement[]
+  websiteConfiguration   WebsiteConfiguration?
 
   @@map("agencies")
 }
@@ -1311,3 +1312,50 @@ model RequirementTimelineEvent {
   @@index([requirementId])
   @@map("requirement_timeline_events")
 }
+
+// =============================================================================
+// DOMAIN 12: WEBSITE BUILDER (MULTI-TENANT AGENCY WEBSITES)
+// =============================================================================
+
+model WebsiteConfiguration {
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @map("config_id") @db.Uuid
+  agencyId           String    @unique @map("agency_id") @db.Uuid
+  status             String    @default("DRAFT") @db.VarChar(32) // DRAFT, PUBLISHED
+  websiteUrl         String?   @map("website_url") @db.VarChar(512)
+
+  agencyName         String    @map("agency_name") @db.VarChar(255)
+  tagline            String?   @db.VarChar(255)
+  logoUrl            String?   @map("logo_url") @db.VarChar(512)
+
+  heroTitle          String?   @map("hero_title") @db.VarChar(255)
+  heroSubtitle       String?   @map("hero_subtitle") @db.Text
+
+  aboutContent       String?   @map("about_content") @db.Text
+  mission            String?   @db.Text
+  vision             String?   @db.Text
+
+  primaryColor       String    @default("#f59e0b") @map("primary_color") @db.VarChar(32)
+  secondaryColor     String    @default("#0f172a") @map("secondary_color") @db.VarChar(32)
+
+  contactEmail       String?   @map("contact_email") @db.VarChar(255)
+  supportEmail       String?   @map("support_email") @db.VarChar(255)
+  phone              String?   @db.VarChar(32)
+  address            String?   @db.Text
+
+  facebookUrl        String?   @map("facebook_url") @db.VarChar(512)
+  linkedinUrl        String?   @map("linkedin_url") @db.VarChar(512)
+  instagramUrl       String?   @map("instagram_url") @db.VarChar(512)
+  twitterUrl         String?   @map("twitter_url") @db.VarChar(512)
+
+  selectedServices   String[]  @map("selected_services")
+  selectedIndustries String[]  @map("selected_industries")
+
+  publishedAt        DateTime? @map("published_at") @db.Timestamptz
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  agency Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  @@map("website_configurations")
+}
+

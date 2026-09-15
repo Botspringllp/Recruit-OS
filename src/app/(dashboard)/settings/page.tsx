@@ -35,6 +35,8 @@ export default async function SettingsPage() {
     gstNumber: true,
     cinNumber: true,
     panNumber: true,
+    websiteBuilderEnabled: true,
+    widgetEnabled: true,
     createdAt: true,
     users: {
       where: {
@@ -98,7 +100,10 @@ export default async function SettingsPage() {
   return (
     <div className="space-y-6 pb-12 text-slate-900 font-sans">
       {/* Navigation Tabs inside Agency Settings */}
-      <SettingsHeaderTabs />
+      <SettingsHeaderTabs
+        websiteBuilderEnabled={agencyRecord.websiteBuilderEnabled}
+        widgetEnabled={agencyRecord.widgetEnabled}
+      />
 
       {/* Organization Profile View & Edit Component */}
       <OrganizationProfileClient agency={formattedAgency} />

@@ -482,11 +482,11 @@ export const OrganizationProfileClient: React.FC<OrganizationProfileClientProps>
                     <span className="font-extrabold text-slate-500">Official Website</span>
                     <span className="font-bold text-slate-900">
                       {agency.websiteUrl ? (
-                        <a href={agency.websiteUrl} target="_blank" rel="noopener noreferrer" className="text-amber-600 underline">
+                        <a href={`/site/${agency.subdomain}`} target="_blank" rel="noopener noreferrer" className="text-amber-600 underline font-extrabold flex items-center gap-1">
                           {agency.websiteUrl}
                         </a>
                       ) : (
-                        'Not Provided'
+                        <span className="text-slate-400 font-bold">Website Not Published</span>
                       )}
                     </span>
                   </div>

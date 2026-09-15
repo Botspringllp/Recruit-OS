@@ -1,40 +1,76 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Building, Globe, Users } from 'lucide-react';
+import { Building, Globe, Users, Layout } from 'lucide-react';
+import { getAgencyFeatureFlagsAction } from '@/app/actions/websiteBuilder';
 
-export const SettingsHeaderTabs: React.FC = () => {
+interface SettingsHeaderTabsProps {
+  websiteBuilderEnabled?: boolean;
+  widgetEnabled?: boolean;
+}
+
+export const SettingsHeaderTabs: React.FC<SettingsHeaderTabsProps> = ({
+  websiteBuilderEnabled: initialWebsiteBuilder,
+  widgetEnabled: initialWidget
+}) => {
   const pathname = usePathname() || '';
+  const [wbEnabled, setWbEnabled] = useState<boolean>(initialWebsiteBuilder ?? true);
+  const [wEnabled, setWEnabled] = useState<boolean>(initialWidget ?? true);
 
-  const tabs = [
+  useEffect(() => {
+    if (initialWebsiteBuilder === undefined || initialWidget === undefined) {
+      getAgencyFeatureFlagsAction().then(res => {
+        setWbEnabled(res.websiteBuilderEnabled);
+        setWEnabled(res.widgetEnabled);
+      });
+    } else {
+      setWbEnabled(initialWebsiteBuilder);
+      setWEnabled(initialWidget);
+    }
+  }, [initialWebsiteBuilder, initialWidget]);
+
+  const allTabs = [
     {
       id: 'profile',
       label: 'Organization Profile',
       href: '/settings',
       icon: Building,
-      isActive: pathname === '/settings'
+      isActive: pathname === '/settings',
+      enabled: true
+    },
+    {
+      id: 'builder',
+      label: 'Website Builder',
+      href: '/settings/website-builder',
+      icon: Layout,
+      isActive: pathname.includes('/website-builder'),
+      enabled: wbEnabled
     },
     {
       id: 'widget',
-      label: 'Website & Widget',
+      label: 'Widget Management',
       href: '/agency-settings/widget',
       icon: Globe,
-      isActive: pathname.includes('/widget')
+      isActive: pathname.includes('/widget'),
+      enabled: wEnabled
     },
     {
       id: 'users',
       label: 'User & Team Management',
       href: '/settings/users',
       icon: Users,
-      isActive: pathname.includes('/users')
+      isActive: pathname.includes('/users'),
+      enabled: true
     }
   ];
 
+  const visibleTabs = allTabs.filter(t => t.enabled);
+
   return (
     <div className="flex items-center gap-2 border-b border-slate-200 pb-3 overflow-x-auto">
-      {tabs.map(tab => {
+      {visibleTabs.map(tab => {
         const Icon = tab.icon;
         return (
           <Link
