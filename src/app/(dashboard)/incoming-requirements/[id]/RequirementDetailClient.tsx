@@ -55,6 +55,7 @@ export const RequirementDetailClient: React.FC<RequirementDetailClientProps> = (
   const [selectedRecruiterId, setSelectedRecruiterId] = useState(requirement.assignedRecruiterId || '');
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
 
   // Extract PDF Name & Base64 Data if present
   const extractedPdfName =
@@ -64,6 +65,7 @@ export const RequirementDetailClient: React.FC<RequirementDetailClientProps> = (
     null;
 
   const pdfData = requirement.pdfUrl || null;
+  const pdfApiUrl = pdfData ? `/api/requirements/${requirement.id}/pdf` : null;
 
   // Save Recruiter Assignment
   const handleSaveAssignment = async () => {
@@ -354,10 +356,10 @@ export const RequirementDetailClient: React.FC<RequirementDetailClientProps> = (
                     </div>
                   </div>
 
-                  {pdfData && (
+                  {pdfApiUrl && (
                     <div className="flex items-center gap-2 shrink-0">
                       <a
-                        href={pdfData}
+                        href={pdfApiUrl}
                         target="_blank"
                         rel="noreferrer"
                         className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition-all flex items-center gap-1.5 shadow-xs"
@@ -367,7 +369,7 @@ export const RequirementDetailClient: React.FC<RequirementDetailClientProps> = (
                       </a>
 
                       <a
-                        href={pdfData}
+                        href={pdfApiUrl}
                         download={extractedPdfName || 'Requirement.pdf'}
                         className="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition-colors flex items-center gap-1.5"
                       >
@@ -378,13 +380,13 @@ export const RequirementDetailClient: React.FC<RequirementDetailClientProps> = (
                   )}
                 </div>
 
-                {/* Embedded PDF Viewer if pdfData exists */}
-                {pdfData ? (
+                {/* Direct Binary Native PDF Viewer Iframe */}
+                {pdfApiUrl ? (
                   <div className="rounded-xl overflow-hidden border border-slate-200 shadow-inner bg-slate-100">
                     <iframe
-                      src={pdfData}
+                      src={pdfApiUrl}
                       title="Requirement PDF Preview"
-                      className="w-full h-[500px] border-0"
+                      className="w-full h-[600px] border-0"
                     />
                   </div>
                 ) : (
@@ -394,7 +396,7 @@ export const RequirementDetailClient: React.FC<RequirementDetailClientProps> = (
                       <span>Document File: {extractedPdfName}</span>
                     </div>
                     <p className="text-[11px] text-amber-800 font-semibold pl-6">
-                      (Database PDF save ab active ho chuka hai! Please aap abhi ek <strong>naya requirement form submit karein</strong>, wo naya PDF yahan live display hone lagega.)
+                      (Document file attached but PDF binary data was not provided.)
                     </p>
                   </div>
                 )}
