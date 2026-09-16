@@ -302,6 +302,24 @@ export async function assignRecruiterToRequirementAction(requirementId: string, 
       }
     });
 
+    // Trigger Notification Event B: Recruiter Assigned
+    try {
+      const { createNotification } = await import('@/lib/notifications');
+      const { NotificationType, NotificationCategory } = await import('@prisma/client');
+      await createNotification({
+        agencyId: requirement.agencyId,
+        recipientUserId: recruiterId,
+        title: 'Requirement Assigned',
+        message: `You have been assigned a new requirement: ${requirement.positionTitle}`,
+        type: NotificationType.INFO,
+        category: NotificationCategory.REQUIREMENT,
+        entityType: 'REQUIREMENT',
+        entityId: requirementId
+      });
+    } catch (notifErr) {
+      console.error('Failed sending recruiter assigned notification:', notifErr);
+    }
+
     revalidatePath(`/incoming-requirements/${requirementId}`);
     revalidatePath('/incoming-requirements');
 
@@ -397,6 +415,26 @@ export async function acceptAndConvertRequirementAction(requirementId: string, r
       }
     });
 
+    // Trigger Notification Event C: Requirement Accepted (Notify Assigned Recruiter)
+    if (targetRecruiterId) {
+      try {
+        const { createNotification } = await import('@/lib/notifications');
+        const { NotificationType, NotificationCategory } = await import('@prisma/client');
+        await createNotification({
+          agencyId: requirement.agencyId,
+          recipientUserId: targetRecruiterId,
+          title: 'Requirement Accepted',
+          message: `Requirement for "${requirement.positionTitle}" accepted and converted to active mandate.`,
+          type: NotificationType.SUCCESS,
+          category: NotificationCategory.JOB_MANDATE,
+          entityType: 'JOB_MANDATE',
+          entityId: mandate.id
+        });
+      } catch (notifErr) {
+        console.error('Failed sending requirement accepted notification:', notifErr);
+      }
+    }
+
     revalidatePath(`/incoming-requirements/${requirementId}`);
     revalidatePath('/incoming-requirements');
     revalidatePath('/jobs');
@@ -418,6 +456,10 @@ export async function rejectRequirementAction(requirementId: string, reason?: st
       return { success: false, error: 'Unauthorized session' };
     }
 
+    const requirement = await (prisma as any).incomingRequirement.findUnique({
+      where: { id: requirementId }
+    });
+
     await (prisma as any).incomingRequirement.update({
       where: { id: requirementId },
       data: {
@@ -435,6 +477,26 @@ export async function rejectRequirementAction(requirementId: string, reason?: st
         actorName: `${user.firstName} ${user.lastName}`
       }
     });
+
+    // Trigger Notification Event D: Requirement Rejected (Notify Assigned Recruiter)
+    if (requirement?.assignedRecruiterId) {
+      try {
+        const { createNotification } = await import('@/lib/notifications');
+        const { NotificationType, NotificationCategory } = await import('@prisma/client');
+        await createNotification({
+          agencyId: requirement.agencyId,
+          recipientUserId: requirement.assignedRecruiterId,
+          title: 'Requirement Rejected',
+          message: `Requirement for "${requirement.positionTitle}" was rejected.${reason ? ` Reason: ${reason}` : ''}`,
+          type: NotificationType.WARNING,
+          category: NotificationCategory.REQUIREMENT,
+          entityType: 'REQUIREMENT',
+          entityId: requirementId
+        });
+      } catch (notifErr) {
+        console.error('Failed sending requirement rejected notification:', notifErr);
+      }
+    }
 
     revalidatePath(`/incoming-requirements/${requirementId}`);
     revalidatePath('/incoming-requirements');

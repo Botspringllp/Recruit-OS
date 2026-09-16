@@ -250,26 +250,45 @@ document.addEventListener("DOMContentLoaded", function () {
     errorBanner.style.display = "none";
 
     const pdfFile = pdfInput && pdfInput.files ? pdfInput.files[0] : null;
+    let pdfBase64 = null;
+    if (pdfFile) {
+      if (pdfFile.size > 20 * 1024 * 1024) {
+        errorBanner.textContent = "File size exceeds maximum limit of 20MB.";
+        errorBanner.style.display = "block";
+        return;
+      }
+      try {
+        pdfBase64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(pdfFile);
+        });
+      } catch (e) {
+        console.error("Failed to read PDF file", e);
+      }
+    }
 
     const formData = {
       companyName: document.getElementById("companyName").value.trim(),
       contactPerson: document.getElementById("contactPerson").value.trim(),
       contactEmail: document.getElementById("contactEmail").value.trim(),
       contactNumber: document.getElementById("contactNumber").value.trim(),
-      positionTitle: document.getElementById("positionTitle").value.trim(),
-      jobDescription: document.getElementById("jobDescription").value.trim(),
-      industryType: document.getElementById("industryType").value.trim(),
-      employmentType: document.getElementById("employmentType").value,
-      experienceRequired: document.getElementById("experienceRequired").value.trim(),
-      location: document.getElementById("location").value.trim(),
-      education: document.getElementById("education").value.trim(),
-      skills: document.getElementById("skills").value.trim(),
-      companyOverview: document.getElementById("companyOverview").value.trim(),
-      priority: document.getElementById("priority").value,
-      pdfName: pdfFile ? pdfFile.name : null
+      positionTitle: document.getElementById("positionTitle") ? document.getElementById("positionTitle").value.trim() : "",
+      jobDescription: document.getElementById("jobDescription") ? document.getElementById("jobDescription").value.trim() : "",
+      industryType: document.getElementById("industryType") ? document.getElementById("industryType").value.trim() : "",
+      employmentType: document.getElementById("employmentType") ? document.getElementById("employmentType").value : "Full-time",
+      experienceRequired: document.getElementById("experienceRequired") ? document.getElementById("experienceRequired").value.trim() : "",
+      location: document.getElementById("location") ? document.getElementById("location").value.trim() : "",
+      education: document.getElementById("education") ? document.getElementById("education").value.trim() : "",
+      skills: document.getElementById("skills") ? document.getElementById("skills").value.trim() : "",
+      companyOverview: document.getElementById("companyOverview") ? document.getElementById("companyOverview").value.trim() : "",
+      priority: document.getElementById("priority") ? document.getElementById("priority").value : "Medium",
+      pdfName: pdfFile ? pdfFile.name : null,
+      pdfBase64: pdfBase64
     };
 
-    if (!formData.companyName || !formData.contactPerson || !formData.contactEmail || !formData.contactNumber || !formData.positionTitle || !formData.jobDescription) {
+    if (!formData.companyName || !formData.contactPerson || !formData.contactEmail || !formData.contactNumber) {
       errorBanner.textContent = "Please fill in all mandatory fields marked with (*).";
       errorBanner.style.display = "block";
       return;
@@ -282,8 +301,6 @@ document.addEventListener("DOMContentLoaded", function () {
       const response = await fetch(SUBMIT_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData)
-      });
         body: JSON.stringify(formData)
       });
 

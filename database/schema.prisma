@@ -298,6 +298,7 @@ model Agency {
   fileStorageRecords     FileStorageRecord[]
   incomingRequirements   IncomingRequirement[]
   websiteConfiguration   WebsiteConfiguration?
+  realNotifications      Notification[]
 
   @@map("agencies")
 }
@@ -337,6 +338,7 @@ model User {
   arbitrationsAsExisting CandidateOwnershipArbitration[] @relation("ArbitrationExistingRecruiter")
   modifiedFinancialLogs  FinancialAuditLog[]
   activities             SystemActivityLog[]
+  realNotifications      Notification[]
 
   @@index([agencyId, createdAt(sort: Desc)])
   @@map("users")
@@ -1360,5 +1362,52 @@ model WebsiteConfiguration {
   agency Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
 
   @@map("website_configurations")
+}
+
+// =============================================================================
+// DOMAIN 13: REAL-TIME PLATFORM NOTIFICATION CENTER (PHASE NT-01)
+// =============================================================================
+
+enum NotificationType {
+  INFO
+  SUCCESS
+  WARNING
+  ERROR
+
+  @@map("notification_type")
+}
+
+enum NotificationCategory {
+  REQUIREMENT
+  JOB_MANDATE
+  CANDIDATE
+  SUBMISSION
+  SYSTEM
+  SUBSCRIPTION
+
+  @@map("notification_category")
+}
+
+model Notification {
+  id              String               @id @default(dbgenerated("gen_random_uuid()")) @map("notification_id") @db.Uuid
+  agencyId        String?              @map("agency_id") @db.Uuid
+  recipientUserId String               @map("recipient_user_id") @db.Uuid
+  title           String               @db.VarChar(255)
+  message         String               @db.Text
+  type            NotificationType     @default(INFO)
+  category        NotificationCategory @default(SYSTEM)
+  entityType      String?              @map("entity_type") @db.VarChar(64)
+  entityId        String?              @map("entity_id") @db.VarChar(255)
+  isRead          Boolean              @default(false) @map("is_read")
+  createdAt       DateTime             @default(now()) @map("created_at") @db.Timestamptz
+  readAt          DateTime?            @map("read_at") @db.Timestamptz
+
+  agency        Agency? @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  recipientUser User    @relation(fields: [recipientUserId], references: [id], onDelete: Cascade)
+
+  @@index([recipientUserId, isRead])
+  @@index([agencyId])
+  @@index([createdAt(sort: Desc)])
+  @@map("notifications")
 }
 

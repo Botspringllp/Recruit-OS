@@ -32,8 +32,14 @@ export const PublicWidgetForm: React.FC<PublicWidgetFormProps> = ({ agencyId, ag
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 10 * 1024 * 1024) {
-      setError('File size exceeds maximum limit of 10MB.');
+    if (file.size > 20 * 1024 * 1024) {
+      setError('File size exceeds maximum limit of 20MB.');
+      return;
+    }
+
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    if (ext && !['pdf', 'doc', 'docx'].includes(ext)) {
+      setError('Only .pdf, .doc, and .docx files are allowed.');
       return;
     }
 

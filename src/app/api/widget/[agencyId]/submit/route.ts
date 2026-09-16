@@ -46,7 +46,58 @@ export async function POST(
       );
     }
 
-    const body = await req.json();
+    const contentType = req.headers.get('content-type') || '';
+    let bodyData: any = {};
+    let pdfName: string | null = null;
+    let pdfUrl: string | null = null;
+
+    if (contentType.includes('multipart/form-data')) {
+      const formData = await req.formData();
+      bodyData = {
+        companyName: formData.get('companyName') as string,
+        contactPerson: formData.get('contactPerson') as string,
+        contactEmail: formData.get('contactEmail') as string,
+        contactNumber: formData.get('contactNumber') as string,
+        positionTitle: formData.get('positionTitle') as string,
+        jobDescription: formData.get('jobDescription') as string,
+        industryType: formData.get('industryType') as string,
+        employmentType: formData.get('employmentType') as string,
+        experienceRequired: formData.get('experienceRequired') as string,
+        location: formData.get('location') as string,
+        education: formData.get('education') as string,
+        skills: formData.get('skills') as string,
+        companyOverview: formData.get('companyOverview') as string,
+        priority: formData.get('priority') as string,
+      };
+
+      const uploadedFile = (formData.get('pdfFile') || formData.get('file') || formData.get('pdf')) as File | null;
+      if (uploadedFile && uploadedFile.name) {
+        if (uploadedFile.size > 20 * 1024 * 1024) {
+          return NextResponse.json(
+            { success: false, error: 'File size exceeds maximum allowed limit of 20MB.' },
+            { status: 400, headers: corsHeaders }
+          );
+        }
+
+        const ext = uploadedFile.name.split('.').pop()?.toLowerCase();
+        if (ext && !['pdf', 'doc', 'docx'].includes(ext)) {
+          return NextResponse.json(
+            { success: false, error: 'Only .pdf, .doc, and .docx files are allowed.' },
+            { status: 400, headers: corsHeaders }
+          );
+        }
+
+        pdfName = uploadedFile.name;
+        const arrayBuffer = await uploadedFile.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        const mimeType = uploadedFile.type || (ext === 'pdf' ? 'application/pdf' : 'application/octet-stream');
+        pdfUrl = `data:${mimeType};base64,${buffer.toString('base64')}`;
+      }
+    } else {
+      bodyData = await req.json();
+      pdfName = bodyData.pdfName || null;
+      pdfUrl = bodyData.pdfBase64 || bodyData.pdfUrl || null;
+    }
 
     const {
       companyName,
@@ -62,10 +113,8 @@ export async function POST(
       education,
       skills,
       companyOverview,
-      priority,
-      pdfName,
-      pdfBase64
-    } = body;
+      priority
+    } = bodyData;
 
     // Mandatory Field Validation (Company & Contact Info)
     if (!companyName || !companyName.trim()) {
@@ -84,7 +133,7 @@ export async function POST(
     // Smart defaults for position title & description when optional/pdf-only
     const finalPositionTitle = positionTitle?.trim() || `Hiring Requirement (${companyName.trim()})`;
     const defaultDesc = pdfName
-      ? `Requirement PDF Attached: ${pdfName}`
+      ? `Requirement Document Attached: ${pdfName}`
       : `Hiring requirement submitted by ${contactPerson.trim()} (${companyName.trim()}).`;
     const finalJobDescription = jobDescription?.trim() || defaultDesc;
 
@@ -104,7 +153,7 @@ export async function POST(
         positionTitle: finalPositionTitle.slice(0, 255),
         jobDescription: finalJobDescription,
         pdfName: pdfName ? pdfName.slice(0, 255) : null,
-        pdfUrl: pdfBase64 || null,
+        pdfUrl: pdfUrl || null,
         industryType: industryType?.trim() ? industryType.trim().slice(0, 128) : null,
         employmentType: employmentType?.trim() ? employmentType.trim().slice(0, 64) : 'Full-time',
         experienceRequired: experienceRequired?.trim() ? experienceRequired.trim().slice(0, 64) : null,
@@ -127,6 +176,22 @@ export async function POST(
         actorName: 'Website Client'
       }
     });
+
+    // Trigger Notification Event A: Incoming Requirement Created (Notify Agency Owners)
+    try {
+      const { notifyAgencyOwners } = await import('@/lib/notifications');
+      const { NotificationType, NotificationCategory } = await import('@prisma/client');
+      await notifyAgencyOwners(agencyId, {
+        title: 'New Requirement Received',
+        message: `New requirement received from ${companyName.trim()}: ${finalPositionTitle}`,
+        type: NotificationType.INFO,
+        category: NotificationCategory.REQUIREMENT,
+        entityType: 'REQUIREMENT',
+        entityId: requirement.id
+      });
+    } catch (notifErr) {
+      console.error('Failed sending notification for new requirement:', notifErr);
+    }
 
     const referenceId = `REQ-${requirement.id.slice(0, 8).toUpperCase()}`;
 

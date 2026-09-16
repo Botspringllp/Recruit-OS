@@ -27,7 +27,9 @@ import {
   Eye,
   Download,
   RotateCcw,
-  Trash2
+  Trash2,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import {
   assignRecruiterToRequirementAction,
@@ -55,7 +57,7 @@ export const RequirementDetailClient: React.FC<RequirementDetailClientProps> = (
   const [selectedRecruiterId, setSelectedRecruiterId] = useState(requirement.assignedRecruiterId || '');
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
-  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [isTimelineOpen, setIsTimelineOpen] = useState(false);
 
   // Extract PDF Name & Base64 Data if present
   const extractedPdfName =
@@ -65,7 +67,6 @@ export const RequirementDetailClient: React.FC<RequirementDetailClientProps> = (
     null;
 
   const pdfData = requirement.pdfUrl || null;
-  const pdfApiUrl = pdfData ? `/api/requirements/${requirement.id}/pdf` : null;
 
   // Save Recruiter Assignment
   const handleSaveAssignment = async () => {
@@ -327,82 +328,82 @@ export const RequirementDetailClient: React.FC<RequirementDetailClientProps> = (
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h2 className="text-sm font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-2">
                 <FileText className="h-4 w-4 text-amber-500" />
-                <span>B. Attached Requirement PDF Document</span>
+                <span>Requirement Documents</span>
               </h2>
 
-              {extractedPdfName && (
+              {(pdfData || extractedPdfName) && (
                 <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-black border border-emerald-300 flex items-center gap-1">
                   <CheckCircle className="h-3.5 w-3.5 text-emerald-600" />
-                  <span>PDF Uploaded</span>
+                  <span>Document Attached</span>
                 </span>
               )}
             </div>
 
-            {/* Simple, Clean Document Box */}
+            {/* Document Details & Actions */}
             {pdfData || extractedPdfName ? (
               <div className="space-y-4 max-w-full overflow-hidden">
-                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 overflow-hidden">
-                  <div className="flex items-center gap-3 min-w-0 flex-1 overflow-hidden">
-                    <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-600 border border-amber-500/20 shrink-0">
-                      <FileText className="h-6 w-6" />
+                <div className="p-4.5 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                    <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-600 border border-amber-500/20 shrink-0">
+                      <FileText className="h-7 w-7" />
                     </div>
-                    <div className="min-w-0 flex-1 overflow-hidden">
-                      <h4 className="font-extrabold text-xs text-slate-900 truncate">
+                    <div className="min-w-0 flex-1">
+                      <h4 className="font-extrabold text-sm text-slate-900 truncate">
                         {extractedPdfName || 'Requirement Document.pdf'}
                       </h4>
-                      <span className="text-[11px] text-slate-500 font-bold block mt-0.5">
-                        Client PDF Attachment ({requirement.companyName})
-                      </span>
+                      <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-500 font-bold mt-1">
+                        <span>Upload Date: <strong>{new Date(requirement.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</strong></span>
+                        {pdfData && (
+                          <>
+                            <span>•</span>
+                            <span>Size: <strong>{pdfData.length > 1024 * 1024 ? `${(pdfData.length * 0.75 / (1024 * 1024)).toFixed(2)} MB` : `${(pdfData.length * 0.75 / 1024).toFixed(1)} KB`}</strong></span>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
 
-                  {pdfApiUrl && (
-                    <div className="flex items-center gap-2 shrink-0">
-                      <a
-                        href={pdfApiUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition-all flex items-center gap-1.5 shadow-xs"
-                      >
-                        <Eye className="h-3.5 w-3.5" />
-                        <span>View PDF</span>
-                      </a>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <a
+                      href={`/api/requirements/${requirement.id}/pdf`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition-all flex items-center gap-1.5 shadow-sm"
+                    >
+                      <Eye className="h-4 w-4" />
+                      <span>View PDF</span>
+                    </a>
 
-                      <a
-                        href={pdfApiUrl}
-                        download={extractedPdfName || 'Requirement.pdf'}
-                        className="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition-colors flex items-center gap-1.5"
-                      >
-                        <Download className="h-3.5 w-3.5" />
-                        <span>Download</span>
-                      </a>
-                    </div>
-                  )}
+                    <a
+                      href={`/api/requirements/${requirement.id}/pdf?download=true`}
+                      className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition-colors flex items-center gap-1.5"
+                    >
+                      <Download className="h-4 w-4" />
+                      <span>Download PDF</span>
+                    </a>
+                  </div>
                 </div>
 
-                {/* Direct Binary Native PDF Viewer Iframe */}
-                {pdfApiUrl ? (
-                  <div className="rounded-xl overflow-hidden border border-slate-200 shadow-inner bg-slate-100">
+                {/* Embedded PDF Viewer */}
+                {pdfData ? (
+                  <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-inner bg-slate-100">
                     <iframe
-                      src={pdfApiUrl}
-                      title="Requirement PDF Preview"
-                      className="w-full h-[600px] border-0"
+                      src={`/api/requirements/${requirement.id}/pdf`}
+                      title="Requirement Document Preview"
+                      className="w-full h-[550px] border-0"
                     />
                   </div>
                 ) : (
-                  <div className="p-4 rounded-xl bg-amber-50/90 border border-amber-200 text-amber-900 text-xs font-bold leading-relaxed space-y-1">
+                  <div className="p-4 rounded-xl bg-amber-50/90 border border-amber-200 text-amber-900 text-xs font-bold leading-relaxed">
                     <div className="flex items-center gap-2 text-amber-800 font-black">
                       <FileText className="h-4 w-4 shrink-0 text-amber-600" />
-                      <span>Document File: {extractedPdfName}</span>
+                      <span>Document Attached: {extractedPdfName}</span>
                     </div>
-                    <p className="text-[11px] text-amber-800 font-semibold pl-6">
-                      (Document file attached but PDF binary data was not provided.)
-                    </p>
                   </div>
                 )}
               </div>
             ) : (
-              <div className="py-6 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200">
+              <div className="py-8 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
                 <p className="text-xs text-slate-500 font-bold">No PDF document attached with this requirement.</p>
               </div>
             )}
@@ -480,31 +481,43 @@ export const RequirementDetailClient: React.FC<RequirementDetailClientProps> = (
             </div>
           </div>
 
-          {/* Section E: Requirement Timeline */}
+          {/* Section E: Requirement Timeline (Collapsible Accordion) */}
           <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-4">
-            <h2 className="text-sm font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-              <History className="h-4 w-4 text-blue-600" />
-              <span>E. Audit Timeline History</span>
-            </h2>
-
-            <div className="relative pl-6 space-y-6 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
-              {requirement.timelineEvents?.length === 0 ? (
-                <p className="text-xs text-slate-400 italic">No timeline events recorded.</p>
-              ) : (
-                requirement.timelineEvents.map((evt: any, idx: number) => (
-                  <div key={evt.id || idx} className="relative group">
-                    <div className="absolute -left-6 top-0.5 w-3.5 h-3.5 rounded-full bg-amber-500 ring-4 ring-white" />
-                    <div>
-                      <h4 className="text-xs font-black text-slate-900">{evt.title}</h4>
-                      {evt.description && <p className="text-[11px] text-slate-600 mt-0.5 leading-snug">{evt.description}</p>}
-                      <span className="text-[10px] text-slate-400 font-bold block mt-1">
-                        {new Date(evt.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </div>
-                  </div>
-                ))
-              )}
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                <History className="h-4 w-4 text-blue-600" />
+                <span>E. Audit Timeline History</span>
+              </h2>
+              <button
+                type="button"
+                onClick={() => setIsTimelineOpen(!isTimelineOpen)}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-black transition-all"
+              >
+                <span>{isTimelineOpen ? '▲ Hide Timeline' : '▼ View Full Timeline'}</span>
+                {isTimelineOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+              </button>
             </div>
+
+            {isTimelineOpen && (
+              <div className="relative pl-6 space-y-6 pt-2 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
+                {requirement.timelineEvents?.length === 0 ? (
+                  <p className="text-xs text-slate-400 italic">No timeline events recorded.</p>
+                ) : (
+                  requirement.timelineEvents.map((evt: any, idx: number) => (
+                    <div key={evt.id || idx} className="relative group">
+                      <div className="absolute -left-6 top-0.5 w-3.5 h-3.5 rounded-full bg-amber-500 ring-4 ring-white" />
+                      <div>
+                        <h4 className="text-xs font-black text-slate-900">{evt.title}</h4>
+                        {evt.description && <p className="text-[11px] text-slate-600 mt-0.5 leading-snug">{evt.description}</p>}
+                        <span className="text-[10px] text-slate-400 font-bold block mt-1">
+                          {new Date(evt.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -166,8 +166,14 @@ export const IncomingRequirementsClient: React.FC<IncomingRequirementsClientProp
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 10 * 1024 * 1024) {
-      alert('File size exceeds 10MB limit. Please upload a smaller document.');
+    if (file.size > 20 * 1024 * 1024) {
+      alert('File size exceeds 20MB limit. Please upload a smaller document.');
+      return;
+    }
+
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    if (ext && !['pdf', 'doc', 'docx'].includes(ext)) {
+      alert('Only .pdf, .doc, and .docx files are allowed.');
       return;
     }
 

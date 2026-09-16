@@ -14,14 +14,32 @@ interface JobsPageProps {
   searchParams?: {
     q?: string;
     status?: string;
+    source?: string;
     sort?: string;
     page?: string;
   };
 }
 
+const renderMandateSourceBadge = (source?: string) => {
+  const src = source || 'Manual';
+  switch (src) {
+    case 'Website':
+      return <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-blue-100 text-blue-800 border border-blue-300 inline-block">Website</span>;
+    case 'Email':
+      return <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-purple-100 text-purple-800 border border-purple-300 inline-block">Email</span>;
+    case 'WhatsApp':
+      return <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300 inline-block">WhatsApp</span>;
+    case 'Referral':
+      return <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-amber-100 text-amber-800 border border-amber-300 inline-block">Referral</span>;
+    default:
+      return <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-slate-100 text-slate-800 border border-slate-300 inline-block">Manual</span>;
+  }
+};
+
 export default async function JobsPage({ searchParams }: JobsPageProps) {
   const query = (searchParams?.q || '').trim();
   const statusFilter = (searchParams?.status || 'ALL').toUpperCase();
+  const sourceFilter = (searchParams?.source || 'ALL').trim();
   const sortOption = searchParams?.sort || 'newest';
   const currentPage = Math.max(1, parseInt(searchParams?.page || '1', 10) || 1);
   const pageSize = 10;
@@ -40,11 +58,37 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
     whereClause.status = statusFilter as MandateStatus;
   }
 
+  const conditions: any[] = [];
+
   if (query) {
-    whereClause.OR = [
-      { title: { contains: query, mode: 'insensitive' } },
-      { client: { companyName: { contains: query, mode: 'insensitive' } } }
-    ];
+    conditions.push({
+      OR: [
+        { title: { contains: query, mode: 'insensitive' } },
+        { client: { companyName: { contains: query, mode: 'insensitive' } } },
+        { incomingRequirements: { some: { companyName: { contains: query, mode: 'insensitive' } } } }
+      ]
+    });
+  }
+
+  if (sourceFilter !== 'ALL') {
+    if (sourceFilter === 'Manual') {
+      conditions.push({
+        OR: [
+          { incomingRequirements: { none: {} } },
+          { incomingRequirements: { some: { source: 'Manual' } } }
+        ]
+      });
+    } else {
+      conditions.push({
+        incomingRequirements: {
+          some: { source: sourceFilter }
+        }
+      });
+    }
+  }
+
+  if (conditions.length > 0) {
+    whereClause.AND = conditions;
   }
 
   let orderBy: any = { createdAt: 'desc' };
@@ -63,7 +107,15 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
       take: pageSize,
       include: {
         client: { select: { companyName: true } },
-        submissions: { select: { id: true } }
+        submissions: { select: { id: true } },
+        incomingRequirements: {
+          select: {
+            id: true,
+            source: true,
+            companyName: true,
+            contactPerson: true
+          }
+        }
       }
     }).catch(() => []),
     prisma.client.findMany({
@@ -78,6 +130,7 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
 
   const totalPages = Math.ceil(totalJobs / pageSize) || 1;
   const statusOptions = ['ALL', 'DRAFT', 'OPEN', 'ACTIVE', 'ON_HOLD', 'PAUSED', 'FILLED', 'CLOSED', 'CANCELLED'];
+  const sourceOptions = ['ALL', 'Website', 'Email', 'WhatsApp', 'Manual', 'Referral'];
 
   const userRoleStr = String(dbUser.role || '').toUpperCase();
   const isOwnerOrAdmin = ['MASTER_OWNER', 'AGENCY_OWNER', 'AGENCY_FOUNDER', 'SUPER_ADMIN'].includes(userRoleStr);
@@ -147,6 +200,19 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
             </select>
           </div>
 
+          {/* Source Filter Dropdown (Placed between All Statuses and Sort: Newest) */}
+          <select
+            name="source"
+            defaultValue={sourceFilter}
+            className="px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 font-bold focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all duration-200"
+          >
+            {sourceOptions.map((src) => (
+              <option key={src} value={src}>
+                {src === 'ALL' ? 'All Sources' : src}
+              </option>
+            ))}
+          </select>
+
           {/* Sort Filter */}
           <select
             name="sort"
@@ -174,70 +240,92 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
       {/* Mandate Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {jobList.length > 0 ? (
-          jobList.map((job) => (
-            <div key={job.id} className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md hover:border-amber-300 transition-all duration-200 flex flex-col justify-between space-y-4">
-              <div className="space-y-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <Link href={`/jobs/${job.id}`} className="font-extrabold text-sm text-slate-900 hover:text-amber-600 transition-colors line-clamp-1">
-                      {job.title}
-                    </Link>
-                    <div className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold mt-1">
-                      <Building2 className="h-3.5 w-3.5 text-amber-600 shrink-0" />
-                      <span className="truncate">{job.client?.companyName || 'Unassigned Client'}</span>
+          jobList.map((job) => {
+            const originReq = job.incomingRequirements?.[0];
+            const clientCompName = originReq?.companyName || job.client?.companyName || 'Manual Entry';
+            const contactPersonName = originReq?.contactPerson || 'Not Available';
+            const sourceBadgeVal = originReq?.source || 'Manual';
+
+            return (
+              <div key={job.id} className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md hover:border-amber-300 transition-all duration-200 flex flex-col justify-between space-y-4">
+                <div className="space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <Link href={`/jobs/${job.id}`} className="font-extrabold text-sm text-slate-900 hover:text-amber-600 transition-colors line-clamp-1">
+                        {job.title}
+                      </Link>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {renderMandateSourceBadge(sourceBadgeVal)}
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border shrink-0 ${
+                        job.status === 'ACTIVE' || job.status === 'OPEN'
+                          ? 'bg-emerald-100 text-emerald-950 border-emerald-300'
+                          : job.status === 'PAUSED' || job.status === 'ON_HOLD'
+                          ? 'bg-amber-100 text-amber-950 border-amber-300'
+                          : 'bg-slate-100 text-slate-700 border-slate-300'
+                      }`}>
+                        {job.status}
+                      </span>
                     </div>
                   </div>
-                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border shrink-0 ${
-                    job.status === 'ACTIVE' || job.status === 'OPEN'
-                      ? 'bg-emerald-100 text-emerald-950 border-emerald-300'
-                      : job.status === 'PAUSED' || job.status === 'ON_HOLD'
-                      ? 'bg-amber-100 text-amber-950 border-amber-300'
-                      : 'bg-slate-100 text-slate-700 border-slate-300'
-                  }`}>
-                    {job.status}
+
+                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 text-xs">
+                    <div>
+                      <span className="text-[10px] text-slate-500 block uppercase font-bold">Submissions</span>
+                      <span className="font-extrabold text-slate-900 flex items-center gap-1">
+                        <Users className="h-3.5 w-3.5 text-amber-600" />
+                        {job.submissions.length} Candidates
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-500 block uppercase font-bold">Headcount</span>
+                      <span className="font-extrabold text-slate-900">{job.headcount} Openings</span>
+                    </div>
+                  </div>
+
+                  {/* Client Company & Contact Person Display */}
+                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 text-xs">
+                    <div>
+                      <span className="text-[10px] text-slate-500 block uppercase font-bold">Client Company</span>
+                      <span className="font-extrabold text-slate-900 truncate block mt-0.5">
+                        {clientCompName}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-500 block uppercase font-bold">Contact Person</span>
+                      <span className="font-bold text-slate-700 truncate block mt-0.5">
+                        {contactPersonName}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-3 border-t border-slate-100 text-xs">
+                  <span className="text-[11px] text-slate-700 font-bold">
+                    {job.minCtcLpa ? `${Number(job.minCtcLpa)}-${Number(job.maxCtcLpa || 0)} LPA` : ''}
                   </span>
-                </div>
 
-                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 text-xs">
-                  <div>
-                    <span className="text-[10px] text-slate-500 block uppercase font-bold">Submissions</span>
-                    <span className="font-extrabold text-slate-900 flex items-center gap-1">
-                      <Users className="h-3.5 w-3.5 text-amber-600" />
-                      {job.submissions.length} Candidates
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-slate-500 block uppercase font-bold">Headcount</span>
-                    <span className="font-extrabold text-slate-900">{job.headcount} Openings</span>
+                  <div className="flex items-center gap-1">
+                    <Link
+                      href={`/jobs/${job.id}`}
+                      className="p-1.5 rounded-lg bg-slate-100 hover:bg-amber-500 text-slate-700 hover:text-slate-950 transition-all duration-200"
+                      title="View Mandate Details"
+                    >
+                      <ArrowUpRight className="h-4 w-4" />
+                    </Link>
+
+                    <Link
+                      href={`/jobs/${job.id}/edit`}
+                      className="p-1.5 rounded-lg bg-slate-100 hover:bg-amber-500 text-slate-700 hover:text-slate-950 transition-all duration-200"
+                      title="Edit Mandate"
+                    >
+                      <Edit3 className="h-4 w-4" />
+                    </Link>
                   </div>
                 </div>
               </div>
-
-              <div className="flex items-center justify-between pt-3 border-t border-slate-100 text-xs">
-                <span className="text-[11px] text-slate-700 font-bold">
-                  {job.minCtcLpa ? `${Number(job.minCtcLpa)}-${Number(job.maxCtcLpa || 0)} LPA` : 'Competitive'}
-                </span>
-
-                <div className="flex items-center gap-1">
-                  <Link
-                    href={`/jobs/${job.id}`}
-                    className="p-1.5 rounded-lg bg-slate-100 hover:bg-amber-500 text-slate-700 hover:text-slate-950 transition-all duration-200"
-                    title="View Mandate Details"
-                  >
-                    <ArrowUpRight className="h-4 w-4" />
-                  </Link>
-
-                  <Link
-                    href={`/jobs/${job.id}/edit`}
-                    className="p-1.5 rounded-lg bg-slate-100 hover:bg-amber-500 text-slate-700 hover:text-slate-950 transition-all duration-200"
-                    title="Edit Mandate"
-                  >
-                    <Edit3 className="h-4 w-4" />
-                  </Link>
-                </div>
-              </div>
-            </div>
-          ))
+            );
+          })
         ) : (
           <div className="col-span-full py-12 text-center text-slate-500 bg-white border border-slate-200 rounded-3xl text-xs font-bold shadow-sm">
             No job mandates found matching your search and filter criteria.
@@ -256,7 +344,7 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
           <div className="flex items-center gap-2">
             {currentPage > 1 ? (
               <Link
-                href={`/jobs?page=${currentPage - 1}${query ? `&q=${encodeURIComponent(query)}` : ''}${statusFilter !== 'ALL' ? `&status=${statusFilter}` : ''}&sort=${sortOption}`}
+                href={`/jobs?page=${currentPage - 1}${query ? `&q=${encodeURIComponent(query)}` : ''}${statusFilter !== 'ALL' ? `&status=${statusFilter}` : ''}${sourceFilter !== 'ALL' ? `&source=${sourceFilter}` : ''}&sort=${sortOption}`}
                 className="px-3.5 py-1.5 bg-white border border-slate-300 text-slate-800 hover:bg-slate-50 font-bold rounded-xl flex items-center gap-1 transition-all duration-200"
               >
                 <ChevronLeft className="h-4 w-4" /> Previous
@@ -269,7 +357,7 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
 
             {currentPage < totalPages ? (
               <Link
-                href={`/jobs?page=${currentPage + 1}${query ? `&q=${encodeURIComponent(query)}` : ''}${statusFilter !== 'ALL' ? `&status=${statusFilter}` : ''}&sort=${sortOption}`}
+                href={`/jobs?page=${currentPage + 1}${query ? `&q=${encodeURIComponent(query)}` : ''}${statusFilter !== 'ALL' ? `&status=${statusFilter}` : ''}${sourceFilter !== 'ALL' ? `&source=${sourceFilter}` : ''}&sort=${sortOption}`}
                 className="px-3.5 py-1.5 bg-white border border-slate-300 text-slate-800 hover:bg-slate-50 font-bold rounded-xl flex items-center gap-1 transition-all duration-200"
               >
                 Next <ChevronRight className="h-4 w-4" />
