@@ -95,6 +95,15 @@ export const IncomingRequirementsClient: React.FC<IncomingRequirementsClientProp
   const [requirements, setRequirements] = useState<Requirement[]>(initialRequirements);
   const [kpis, setKpis] = useState(initialKpis);
 
+  // Sync state if server props update
+  React.useEffect(() => {
+    setRequirements(initialRequirements);
+  }, [initialRequirements]);
+
+  React.useEffect(() => {
+    setKpis(initialKpis);
+  }, [initialKpis]);
+
   // Filters & Search
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -255,6 +264,13 @@ export const IncomingRequirementsClient: React.FC<IncomingRequirementsClientProp
     startTransition(async () => {
       const res = await assignRecruiterToRequirementAction(selectedReqForAssign.id, assigningRecruiterId);
       if (res.success) {
+        const assignedRec = recruiters.find(r => r.id === assigningRecruiterId);
+        setRequirements(prev => prev.map(r => r.id === selectedReqForAssign.id ? {
+          ...r,
+          assignedRecruiterId: assigningRecruiterId,
+          assignedRecruiter: assignedRec || r.assignedRecruiter,
+          status: r.status === 'Pending Review' ? 'Assigned' : r.status
+        } : r));
         setActionSuccess(`Recruiter assigned successfully!`);
         setSelectedReqForAssign(null);
         setAssigningRecruiterId('');
@@ -273,6 +289,12 @@ export const IncomingRequirementsClient: React.FC<IncomingRequirementsClientProp
     startTransition(async () => {
       const res = await acceptAndConvertRequirementAction(req.id);
       if (res.success) {
+        setRequirements(prev => prev.map(r => r.id === req.id ? { ...r, status: 'Converted' } : r));
+        setKpis(prev => ({
+          ...prev,
+          totalPending: req.status === 'Pending Review' ? Math.max(0, prev.totalPending - 1) : prev.totalPending,
+          accepted: prev.accepted + 1
+        }));
         setActionSuccess(`Requirement accepted and converted to Job Mandate!`);
         router.refresh();
       } else {
@@ -290,6 +312,12 @@ export const IncomingRequirementsClient: React.FC<IncomingRequirementsClientProp
     startTransition(async () => {
       const res = await rejectRequirementAction(req.id, reason);
       if (res.success) {
+        setRequirements(prev => prev.map(r => r.id === req.id ? { ...r, status: 'Rejected' } : r));
+        setKpis(prev => ({
+          ...prev,
+          totalPending: req.status === 'Pending Review' ? Math.max(0, prev.totalPending - 1) : prev.totalPending,
+          rejected: prev.rejected + 1
+        }));
         setActionSuccess(`Requirement marked as Rejected.`);
         router.refresh();
       } else {
@@ -304,6 +332,12 @@ export const IncomingRequirementsClient: React.FC<IncomingRequirementsClientProp
     startTransition(async () => {
       const res = await restoreRequirementAction(req.id);
       if (res.success) {
+        setRequirements(prev => prev.map(r => r.id === req.id ? { ...r, status: 'Pending Review' } : r));
+        setKpis(prev => ({
+          ...prev,
+          totalPending: prev.totalPending + 1,
+          rejected: Math.max(0, prev.rejected - 1)
+        }));
         setActionSuccess(`Requirement restored back to Active Intake Queue!`);
         router.refresh();
       } else {
@@ -320,6 +354,12 @@ export const IncomingRequirementsClient: React.FC<IncomingRequirementsClientProp
     startTransition(async () => {
       const res = await permanentlyDeleteRequirementAction(req.id);
       if (res.success) {
+        setRequirements(prev => prev.filter(r => r.id !== req.id));
+        setKpis(prev => ({
+          ...prev,
+          totalPending: req.status === 'Pending Review' ? Math.max(0, prev.totalPending - 1) : prev.totalPending,
+          rejected: req.status === 'Rejected' ? Math.max(0, prev.rejected - 1) : prev.rejected
+        }));
         setActionSuccess(`Requirement permanently deleted from database.`);
         router.refresh();
       } else {

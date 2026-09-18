@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Building, Globe, Users, Layout } from 'lucide-react';
+import { Building, Globe, Users, Layout, Mail } from 'lucide-react';
 import { getAgencyFeatureFlagsAction } from '@/app/actions/websiteBuilder';
 
 interface SettingsHeaderTabsProps {
@@ -62,6 +62,14 @@ export const SettingsHeaderTabs: React.FC<SettingsHeaderTabsProps> = ({
       href: '/settings/users',
       icon: Users,
       isActive: pathname.includes('/users'),
+      enabled: true
+    },
+    {
+      id: 'email-logs',
+      label: 'Email Logs',
+      href: '/settings/email-logs',
+      icon: Mail,
+      isActive: pathname.includes('/email-logs'),
       enabled: true
     }
   ];

@@ -348,6 +348,27 @@ export async function createCandidateSubmissionsAction(payload: ShareToClientPay
       console.warn('Mail transport execution warning:', mailErr);
     }
 
+    // Trigger Email Event: CANDIDATE_SUBMITTED
+    try {
+      const { createEmailLog, EmailEventType } = await import('@/lib/email');
+      const recipient = targetRecipient || user.email || 'client@company.com';
+      await createEmailLog({
+        agencyId: user.agencyId,
+        eventType: EmailEventType.CANDIDATE_SUBMITTED,
+        recipientEmail: recipient,
+        subject: emailSubject,
+        metadata: {
+          jobId: job.id,
+          positionTitle,
+          candidateCount: candidates.length,
+          candidateNames: candidates.map((c: any) => `${c.firstName} ${c.lastName}`.trim()),
+          reviewUrl
+        }
+      });
+    } catch (emailErr) {
+      console.error('Failed creating email log for candidate submission:', emailErr);
+    }
+
     return {
       success: true,
       count: candidates.length,
@@ -505,6 +526,41 @@ export async function updateClientDecisionAction(
         updatedAt: new Date()
       }
     });
+
+    // Trigger Email Event for Client Decisions
+    try {
+      const { createEmailLog, EmailEventType } = await import('@/lib/email');
+      let eventType = EmailEventType.CLIENT_HOLD;
+      if (decision === 'INTERVIEW') eventType = EmailEventType.CLIENT_INTERVIEW;
+      if (decision === 'REJECT') eventType = EmailEventType.CLIENT_REJECT;
+
+      const subWithDetails = await (prisma as any).candidateSubmission.findUnique({
+        where: { id: submission.id },
+        include: {
+          job: { select: { title: true, agencyId: true } },
+          candidate: { select: { firstName: true, lastName: true } },
+          recruiter: { select: { email: true } }
+        }
+      });
+
+      if (subWithDetails && subWithDetails.recruiter?.email) {
+        const candidateName = `${subWithDetails.candidate.firstName} ${subWithDetails.candidate.lastName}`.trim();
+        await createEmailLog({
+          agencyId: subWithDetails.job.agencyId,
+          eventType,
+          recipientEmail: subWithDetails.recruiter.email,
+          subject: `Client Decision [${decision}]: ${candidateName} for ${subWithDetails.job.title}`,
+          metadata: {
+            submissionId: submission.id,
+            candidateName,
+            decision,
+            jobTitle: subWithDetails.job.title
+          }
+        });
+      }
+    } catch (emailErr) {
+      console.error('Failed creating email log for client decision:', emailErr);
+    }
 
     return {
       success: true,

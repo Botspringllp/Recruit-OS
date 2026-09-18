@@ -179,8 +179,7 @@ export async function POST(
 
     // Trigger Notification Event A: Incoming Requirement Created (Notify Agency Owners)
     try {
-      const { notifyAgencyOwners } = await import('@/lib/notifications');
-      const { NotificationType, NotificationCategory } = await import('@prisma/client');
+      const { notifyAgencyOwners, NotificationType, NotificationCategory } = await import('@/lib/notifications');
       await notifyAgencyOwners(agencyId, {
         title: 'New Requirement Received',
         message: `New requirement received from ${companyName.trim()}: ${finalPositionTitle}`,
@@ -189,8 +188,25 @@ export async function POST(
         entityType: 'REQUIREMENT',
         entityId: requirement.id
       });
+
+      // Trigger Email Event: REQUIREMENT_RECEIVED
+      const { logRequirementReceivedEmail } = await import('@/lib/email');
+      const owners = await (prisma as any).user.findMany({
+        where: {
+          agencyId,
+          role: { in: ['MASTER_OWNER', 'AGENCY_OWNER', 'AGENCY_FOUNDER'] },
+          status: 'ACTIVE'
+        },
+        select: { email: true }
+      });
+
+      for (const owner of owners) {
+        if (owner.email) {
+          await logRequirementReceivedEmail(agencyId, owner.email, companyName.trim(), finalPositionTitle, requirement.id);
+        }
+      }
     } catch (notifErr) {
-      console.error('Failed sending notification for new requirement:', notifErr);
+      console.error('Failed sending notification or email log for new requirement:', notifErr);
     }
 
     const referenceId = `REQ-${requirement.id.slice(0, 8).toUpperCase()}`;

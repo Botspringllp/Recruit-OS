@@ -1,5 +1,20 @@
 import { prisma } from '@/lib/prisma';
-import { NotificationType, NotificationCategory } from '@prisma/client';
+
+export enum NotificationType {
+  INFO = 'INFO',
+  SUCCESS = 'SUCCESS',
+  WARNING = 'WARNING',
+  ERROR = 'ERROR'
+}
+
+export enum NotificationCategory {
+  REQUIREMENT = 'REQUIREMENT',
+  JOB_MANDATE = 'JOB_MANDATE',
+  CANDIDATE = 'CANDIDATE',
+  SUBMISSION = 'SUBMISSION',
+  SYSTEM = 'SYSTEM',
+  SUBSCRIPTION = 'SUBSCRIPTION'
+}
 
 export interface CreateNotificationInput {
   agencyId?: string | null;
@@ -178,6 +193,28 @@ export async function checkSubscriptionExpiryNotifications(agencyId: string) {
           entityType: 'SYSTEM',
           entityId: agency.id
         });
+
+        // Trigger Email Event: SUBSCRIPTION_EXPIRY
+        try {
+          const { logSubscriptionExpiryEmail } = await import('@/lib/email');
+          const owners = await prisma.user.findMany({
+            where: {
+              agencyId: agency.id,
+              role: { in: ['MASTER_OWNER', 'AGENCY_OWNER', 'AGENCY_FOUNDER'] },
+              isActive: true,
+              deletedAt: null
+            },
+            select: { email: true }
+          });
+
+          for (const owner of owners) {
+            if (owner.email) {
+              await logSubscriptionExpiryEmail(agency.id, owner.email, agency.name, diffDays);
+            }
+          }
+        } catch (emailErr) {
+          console.error('[NotificationEngine] Failed creating subscription expiry email log:', emailErr);
+        }
       }
     }
   } catch (error) {

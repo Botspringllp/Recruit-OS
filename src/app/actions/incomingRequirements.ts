@@ -269,7 +269,7 @@ export async function assignRecruiterToRequirementAction(requirementId: string, 
 
     const recruiter = await prisma.user.findUnique({
       where: { id: recruiterId },
-      select: { firstName: true, lastName: true }
+      select: { firstName: true, lastName: true, email: true }
     });
 
     if (!recruiter) {
@@ -304,8 +304,7 @@ export async function assignRecruiterToRequirementAction(requirementId: string, 
 
     // Trigger Notification Event B: Recruiter Assigned
     try {
-      const { createNotification } = await import('@/lib/notifications');
-      const { NotificationType, NotificationCategory } = await import('@prisma/client');
+      const { createNotification, NotificationType, NotificationCategory } = await import('@/lib/notifications');
       await createNotification({
         agencyId: requirement.agencyId,
         recipientUserId: recruiterId,
@@ -316,8 +315,14 @@ export async function assignRecruiterToRequirementAction(requirementId: string, 
         entityType: 'REQUIREMENT',
         entityId: requirementId
       });
+
+      // Trigger Email Event: REQUIREMENT_ASSIGNED
+      if (recruiter.email) {
+        const { logRequirementAssignedEmail } = await import('@/lib/email');
+        await logRequirementAssignedEmail(requirement.agencyId, recruiter.email, requirement.positionTitle, requirementId);
+      }
     } catch (notifErr) {
-      console.error('Failed sending recruiter assigned notification:', notifErr);
+      console.error('Failed sending recruiter assigned notification/email:', notifErr);
     }
 
     revalidatePath(`/incoming-requirements/${requirementId}`);
@@ -418,8 +423,7 @@ export async function acceptAndConvertRequirementAction(requirementId: string, r
     // Trigger Notification Event C: Requirement Accepted (Notify Assigned Recruiter)
     if (targetRecruiterId) {
       try {
-        const { createNotification } = await import('@/lib/notifications');
-        const { NotificationType, NotificationCategory } = await import('@prisma/client');
+        const { createNotification, NotificationType, NotificationCategory } = await import('@/lib/notifications');
         await createNotification({
           agencyId: requirement.agencyId,
           recipientUserId: targetRecruiterId,
@@ -430,8 +434,18 @@ export async function acceptAndConvertRequirementAction(requirementId: string, r
           entityType: 'JOB_MANDATE',
           entityId: mandate.id
         });
+
+        // Trigger Email Event: REQUIREMENT_ACCEPTED
+        const recruiterUser = await (prisma as any).user.findUnique({
+          where: { id: targetRecruiterId },
+          select: { email: true }
+        });
+        if (recruiterUser?.email) {
+          const { logRequirementAcceptedEmail } = await import('@/lib/email');
+          await logRequirementAcceptedEmail(requirement.agencyId, recruiterUser.email, requirement.positionTitle, mandate.id);
+        }
       } catch (notifErr) {
-        console.error('Failed sending requirement accepted notification:', notifErr);
+        console.error('Failed sending requirement accepted notification/email:', notifErr);
       }
     }
 
@@ -481,8 +495,7 @@ export async function rejectRequirementAction(requirementId: string, reason?: st
     // Trigger Notification Event D: Requirement Rejected (Notify Assigned Recruiter)
     if (requirement?.assignedRecruiterId) {
       try {
-        const { createNotification } = await import('@/lib/notifications');
-        const { NotificationType, NotificationCategory } = await import('@prisma/client');
+        const { createNotification, NotificationType, NotificationCategory } = await import('@/lib/notifications');
         await createNotification({
           agencyId: requirement.agencyId,
           recipientUserId: requirement.assignedRecruiterId,
@@ -493,8 +506,18 @@ export async function rejectRequirementAction(requirementId: string, reason?: st
           entityType: 'REQUIREMENT',
           entityId: requirementId
         });
+
+        // Trigger Email Event: REQUIREMENT_REJECTED
+        const recruiterUser = await (prisma as any).user.findUnique({
+          where: { id: requirement.assignedRecruiterId },
+          select: { email: true }
+        });
+        if (recruiterUser?.email) {
+          const { logRequirementRejectedEmail } = await import('@/lib/email');
+          await logRequirementRejectedEmail(requirement.agencyId, recruiterUser.email, requirement.positionTitle, reason);
+        }
       } catch (notifErr) {
-        console.error('Failed sending requirement rejected notification:', notifErr);
+        console.error('Failed sending requirement rejected notification/email:', notifErr);
       }
     }
 

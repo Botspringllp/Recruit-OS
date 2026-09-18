@@ -299,6 +299,9 @@ model Agency {
   incomingRequirements   IncomingRequirement[]
   websiteConfiguration   WebsiteConfiguration?
   realNotifications      Notification[]
+  senderName             String?                       @map("sender_name") @db.VarChar(128)
+  replyToEmail           String?                       @map("reply_to_email") @db.VarChar(255)
+  emailLogs              EmailLog[]
 
   @@map("agencies")
 }
@@ -1410,4 +1413,52 @@ model Notification {
   @@index([createdAt(sort: Desc)])
   @@map("notifications")
 }
+
+// =============================================================================
+// DOMAIN 14: EMAIL INFRASTRUCTURE FOUNDATION (PHASE EM-00)
+// =============================================================================
+
+enum EmailEventType {
+  REQUIREMENT_RECEIVED
+  REQUIREMENT_ASSIGNED
+  REQUIREMENT_ACCEPTED
+  REQUIREMENT_REJECTED
+  CANDIDATE_SUBMITTED
+  CLIENT_INTERVIEW
+  CLIENT_HOLD
+  CLIENT_REJECT
+  SUBSCRIPTION_EXPIRY
+
+  @@map("email_event_type")
+}
+
+enum EmailStatus {
+  PENDING
+  SENT
+  FAILED
+
+  @@map("email_status")
+}
+
+model EmailLog {
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @map("email_log_id") @db.Uuid
+  agencyId       String?        @map("agency_id") @db.Uuid
+  eventType      EmailEventType @map("event_type")
+  recipientEmail String         @map("recipient_email") @db.VarChar(255)
+  subject        String         @db.VarChar(255)
+  status         EmailStatus    @default(PENDING)
+  errorMessage   String?        @map("error_message") @db.Text
+  metadata       Json?          @db.JsonB
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  sentAt         DateTime?      @map("sent_at") @db.Timestamptz
+
+  agency Agency? @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  @@index([agencyId])
+  @@index([eventType])
+  @@index([status])
+  @@index([createdAt(sort: Desc)])
+  @@map("email_logs")
+}
+
 

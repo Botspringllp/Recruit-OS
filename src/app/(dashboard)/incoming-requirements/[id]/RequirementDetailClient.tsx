@@ -110,7 +110,7 @@ export const RequirementDetailClient: React.FC<RequirementDetailClientProps> = (
       const res = await rejectRequirementAction(requirement.id, reason);
       if (res.success) {
         setActionSuccess('Requirement marked as Rejected.');
-        router.refresh();
+        router.push('/incoming-requirements');
       } else {
         setActionError(res.error || 'Failed to reject requirement.');
       }
