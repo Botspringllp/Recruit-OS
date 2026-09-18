@@ -249,6 +249,19 @@ model Agency {
   subscriptionStartDate  DateTime? @map("subscription_start_date") @db.Timestamptz
   subscriptionExpiryDate DateTime? @map("subscription_expiry_date") @db.Timestamptz
 
+  // SMTP Email Configuration (EM-02)
+  smtpEnabled        Boolean   @default(false) @map("smtp_enabled")
+  smtpHost           String?   @map("smtp_host") @db.VarChar(255)
+  smtpPort           Int?      @map("smtp_port")
+  smtpSecure         Boolean   @default(false) @map("smtp_secure")
+  smtpUsername       String?   @map("smtp_username") @db.VarChar(255)
+  smtpPassword       String?   @map("smtp_password") @db.Text
+  senderName         String?   @map("sender_name") @db.VarChar(255)
+  senderEmail        String?   @map("sender_email") @db.VarChar(255)
+  replyToEmail       String?   @map("reply_to_email") @db.VarChar(255)
+  smtpLastTestedAt   DateTime? @map("smtp_last_tested_at") @db.Timestamptz
+  smtpLastTestStatus String?   @map("smtp_last_test_status") @db.VarChar(50)
+
   createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz
   updatedAt        DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt        DateTime?        @map("deleted_at") @db.Timestamptz
@@ -299,8 +312,6 @@ model Agency {
   incomingRequirements   IncomingRequirement[]
   websiteConfiguration   WebsiteConfiguration?
   realNotifications      Notification[]
-  senderName             String?                       @map("sender_name") @db.VarChar(128)
-  replyToEmail           String?                       @map("reply_to_email") @db.VarChar(255)
   emailLogs              EmailLog[]
 
   @@map("agencies")

@@ -107,10 +107,122 @@ export async function createEmailLog({
     });
 
     console.log(`[Email Service]: EmailLog created (${emailLog.id}) - Event: ${eventType} -> ${recipientEmail}`);
+
+    // EM-02: Real SMTP Delivery Engine Dispatch
+    if (agencyId && htmlBody) {
+      try {
+        const { sendAgencyEmail } = await import('@/lib/smtp');
+        const sendResult = await sendAgencyEmail({
+          agencyId,
+          to: recipientEmail,
+          subject: subject,
+          html: htmlBody,
+          text: textBody || undefined
+        });
+
+        if (sendResult.success && sendResult.isSmtpSent) {
+          await (prisma as any).emailLog.update({
+            where: { id: emailLog.id },
+            data: {
+              status: EmailStatus.SENT,
+              sentAt: new Date(),
+              errorMessage: null
+            }
+          });
+          emailLog.status = EmailStatus.SENT;
+          emailLog.sentAt = new Date();
+        } else if (!sendResult.success && sendResult.error && !sendResult.error.includes('disabled')) {
+          await (prisma as any).emailLog.update({
+            where: { id: emailLog.id },
+            data: {
+              status: EmailStatus.FAILED,
+              errorMessage: sendResult.error.slice(0, 1000)
+            }
+          });
+          emailLog.status = EmailStatus.FAILED;
+          emailLog.errorMessage = sendResult.error;
+        }
+      } catch (smtpErr: any) {
+        console.error('[Email Service Error]: Real SMTP dispatch failed:', smtpErr);
+        await (prisma as any).emailLog.update({
+          where: { id: emailLog.id },
+          data: {
+            status: EmailStatus.FAILED,
+            errorMessage: String(smtpErr?.message || smtpErr).slice(0, 1000)
+          }
+        });
+        emailLog.status = EmailStatus.FAILED;
+      }
+    }
+
     return emailLog;
   } catch (error) {
     console.error('[Email Service Error]: Failed to create email log:', error);
     return null;
+  }
+}
+
+/**
+ * Queue Processor: Finds PENDING email logs and dispatches them via SMTP (EM-02 Section 4).
+ */
+export async function processPendingEmails(targetAgencyId?: string | null) {
+  try {
+    const whereClause: any = { status: EmailStatus.PENDING };
+    if (targetAgencyId) {
+      whereClause.agencyId = targetAgencyId;
+    }
+
+    const pendingLogs = await (prisma as any).emailLog.findMany({
+      where: whereClause,
+      take: 50,
+      orderBy: { createdAt: 'asc' }
+    });
+
+    if (pendingLogs.length === 0) {
+      return { processed: 0, sent: 0, failed: 0 };
+    }
+
+    const { sendAgencyEmail } = await import('@/lib/smtp');
+    let sentCount = 0;
+    let failedCount = 0;
+
+    for (const log of pendingLogs) {
+      if (!log.agencyId || !log.htmlBody) continue;
+
+      const sendResult = await sendAgencyEmail({
+        agencyId: log.agencyId,
+        to: log.recipientEmail,
+        subject: log.subject,
+        html: log.htmlBody,
+        text: log.textBody || undefined
+      });
+
+      if (sendResult.success && sendResult.isSmtpSent) {
+        await (prisma as any).emailLog.update({
+          where: { id: log.id },
+          data: {
+            status: EmailStatus.SENT,
+            sentAt: new Date(),
+            errorMessage: null
+          }
+        });
+        sentCount++;
+      } else if (!sendResult.success && sendResult.error && !sendResult.error.includes('disabled')) {
+        await (prisma as any).emailLog.update({
+          where: { id: log.id },
+          data: {
+            status: EmailStatus.FAILED,
+            errorMessage: sendResult.error.slice(0, 1000)
+          }
+        });
+        failedCount++;
+      }
+    }
+
+    return { processed: pendingLogs.length, sent: sentCount, failed: failedCount };
+  } catch (err) {
+    console.error('[Email Queue Error]: Failed to process pending emails:', err);
+    return { processed: 0, sent: 0, failed: 0 };
   }
 }
 

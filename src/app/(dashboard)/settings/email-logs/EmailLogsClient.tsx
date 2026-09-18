@@ -18,9 +18,11 @@ import {
   FileText,
   Code,
   Laptop,
-  Smartphone
+  Smartphone,
+  RotateCw
 } from 'lucide-react';
 import { updateAgencyEmailIdentityAction } from '@/app/actions/emailIdentity';
+import { retryEmailLogAction } from '@/app/actions/emailSmtpActions';
 import { useRouter } from 'next/navigation';
 
 export interface EmailLogItem {
@@ -75,6 +77,38 @@ export const EmailLogsClient: React.FC<EmailLogsClientProps> = ({
   const [isSavingIdentity, setIsSavingIdentity] = useState(false);
   const [identitySuccess, setIdentitySuccess] = useState<string | null>(null);
   const [identityError, setIdentityError] = useState<string | null>(null);
+
+  // Email Retry State
+  const [retryingLogId, setRetryingLogId] = useState<string | null>(null);
+  const [retryNotification, setRetryNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const handleRetryEmail = async (logId: string) => {
+    setRetryingLogId(logId);
+    setRetryNotification(null);
+
+    const res = await retryEmailLogAction(logId);
+    setRetryingLogId(null);
+
+    if (res.success) {
+      setRetryNotification({
+        type: 'success',
+        message: res.message || 'Email resent successfully!'
+      });
+      setLogs(prev => prev.map(l => l.id === logId ? { ...l, status: 'SENT', sentAt: new Date().toISOString(), errorMessage: null } : l));
+      if (selectedLog && selectedLog.id === logId) {
+        setSelectedLog(prev => prev ? { ...prev, status: 'SENT', sentAt: new Date().toISOString(), errorMessage: null } : null);
+      }
+      if (previewLog && previewLog.id === logId) {
+        setPreviewLog(prev => prev ? { ...prev, status: 'SENT', sentAt: new Date().toISOString(), errorMessage: null } : null);
+      }
+      router.refresh();
+    } else {
+      setRetryNotification({
+        type: 'error',
+        message: res.error || 'Failed to resend email.'
+      });
+    }
+  };
 
   // Sync state with props
   React.useEffect(() => {
@@ -334,6 +368,19 @@ export const EmailLogsClient: React.FC<EmailLogsClientProps> = ({
 
                     <td className="py-4 px-6 text-right">
                       <div className="flex items-center justify-end gap-2">
+                        {/* Retry / Resend Button */}
+                        {(log.status === 'FAILED' || log.status === 'PENDING') && (
+                          <button
+                            onClick={() => handleRetryEmail(log.id)}
+                            disabled={retryingLogId === log.id}
+                            className="px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-950 border border-indigo-200/80 font-extrabold text-xs flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                            title="Retry sending email via SMTP"
+                          >
+                            <RotateCw className={`h-3.5 w-3.5 text-indigo-600 ${retryingLogId === log.id ? 'animate-spin' : ''}`} />
+                            <span>{retryingLogId === log.id ? 'Resending...' : 'Retry'}</span>
+                          </button>
+                        )}
+
                         {/* Preview Email Button */}
                         <button
                           onClick={() => {
@@ -491,6 +538,14 @@ export const EmailLogsClient: React.FC<EmailLogsClientProps> = ({
                     {new Date(selectedLog.createdAt).toLocaleString()}
                   </span>
                 </div>
+                {selectedLog.sentAt && (
+                  <div>
+                    <span className="text-slate-400 font-bold block">SENT TIMESTAMP</span>
+                    <span className="font-bold text-emerald-700 mt-0.5 block">
+                      {new Date(selectedLog.sentAt).toLocaleString()}
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div>
@@ -518,17 +573,30 @@ export const EmailLogsClient: React.FC<EmailLogsClientProps> = ({
             </div>
 
             <div className="flex items-center justify-between pt-4 border-t border-slate-100">
-              <button
-                onClick={() => {
-                  setPreviewLog(selectedLog);
-                  setSelectedLog(null);
-                  setPreviewTab('html');
-                }}
-                className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs flex items-center gap-2"
-              >
-                <Eye className="h-4 w-4" />
-                <span>Preview Email Render</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    setPreviewLog(selectedLog);
+                    setSelectedLog(null);
+                    setPreviewTab('html');
+                  }}
+                  className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs flex items-center gap-2"
+                >
+                  <Eye className="h-4 w-4" />
+                  <span>Preview Email Render</span>
+                </button>
+
+                {(selectedLog.status === 'FAILED' || selectedLog.status === 'PENDING') && (
+                  <button
+                    onClick={() => handleRetryEmail(selectedLog.id)}
+                    disabled={retryingLogId === selectedLog.id}
+                    className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs flex items-center gap-2"
+                  >
+                    <RotateCw className={`h-4 w-4 ${retryingLogId === selectedLog.id ? 'animate-spin' : ''}`} />
+                    <span>{retryingLogId === selectedLog.id ? 'Resending...' : 'Retry Delivery'}</span>
+                  </button>
+                )}
+              </div>
 
               <button
                 onClick={() => setSelectedLog(null)}
