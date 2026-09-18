@@ -1,7 +1,25 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Mail, Send, AlertTriangle, CheckCircle2, Clock, Search, Filter, RefreshCw, Eye, Settings, ShieldAlert, Sparkles, X } from 'lucide-react';
+import {
+  Mail,
+  Send,
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
+  Search,
+  Filter,
+  RefreshCw,
+  Eye,
+  Settings,
+  ShieldAlert,
+  Sparkles,
+  X,
+  FileText,
+  Code,
+  Laptop,
+  Smartphone
+} from 'lucide-react';
 import { updateAgencyEmailIdentityAction } from '@/app/actions/emailIdentity';
 import { useRouter } from 'next/navigation';
 
@@ -11,6 +29,8 @@ export interface EmailLogItem {
   eventType: string;
   recipientEmail: string;
   subject: string;
+  htmlBody?: string | null;
+  textBody?: string | null;
   status: 'PENDING' | 'SENT' | 'FAILED';
   errorMessage?: string | null;
   metadata?: string | null;
@@ -42,6 +62,11 @@ export const EmailLogsClient: React.FC<EmailLogsClientProps> = ({
   const [eventFilter, setEventFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [selectedLog, setSelectedLog] = useState<EmailLogItem | null>(null);
+
+  // Email Preview Modal state
+  const [previewLog, setPreviewLog] = useState<EmailLogItem | null>(null);
+  const [previewTab, setPreviewTab] = useState<'html' | 'text' | 'json'>('html');
+  const [viewportMode, setViewportMode] = useState<'desktop' | 'mobile'>('desktop');
 
   // Agency Identity Settings state
   const [isIdentityModalOpen, setIsIdentityModalOpen] = useState(false);
@@ -157,11 +182,11 @@ export const EmailLogsClient: React.FC<EmailLogsClientProps> = ({
               <div className="flex items-center gap-2">
                 <h1 className="text-2xl font-black tracking-tight">Email System Logs</h1>
                 <span className="px-2.5 py-0.5 text-[10px] font-extrabold uppercase rounded-full bg-amber-500 text-slate-950">
-                  PHASE EM-00
+                  PHASE EM-01
                 </span>
               </div>
               <p className="text-xs text-slate-300 mt-1 font-medium">
-                Live database audit queue for multi-tenant platform email event triggers
+                Dynamic Email Template Engine & Live Audit Queue with HTML Preview Support
               </p>
             </div>
           </div>
@@ -269,7 +294,7 @@ export const EmailLogsClient: React.FC<EmailLogsClientProps> = ({
                 <th className="py-4 px-6">Subject</th>
                 <th className="py-4 px-6">Status</th>
                 <th className="py-4 px-6">Logged At</th>
-                <th className="py-4 px-6 text-right">Details</th>
+                <th className="py-4 px-6 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -308,13 +333,28 @@ export const EmailLogsClient: React.FC<EmailLogsClientProps> = ({
                     </td>
 
                     <td className="py-4 px-6 text-right">
-                      <button
-                        onClick={() => setSelectedLog(log)}
-                        className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
-                        title="View Email Payload Metadata"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        {/* Preview Email Button */}
+                        <button
+                          onClick={() => {
+                            setPreviewLog(log);
+                            setPreviewTab('html');
+                          }}
+                          className="px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200/80 font-extrabold text-xs flex items-center gap-1.5 transition-colors"
+                        >
+                          <Eye className="h-3.5 w-3.5 text-amber-600" />
+                          <span>Preview Email</span>
+                        </button>
+
+                        {/* Details Drawer Button */}
+                        <button
+                          onClick={() => setSelectedLog(log)}
+                          className="p-1.5 rounded-xl text-slate-400 hover:text-slate-800 hover:bg-slate-100 transition-colors"
+                          title="View Log Payload Details"
+                        >
+                          <FileText className="h-4 w-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -408,7 +448,7 @@ export const EmailLogsClient: React.FC<EmailLogsClientProps> = ({
         </div>
       )}
 
-      {/* Modal 2: View Email Log Payload Metadata */}
+      {/* Modal 2: View Email Log Payload Details */}
       {selectedLog && (
         <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl space-y-6 border border-slate-100 relative">
@@ -477,7 +517,19 @@ export const EmailLogsClient: React.FC<EmailLogsClientProps> = ({
               )}
             </div>
 
-            <div className="flex items-center justify-end pt-4 border-t border-slate-100">
+            <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+              <button
+                onClick={() => {
+                  setPreviewLog(selectedLog);
+                  setSelectedLog(null);
+                  setPreviewTab('html');
+                }}
+                className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs flex items-center gap-2"
+              >
+                <Eye className="h-4 w-4" />
+                <span>Preview Email Render</span>
+              </button>
+
               <button
                 onClick={() => setSelectedLog(null)}
                 className="px-5 py-2.5 rounded-xl bg-slate-900 text-white font-extrabold text-xs hover:bg-slate-800"
@@ -485,6 +537,162 @@ export const EmailLogsClient: React.FC<EmailLogsClientProps> = ({
                 Close
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal 3: FULL EMAIL PREVIEW MODAL (Requirement 13) */}
+      {previewLog && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+          <div className="bg-slate-900 text-white rounded-3xl max-w-5xl w-full h-[90vh] flex flex-col shadow-2xl border border-slate-800 relative overflow-hidden">
+            
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-slate-800 flex flex-wrap items-center justify-between gap-4 bg-slate-950/50">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                  <Mail className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black tracking-tight text-white flex items-center gap-2">
+                    <span>Email Render Preview</span>
+                    {renderEventTypeBadge(previewLog.eventType)}
+                  </h3>
+                  <p className="text-xs text-slate-400 font-medium truncate max-w-md">
+                    To: <span className="text-amber-400 font-bold">{previewLog.recipientEmail}</span> • Subject: {previewLog.subject}
+                  </p>
+                </div>
+              </div>
+
+              {/* Viewport & View Mode Controls */}
+              <div className="flex items-center gap-3">
+                {previewTab === 'html' && (
+                  <div className="flex items-center bg-slate-800 rounded-xl p-1 border border-slate-700">
+                    <button
+                      onClick={() => setViewportMode('desktop')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
+                        viewportMode === 'desktop' ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      <Laptop className="h-3.5 w-3.5" />
+                      <span>Desktop</span>
+                    </button>
+                    <button
+                      onClick={() => setViewportMode('mobile')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
+                        viewportMode === 'mobile' ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      <Smartphone className="h-3.5 w-3.5" />
+                      <span>Mobile</span>
+                    </button>
+                  </div>
+                )}
+
+                <button
+                  onClick={() => setPreviewLog(null)}
+                  className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Tabs Bar */}
+            <div className="px-6 py-2.5 bg-slate-950/80 border-b border-slate-800 flex items-center gap-2 text-xs font-bold">
+              <button
+                onClick={() => setPreviewTab('html')}
+                className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all ${
+                  previewTab === 'html'
+                    ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30 font-black'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Eye className="h-3.5 w-3.5" />
+                <span>HTML Render</span>
+              </button>
+
+              <button
+                onClick={() => setPreviewTab('text')}
+                className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all ${
+                  previewTab === 'text'
+                    ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30 font-black'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <FileText className="h-3.5 w-3.5" />
+                <span>Plain Text</span>
+              </button>
+
+              <button
+                onClick={() => setPreviewTab('json')}
+                className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all ${
+                  previewTab === 'json'
+                    ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30 font-black'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Code className="h-3.5 w-3.5" />
+                <span>Metadata JSON</span>
+              </button>
+            </div>
+
+            {/* Preview Body Area */}
+            <div className="flex-1 bg-slate-950 p-4 sm:p-6 overflow-y-auto flex items-center justify-center">
+              {previewTab === 'html' && (
+                <div
+                  className={`bg-white rounded-2xl shadow-2xl transition-all duration-300 overflow-hidden h-full flex flex-col ${
+                    viewportMode === 'mobile' ? 'w-[375px]' : 'w-full max-w-[760px]'
+                  }`}
+                >
+                  {previewLog.htmlBody ? (
+                    <iframe
+                      srcDoc={previewLog.htmlBody}
+                      title="Email HTML Preview"
+                      className="w-full h-full border-0 rounded-2xl bg-white"
+                      sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin"
+                    />
+                  ) : (
+                    <div className="p-12 text-center text-slate-400 my-auto">
+                      <Mail className="h-12 w-12 mx-auto mb-3 text-slate-300" />
+                      <p className="font-extrabold text-slate-700">No HTML Body Generated</p>
+                      <p className="text-xs text-slate-400 mt-1">This legacy email log entry was created before HTML template engine integration.</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {previewTab === 'text' && (
+                <div className="w-full max-w-3xl bg-slate-900 border border-slate-800 rounded-2xl p-6 h-full overflow-y-auto text-slate-200 font-mono text-xs leading-relaxed whitespace-pre-wrap">
+                  {previewLog.textBody || 'No plain text body stored.'}
+                </div>
+              )}
+
+              {previewTab === 'json' && (
+                <div className="w-full max-w-3xl bg-slate-900 border border-slate-800 rounded-2xl p-6 h-full overflow-y-auto text-amber-400 font-mono text-xs">
+                  <pre>
+                    {previewLog.metadata
+                      ? JSON.stringify(JSON.parse(previewLog.metadata), null, 2)
+                      : '// No metadata recorded.'}
+                  </pre>
+                </div>
+              )}
+            </div>
+
+            {/* Footer Status Bar */}
+            <div className="px-6 py-3 border-t border-slate-800 bg-slate-950/70 text-xs text-slate-400 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span>Render Engine Ready (EM-01 Production Standard)</span>
+              </div>
+
+              <button
+                onClick={() => setPreviewLog(null)}
+                className="px-4 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold"
+              >
+                Close Preview
+              </button>
+            </div>
+
           </div>
         </div>
       )}

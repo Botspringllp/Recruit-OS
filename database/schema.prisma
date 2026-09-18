@@ -1446,6 +1446,8 @@ model EmailLog {
   eventType      EmailEventType @map("event_type")
   recipientEmail String         @map("recipient_email") @db.VarChar(255)
   subject        String         @db.VarChar(255)
+  htmlBody       String?        @map("html_body") @db.Text
+  textBody       String?        @map("text_body") @db.Text
   status         EmailStatus    @default(PENDING)
   errorMessage   String?        @map("error_message") @db.Text
   metadata       Json?          @db.JsonB

@@ -1,4 +1,17 @@
 import { prisma } from '@/lib/prisma';
+import {
+  BaseAgencyContext,
+  generateRequirementReceivedTemplate,
+  generateRequirementAssignedTemplate,
+  generateRequirementAcceptedTemplate,
+  generateRequirementRejectedTemplate,
+  generateCandidateSubmissionTemplate,
+  generateInterviewSelectedTemplate,
+  generateCandidateHoldTemplate,
+  generateCandidateRejectedTemplate,
+  generateSubscriptionExpiryTemplate,
+  CandidateTrackerRow
+} from './emailTemplates';
 
 export enum EmailEventType {
   REQUIREMENT_RECEIVED = 'REQUIREMENT_RECEIVED',
@@ -23,18 +36,55 @@ export interface CreateEmailLogParams {
   eventType: EmailEventType | string;
   recipientEmail: string;
   subject: string;
+  htmlBody?: string | null;
+  textBody?: string | null;
   metadata?: Record<string, any> | null;
 }
 
 /**
- * Creates a pending email log entry in the database (Phase EM-00 Email Infrastructure).
- * Designed for future SMTP delivery queue integration.
+ * Fetches multi-tenant Agency context for email templates.
+ */
+export async function fetchAgencyContext(agencyId?: string | null): Promise<BaseAgencyContext> {
+  if (!agencyId) {
+    return { agencyName: 'RecruitOS Agency' };
+  }
+  try {
+    const agency = await (prisma as any).agency.findUnique({
+      where: { id: agencyId },
+      select: {
+        name: true,
+        senderName: true,
+        replyToEmail: true,
+        businessEmail: true,
+        phone: true,
+        websiteUrl: true
+      }
+    });
+    if (!agency) return { agencyName: 'RecruitOS Agency' };
+    return {
+      agencyName: agency.name || 'RecruitOS Agency',
+      senderName: agency.senderName || agency.name,
+      replyToEmail: agency.replyToEmail || agency.businessEmail,
+      contactEmail: agency.businessEmail || agency.replyToEmail,
+      contactPhone: agency.phone,
+      websiteUrl: agency.websiteUrl
+    };
+  } catch (err) {
+    return { agencyName: 'RecruitOS Agency' };
+  }
+}
+
+/**
+ * Creates a pending email log entry with rendered HTML & Text bodies (Phase EM-01).
+ * Ready for EM-02 SMTP engine dispatch.
  */
 export async function createEmailLog({
   agencyId,
   eventType,
   recipientEmail,
   subject,
+  htmlBody,
+  textBody,
   metadata
 }: CreateEmailLogParams) {
   try {
@@ -49,6 +99,8 @@ export async function createEmailLog({
         eventType,
         recipientEmail: recipientEmail.trim(),
         subject: subject.trim(),
+        htmlBody: htmlBody || null,
+        textBody: textBody || null,
         status: EmailStatus.PENDING,
         metadata: metadata ? metadata : undefined
       }
@@ -106,17 +158,34 @@ export async function logRequirementReceivedEmail(
   recipientEmail: string,
   companyName: string,
   positionTitle: string,
-  requirementId: string
+  requirementId: string,
+  contactPerson?: string,
+  source?: string
 ) {
+  const agency = await fetchAgencyContext(agencyId);
+  const rendered = generateRequirementReceivedTemplate({
+    agency,
+    requirementId,
+    positionTitle,
+    companyName,
+    contactPerson,
+    source,
+    receivedDate: new Date().toLocaleDateString('en-US')
+  });
+
   return createEmailLog({
     agencyId,
     eventType: EmailEventType.REQUIREMENT_RECEIVED,
     recipientEmail,
-    subject: `New Requirement Received: ${positionTitle} (${companyName})`,
+    subject: rendered.subject,
+    htmlBody: rendered.html,
+    textBody: rendered.text,
     metadata: {
       requirementId,
       companyName,
-      positionTitle
+      positionTitle,
+      contactPerson,
+      source
     }
   });
 }
@@ -128,16 +197,32 @@ export async function logRequirementAssignedEmail(
   agencyId: string | null,
   recipientEmail: string,
   positionTitle: string,
-  requirementId: string
+  requirementId: string,
+  companyName: string = 'Client Company',
+  assignedBy?: string
 ) {
+  const agency = await fetchAgencyContext(agencyId);
+  const rendered = generateRequirementAssignedTemplate({
+    agency,
+    requirementId,
+    positionTitle,
+    companyName,
+    priority: 'HIGH',
+    assignedBy,
+    assignedDate: new Date().toLocaleDateString('en-US')
+  });
+
   return createEmailLog({
     agencyId,
     eventType: EmailEventType.REQUIREMENT_ASSIGNED,
     recipientEmail,
-    subject: `Requirement Assigned: ${positionTitle}`,
+    subject: rendered.subject,
+    htmlBody: rendered.html,
+    textBody: rendered.text,
     metadata: {
       requirementId,
-      positionTitle
+      positionTitle,
+      companyName
     }
   });
 }
@@ -149,16 +234,37 @@ export async function logRequirementAcceptedEmail(
   agencyId: string | null,
   recipientEmail: string,
   positionTitle: string,
-  mandateId: string
+  mandateId: string,
+  clientName: string = 'Valued Client',
+  companyName: string = 'Client Company',
+  recruiterName?: string,
+  recruiterEmail?: string,
+  recruiterPhone?: string
 ) {
+  const agency = await fetchAgencyContext(agencyId);
+  const rendered = generateRequirementAcceptedTemplate({
+    agency,
+    clientName,
+    positionTitle,
+    companyName,
+    recruiterName,
+    recruiterEmail,
+    recruiterPhone,
+    mandateId
+  });
+
   return createEmailLog({
     agencyId,
     eventType: EmailEventType.REQUIREMENT_ACCEPTED,
     recipientEmail,
-    subject: `Requirement Accepted & Mandate Created: ${positionTitle}`,
+    subject: rendered.subject,
+    htmlBody: rendered.html,
+    textBody: rendered.text,
     metadata: {
       mandateId,
-      positionTitle
+      positionTitle,
+      companyName,
+      clientName
     }
   });
 }
@@ -170,39 +276,178 @@ export async function logRequirementRejectedEmail(
   agencyId: string | null,
   recipientEmail: string,
   positionTitle: string,
-  reason?: string
+  reason?: string,
+  clientName: string = 'Valued Client',
+  companyName: string = 'Client Company'
 ) {
+  const agency = await fetchAgencyContext(agencyId);
+  const rendered = generateRequirementRejectedTemplate({
+    agency,
+    clientName,
+    positionTitle,
+    companyName,
+    reason
+  });
+
   return createEmailLog({
     agencyId,
     eventType: EmailEventType.REQUIREMENT_REJECTED,
     recipientEmail,
-    subject: `Requirement Rejected: ${positionTitle}`,
+    subject: rendered.subject,
+    htmlBody: rendered.html,
+    textBody: rendered.text,
     metadata: {
       positionTitle,
+      companyName,
+      clientName,
       reason: reason || 'N/A'
     }
   });
 }
 
 /**
- * Helper: Logs CANDIDATE_SUBMITTED email event
+ * Helper: Logs CANDIDATE_SUBMITTED email event (with 19-column candidate tracker table)
  */
 export async function logCandidateSubmittedEmail(
   agencyId: string | null,
   recipientEmail: string,
-  candidateName: string,
-  jobTitle: string,
-  submissionId: string
+  clientName: string,
+  positionTitle: string,
+  token: string,
+  candidates: CandidateTrackerRow[],
+  recruiterCoverNote?: string
 ) {
+  const agency = await fetchAgencyContext(agencyId);
+  const rendered = generateCandidateSubmissionTemplate({
+    agency,
+    clientName,
+    positionTitle,
+    recruiterCoverNote,
+    token,
+    candidates
+  });
+
   return createEmailLog({
     agencyId,
     eventType: EmailEventType.CANDIDATE_SUBMITTED,
     recipientEmail,
-    subject: `Candidate Profile Submitted: ${candidateName} for ${jobTitle}`,
+    subject: rendered.subject,
+    htmlBody: rendered.html,
+    textBody: rendered.text,
+    metadata: {
+      clientName,
+      positionTitle,
+      token,
+      candidateCount: candidates.length,
+      recruiterCoverNote
+    }
+  });
+}
+
+/**
+ * Helper: Logs CLIENT_INTERVIEW email event
+ */
+export async function logClientInterviewEmail(
+  agencyId: string | null,
+  recipientEmail: string,
+  candidateName: string,
+  positionTitle: string,
+  clientName: string,
+  submissionId?: string
+) {
+  const agency = await fetchAgencyContext(agencyId);
+  const rendered = generateInterviewSelectedTemplate({
+    agency,
+    candidateName,
+    positionTitle,
+    clientName,
+    submissionId
+  });
+
+  return createEmailLog({
+    agencyId,
+    eventType: EmailEventType.CLIENT_INTERVIEW,
+    recipientEmail,
+    subject: rendered.subject,
+    htmlBody: rendered.html,
+    textBody: rendered.text,
     metadata: {
       submissionId,
       candidateName,
-      jobTitle
+      positionTitle,
+      clientName
+    }
+  });
+}
+
+/**
+ * Helper: Logs CLIENT_HOLD email event
+ */
+export async function logClientHoldEmail(
+  agencyId: string | null,
+  recipientEmail: string,
+  candidateName: string,
+  positionTitle: string,
+  clientName: string,
+  notes?: string
+) {
+  const agency = await fetchAgencyContext(agencyId);
+  const rendered = generateCandidateHoldTemplate({
+    agency,
+    candidateName,
+    positionTitle,
+    clientName,
+    notes
+  });
+
+  return createEmailLog({
+    agencyId,
+    eventType: EmailEventType.CLIENT_HOLD,
+    recipientEmail,
+    subject: rendered.subject,
+    htmlBody: rendered.html,
+    textBody: rendered.text,
+    metadata: {
+      candidateName,
+      positionTitle,
+      clientName,
+      notes
+    }
+  });
+}
+
+/**
+ * Helper: Logs CLIENT_REJECT email event
+ */
+export async function logClientRejectEmail(
+  agencyId: string | null,
+  recipientEmail: string,
+  candidateName: string,
+  positionTitle: string,
+  clientName: string,
+  notes?: string
+) {
+  const agency = await fetchAgencyContext(agencyId);
+  const rendered = generateCandidateRejectedTemplate({
+    agency,
+    candidateName,
+    positionTitle,
+    clientName,
+    notes
+  });
+
+  return createEmailLog({
+    agencyId,
+    eventType: EmailEventType.CLIENT_REJECT,
+    recipientEmail,
+    subject: rendered.subject,
+    htmlBody: rendered.html,
+    textBody: rendered.text,
+    metadata: {
+      candidateName,
+      positionTitle,
+      clientName,
+      notes
     }
   });
 }
@@ -214,16 +459,31 @@ export async function logSubscriptionExpiryEmail(
   agencyId: string | null,
   recipientEmail: string,
   agencyName: string,
-  daysRemaining: number
+  daysRemaining: number,
+  planName?: string,
+  expiryDate?: string
 ) {
+  const agency = await fetchAgencyContext(agencyId);
+  const rendered = generateSubscriptionExpiryTemplate({
+    agency,
+    agencyName,
+    planName,
+    expiryDate,
+    daysRemaining
+  });
+
   return createEmailLog({
     agencyId,
     eventType: EmailEventType.SUBSCRIPTION_EXPIRY,
     recipientEmail,
-    subject: `Subscription Renewal Warning: ${daysRemaining} Days Remaining (${agencyName})`,
+    subject: rendered.subject,
+    htmlBody: rendered.html,
+    textBody: rendered.text,
     metadata: {
       agencyName,
-      daysRemaining
+      daysRemaining,
+      planName,
+      expiryDate
     }
   });
 }

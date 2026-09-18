@@ -52,6 +52,8 @@ export default async function EmailLogsPage() {
     eventType: log.eventType,
     recipientEmail: log.recipientEmail,
     subject: log.subject,
+    htmlBody: log.htmlBody || null,
+    textBody: log.textBody || null,
     status: log.status,
     errorMessage: log.errorMessage,
     metadata: log.metadata ? JSON.stringify(log.metadata) : null,

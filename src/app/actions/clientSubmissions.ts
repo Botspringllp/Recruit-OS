@@ -350,21 +350,44 @@ export async function createCandidateSubmissionsAction(payload: ShareToClientPay
 
     // Trigger Email Event: CANDIDATE_SUBMITTED
     try {
-      const { createEmailLog, EmailEventType } = await import('@/lib/email');
+      const { logCandidateSubmittedEmail } = await import('@/lib/email');
       const recipient = targetRecipient || user.email || 'client@company.com';
-      await createEmailLog({
-        agencyId: user.agencyId,
-        eventType: EmailEventType.CANDIDATE_SUBMITTED,
-        recipientEmail: recipient,
-        subject: emailSubject,
-        metadata: {
-          jobId: job.id,
-          positionTitle,
-          candidateCount: candidates.length,
-          candidateNames: candidates.map((c: any) => `${c.firstName} ${c.lastName}`.trim()),
-          reviewUrl
-        }
+
+      const trackerRows = candidates.map((c: any) => {
+        const note = c.discussionNote;
+        return {
+          date: new Date().toLocaleDateString(),
+          source: 'Headhunted',
+          clientName: clientName,
+          appliedPositionName: positionTitle,
+          candidateName: `${c.firstName} ${c.lastName}`.trim(),
+          emailId: c.email || 'N/A',
+          number: c.phone || 'N/A',
+          location: c.currentLocation || 'N/A',
+          readyToRelocate: note?.readyToRelocate || 'N/A',
+          experience: note?.totalExperience || (c.totalExperienceYears ? `${c.totalExperienceYears}yr` : 'N/A'),
+          relevantExperience: note?.relevantExperience || 'N/A',
+          designation: note?.currentDesignation || c.currentDesignation || 'N/A',
+          qualification: note?.qualification || 'N/A',
+          currentLastCompany: note?.currentCompany || c.currentCompany || 'N/A',
+          currentSalary: note?.currentSalary || (c.currentCtcLpa ? `${c.currentCtcLpa}LPA` : 'N/A'),
+          expectedSalary: note?.expectedSalary || (c.expectedCtcLpa ? `${c.expectedCtcLpa}LPA` : 'N/A'),
+          noticePeriod: note?.noticePeriod || 'N/A',
+          reasonOfLeaving: note?.reasonOfLeaving || 'N/A',
+          offerInHand: note?.offerInHand || 'N/A',
+          resumeUrl: c.resumeUrl || null
+        };
       });
+
+      await logCandidateSubmittedEmail(
+        user.agencyId,
+        recipient,
+        clientName,
+        positionTitle,
+        secureReviewToken,
+        trackerRows,
+        payload.recruiterMessage
+      );
     } catch (emailErr) {
       console.error('Failed creating email log for candidate submission:', emailErr);
     }
@@ -529,15 +552,12 @@ export async function updateClientDecisionAction(
 
     // Trigger Email Event for Client Decisions
     try {
-      const { createEmailLog, EmailEventType } = await import('@/lib/email');
-      let eventType = EmailEventType.CLIENT_HOLD;
-      if (decision === 'INTERVIEW') eventType = EmailEventType.CLIENT_INTERVIEW;
-      if (decision === 'REJECT') eventType = EmailEventType.CLIENT_REJECT;
+      const { logClientInterviewEmail, logClientHoldEmail, logClientRejectEmail } = await import('@/lib/email');
 
       const subWithDetails = await (prisma as any).candidateSubmission.findUnique({
         where: { id: submission.id },
         include: {
-          job: { select: { title: true, agencyId: true } },
+          job: { select: { title: true, agencyId: true, client: { select: { companyName: true } } } },
           candidate: { select: { firstName: true, lastName: true } },
           recruiter: { select: { email: true } }
         }
@@ -545,18 +565,35 @@ export async function updateClientDecisionAction(
 
       if (subWithDetails && subWithDetails.recruiter?.email) {
         const candidateName = `${subWithDetails.candidate.firstName} ${subWithDetails.candidate.lastName}`.trim();
-        await createEmailLog({
-          agencyId: subWithDetails.job.agencyId,
-          eventType,
-          recipientEmail: subWithDetails.recruiter.email,
-          subject: `Client Decision [${decision}]: ${candidateName} for ${subWithDetails.job.title}`,
-          metadata: {
-            submissionId: submission.id,
+        const clientName = subWithDetails.job?.client?.companyName || 'Client';
+        const positionTitle = subWithDetails.job?.title || 'Job Mandate';
+
+        if (decision === 'INTERVIEW') {
+          await logClientInterviewEmail(
+            subWithDetails.job.agencyId,
+            subWithDetails.recruiter.email,
             candidateName,
-            decision,
-            jobTitle: subWithDetails.job.title
-          }
-        });
+            positionTitle,
+            clientName,
+            submission.id
+          );
+        } else if (decision === 'REJECT') {
+          await logClientRejectEmail(
+            subWithDetails.job.agencyId,
+            subWithDetails.recruiter.email,
+            candidateName,
+            positionTitle,
+            clientName
+          );
+        } else {
+          await logClientHoldEmail(
+            subWithDetails.job.agencyId,
+            subWithDetails.recruiter.email,
+            candidateName,
+            positionTitle,
+            clientName
+          );
+        }
       }
     } catch (emailErr) {
       console.error('Failed creating email log for client decision:', emailErr);
