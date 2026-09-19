@@ -2,6 +2,7 @@ import React from 'react';
 import { redirect } from 'next/navigation';
 import { getCurrentUser, hasPermission } from '@/lib/rbac';
 import { prisma } from '@/lib/prisma';
+import { getAgencyFeatureFlagsAction } from '@/app/actions/websiteBuilder';
 import { SettingsHeaderTabs } from '@/components/settings/SettingsHeaderTabs';
 import { EmailLogsClient } from './EmailLogsClient';
 
@@ -15,6 +16,8 @@ export default async function EmailLogsPage() {
 
   const roleStr = String(dbUser.role || '').toUpperCase();
   const agencyId = dbUser.agencyId || dbUser.agency?.id;
+
+  const featureFlags = await getAgencyFeatureFlagsAction();
 
   // Filter email logs by agency tenant isolation
   let whereClause: any = {};
@@ -63,7 +66,10 @@ export default async function EmailLogsPage() {
 
   return (
     <div className="space-y-6 pb-12 text-slate-900 font-sans">
-      <SettingsHeaderTabs />
+      <SettingsHeaderTabs
+        websiteBuilderEnabled={featureFlags.websiteBuilderEnabled}
+        widgetEnabled={featureFlags.widgetEnabled}
+      />
       <EmailLogsClient
         initialLogs={formattedLogs}
         agencyIdentity={agencyData}

@@ -20,14 +20,18 @@ export const SettingsHeaderTabs: React.FC<SettingsHeaderTabsProps> = ({
   const [wEnabled, setWEnabled] = useState<boolean>(initialWidget ?? true);
 
   useEffect(() => {
+    if (initialWebsiteBuilder !== undefined) {
+      setWbEnabled(initialWebsiteBuilder);
+    }
+    if (initialWidget !== undefined) {
+      setWEnabled(initialWidget);
+    }
+
     if (initialWebsiteBuilder === undefined || initialWidget === undefined) {
       getAgencyFeatureFlagsAction().then(res => {
-        setWbEnabled(res.websiteBuilderEnabled);
-        setWEnabled(res.widgetEnabled);
+        if (initialWebsiteBuilder === undefined) setWbEnabled(res.websiteBuilderEnabled);
+        if (initialWidget === undefined) setWEnabled(res.widgetEnabled);
       });
-    } else {
-      setWbEnabled(initialWebsiteBuilder);
-      setWEnabled(initialWidget);
     }
   }, [initialWebsiteBuilder, initialWidget]);
 

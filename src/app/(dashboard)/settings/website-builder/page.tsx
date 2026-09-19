@@ -29,7 +29,10 @@ export default async function WebsiteBuilderPage() {
         </div>
       </div>
 
-      <SettingsHeaderTabs websiteBuilderEnabled={agency?.websiteBuilderEnabled ?? true} />
+      <SettingsHeaderTabs
+        websiteBuilderEnabled={agency?.websiteBuilderEnabled ?? true}
+        widgetEnabled={agency?.widgetEnabled ?? false}
+      />
 
       <WebsiteBuilderClient agency={agency} initialConfig={config} />
     </div>

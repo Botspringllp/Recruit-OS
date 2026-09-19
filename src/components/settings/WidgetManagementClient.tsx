@@ -29,7 +29,7 @@ export const WidgetManagementClient: React.FC<WidgetManagementClientProps> = ({ 
   if (agency.widgetEnabled === false) {
     return (
       <div className="space-y-6 pb-12 font-sans">
-        <SettingsHeaderTabs />
+        <SettingsHeaderTabs widgetEnabled={false} />
 
         <div className="border-b border-slate-200 pb-5">
           <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
@@ -67,7 +67,7 @@ export const WidgetManagementClient: React.FC<WidgetManagementClientProps> = ({ 
   return (
     <div className="space-y-8 pb-12 font-sans text-slate-900">
       {/* Navigation Tabs */}
-      <SettingsHeaderTabs />
+      <SettingsHeaderTabs widgetEnabled={agency.widgetEnabled} />
 
       {/* Header */}
       <div className="border-b border-slate-200 pb-5">

@@ -5,6 +5,7 @@ import { getCurrentUser, hasPermission } from '@/lib/rbac';
 import { logger } from '@/lib/logger';
 import { Users, UserPlus, Shield, CheckCircle2, Mail, Ban, Eye, Edit3 } from 'lucide-react';
 import { getUsersAction } from '@/app/actions/users';
+import { getAgencyFeatureFlagsAction } from '@/app/actions/websiteBuilder';
 import { SettingsHeaderTabs } from '@/components/settings/SettingsHeaderTabs';
 import { DisableUserButton } from '@/components/users/DisableUserButton';
 
@@ -23,7 +24,11 @@ export default async function UserManagementPage() {
     redirect('/403');
   }
 
-  const result = await getUsersAction(currentUser?.agencyId);
+  const [result, featureFlags] = await Promise.all([
+    getUsersAction(currentUser?.agencyId),
+    getAgencyFeatureFlagsAction()
+  ]);
+
   const users = result.data?.users || [];
   const kpis = result.data?.kpis || {
     totalUsers: 0,
@@ -34,7 +39,10 @@ export default async function UserManagementPage() {
 
   return (
     <div className="bg-white min-h-screen p-6 sm:p-8 space-y-8 text-[#111827]">
-      <SettingsHeaderTabs />
+      <SettingsHeaderTabs
+        websiteBuilderEnabled={featureFlags.websiteBuilderEnabled}
+        widgetEnabled={featureFlags.widgetEnabled}
+      />
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E5E7EB] pb-6">
         <div>
           <div className="flex items-center gap-2">

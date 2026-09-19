@@ -2,6 +2,7 @@ import React from 'react';
 import { redirect } from 'next/navigation';
 import { getCurrentUser, hasPermission } from '@/lib/rbac';
 import { getAgencySMTPSettingsAction } from '@/app/actions/emailSmtpActions';
+import { getAgencyFeatureFlagsAction } from '@/app/actions/websiteBuilder';
 import { SettingsHeaderTabs } from '@/components/settings/SettingsHeaderTabs';
 import { EmailSettingsClient } from './EmailSettingsClient';
 
@@ -13,7 +14,11 @@ export default async function EmailSettingsPage() {
     redirect('/403');
   }
 
-  const res = await getAgencySMTPSettingsAction();
+  const [res, featureFlags] = await Promise.all([
+    getAgencySMTPSettingsAction(),
+    getAgencyFeatureFlagsAction()
+  ]);
+
   const smtpData = res.success && res.data ? res.data : {
     smtpEnabled: false,
     smtpHost: '',
@@ -30,7 +35,10 @@ export default async function EmailSettingsPage() {
 
   return (
     <div className="space-y-6 pb-12 text-slate-900 font-sans">
-      <SettingsHeaderTabs />
+      <SettingsHeaderTabs
+        websiteBuilderEnabled={featureFlags.websiteBuilderEnabled}
+        widgetEnabled={featureFlags.widgetEnabled}
+      />
       <EmailSettingsClient
         initialData={smtpData}
         userEmail={dbUser.email || ''}
