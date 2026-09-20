@@ -22,7 +22,8 @@ export enum EmailEventType {
   CLIENT_INTERVIEW = 'CLIENT_INTERVIEW',
   CLIENT_HOLD = 'CLIENT_HOLD',
   CLIENT_REJECT = 'CLIENT_REJECT',
-  SUBSCRIPTION_EXPIRY = 'SUBSCRIPTION_EXPIRY'
+  SUBSCRIPTION_EXPIRY = 'SUBSCRIPTION_EXPIRY',
+  SMTP_TEST = 'SMTP_TEST'
 }
 
 export enum EmailStatus {
@@ -39,6 +40,10 @@ export interface CreateEmailLogParams {
   htmlBody?: string | null;
   textBody?: string | null;
   metadata?: Record<string, any> | null;
+  status?: EmailStatus;
+  sentAt?: Date | null;
+  errorMessage?: string | null;
+  skipAutoSend?: boolean;
 }
 
 /**
@@ -85,13 +90,20 @@ export async function createEmailLog({
   subject,
   htmlBody,
   textBody,
-  metadata
+  metadata,
+  status,
+  sentAt,
+  errorMessage,
+  skipAutoSend = false
 }: CreateEmailLogParams) {
   try {
     if (!recipientEmail || !recipientEmail.includes('@')) {
       console.warn(`[Email Service]: Invalid recipient email skipped: ${recipientEmail}`);
       return null;
     }
+
+    const initialStatus = status || EmailStatus.PENDING;
+    const initialSentAt = sentAt || (initialStatus === EmailStatus.SENT ? new Date() : null);
 
     const emailLog = await (prisma as any).emailLog.create({
       data: {
@@ -101,15 +113,17 @@ export async function createEmailLog({
         subject: subject.trim(),
         htmlBody: htmlBody || null,
         textBody: textBody || null,
-        status: EmailStatus.PENDING,
+        status: initialStatus,
+        sentAt: initialSentAt,
+        errorMessage: errorMessage || null,
         metadata: metadata ? metadata : undefined
       }
     });
 
-    console.log(`[Email Service]: EmailLog created (${emailLog.id}) - Event: ${eventType} -> ${recipientEmail}`);
+    console.log(`[Email Service]: EmailLog created (${emailLog.id}) - Event: ${eventType} [${initialStatus}] -> ${recipientEmail}`);
 
-    // EM-02: Real SMTP Delivery Engine Dispatch
-    if (agencyId && htmlBody) {
+    // EM-02: Real SMTP Delivery Engine Dispatch (only if pending and not explicitly skipped)
+    if (agencyId && htmlBody && initialStatus === EmailStatus.PENDING && !skipAutoSend) {
       try {
         const { sendAgencyEmail } = await import('@/lib/smtp');
         const sendResult = await sendAgencyEmail({

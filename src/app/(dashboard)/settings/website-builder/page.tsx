@@ -20,15 +20,6 @@ export default async function WebsiteBuilderPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Agency Settings</h1>
-          <p className="text-xs text-slate-500 font-medium">
-            Manage website builder, recruitment widgets, and organization preferences.
-          </p>
-        </div>
-      </div>
-
       <SettingsHeaderTabs
         websiteBuilderEnabled={agency?.websiteBuilderEnabled ?? true}
         widgetEnabled={agency?.widgetEnabled ?? false}

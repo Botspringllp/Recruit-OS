@@ -70,18 +70,10 @@ export const SettingsHeaderTabs: React.FC<SettingsHeaderTabsProps> = ({
     },
     {
       id: 'email-settings',
-      label: 'Email Settings',
+      label: 'Email Settings & Logs',
       href: '/settings/email',
       icon: Mail,
-      isActive: pathname === '/settings/email',
-      enabled: true
-    },
-    {
-      id: 'email-logs',
-      label: 'Email Logs',
-      href: '/settings/email-logs',
-      icon: Mail,
-      isActive: pathname.includes('/email-logs'),
+      isActive: pathname.includes('/settings/email') || pathname.includes('/settings/email-logs'),
       enabled: true
     }
   ];

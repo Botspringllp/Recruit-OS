@@ -186,15 +186,18 @@ export async function testAgencySMTPConnectionAction(testRecipientEmail: string)
     });
 
     if (sendRes.success && sendRes.isSmtpSent) {
-      // Create EmailLog record for the test email
-      const { createEmailLog, EmailEventType } = await import('@/lib/email');
+      // Create EmailLog record for the test email with SENT status & skipAutoSend
+      const { createEmailLog, EmailEventType, EmailStatus } = await import('@/lib/email');
       await createEmailLog({
         agencyId,
-        eventType: EmailEventType.REQUIREMENT_RECEIVED,
+        eventType: EmailEventType.SMTP_TEST,
         recipientEmail: testRecipientEmail,
         subject: 'RecruitOS SMTP Integration Test',
         htmlBody: testHtml,
         textBody: 'RecruitOS SMTP Integration Test - Successful',
+        status: EmailStatus.SENT,
+        sentAt: new Date(),
+        skipAutoSend: true,
         metadata: { type: 'SMTP_TEST_EMAIL', messageId: sendRes.messageId }
       });
 
@@ -203,6 +206,20 @@ export async function testAgencySMTPConnectionAction(testRecipientEmail: string)
         message: `SMTP Connection Verified! Test email delivered to ${testRecipientEmail}.`
       };
     } else {
+      const { createEmailLog, EmailEventType, EmailStatus } = await import('@/lib/email');
+      await createEmailLog({
+        agencyId,
+        eventType: EmailEventType.SMTP_TEST,
+        recipientEmail: testRecipientEmail,
+        subject: 'RecruitOS SMTP Integration Test',
+        htmlBody: testHtml,
+        textBody: 'RecruitOS SMTP Integration Test - Delivery Failed',
+        status: EmailStatus.FAILED,
+        errorMessage: sendRes.error || 'SMTP test dispatch failed.',
+        skipAutoSend: true,
+        metadata: { type: 'SMTP_TEST_EMAIL', error: sendRes.error }
+      });
+
       return {
         success: false,
         error: sendRes.error || 'Failed to send test email.'

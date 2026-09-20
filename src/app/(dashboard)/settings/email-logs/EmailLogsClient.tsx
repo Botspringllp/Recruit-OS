@@ -47,16 +47,18 @@ export interface AgencyIdentityData {
   replyToEmail?: string | null;
 }
 
-interface EmailLogsClientProps {
+export interface EmailLogsClientProps {
   initialLogs: EmailLogItem[];
   agencyIdentity?: AgencyIdentityData | null;
   userRole: string;
+  hideHeaderBanner?: boolean;
 }
 
 export const EmailLogsClient: React.FC<EmailLogsClientProps> = ({
   initialLogs,
   agencyIdentity,
-  userRole
+  userRole,
+  hideHeaderBanner = false
 }) => {
   const router = useRouter();
   const [logs, setLogs] = useState<EmailLogItem[]>(initialLogs);
@@ -65,8 +67,9 @@ export const EmailLogsClient: React.FC<EmailLogsClientProps> = ({
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [selectedLog, setSelectedLog] = useState<EmailLogItem | null>(null);
 
-  // Email Preview Modal state
+  // Email Preview & Error Modal state
   const [previewLog, setPreviewLog] = useState<EmailLogItem | null>(null);
+  const [inspectingErrorLog, setInspectingErrorLog] = useState<EmailLogItem | null>(null);
   const [previewTab, setPreviewTab] = useState<'html' | 'text' | 'json'>('html');
   const [viewportMode, setViewportMode] = useState<'desktop' | 'mobile'>('desktop');
 
@@ -184,7 +187,9 @@ export const EmailLogsClient: React.FC<EmailLogsClientProps> = ({
   const renderEventTypeBadge = (eventType: string) => {
     let colorClass = 'bg-slate-100 text-slate-700 border-slate-200';
 
-    if (eventType.includes('REQUIREMENT')) {
+    if (eventType === 'SMTP_TEST') {
+      colorClass = 'bg-purple-50 text-purple-700 border-purple-200';
+    } else if (eventType.includes('REQUIREMENT')) {
       colorClass = 'bg-blue-50 text-blue-700 border-blue-200';
     } else if (eventType.includes('CANDIDATE')) {
       colorClass = 'bg-purple-50 text-purple-700 border-purple-200';
@@ -203,57 +208,74 @@ export const EmailLogsClient: React.FC<EmailLogsClientProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Header Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 text-white rounded-3xl p-6 sm:p-8 shadow-xl relative overflow-hidden">
-        <div className="absolute right-0 top-0 translate-x-12 -translate-y-12 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-        
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative z-10">
-          <div className="flex items-center gap-3.5">
-            <div className="p-3.5 rounded-2xl bg-amber-500/20 border border-amber-500/30 text-amber-400">
-              <Mail className="h-7 w-7" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-black tracking-tight">Email System Logs</h1>
-                <span className="px-2.5 py-0.5 text-[10px] font-extrabold uppercase rounded-full bg-amber-500 text-slate-950">
-                  PHASE EM-01
-                </span>
+      {/* Optional Standalone Header Banner */}
+      {!hideHeaderBanner && (
+        <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 text-white rounded-3xl p-6 sm:p-8 shadow-xl relative overflow-hidden">
+          <div className="absolute right-0 top-0 translate-x-12 -translate-y-12 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+          
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative z-10">
+            <div className="flex items-center gap-3.5">
+              <div className="p-3.5 rounded-2xl bg-amber-500/20 border border-amber-500/30 text-amber-400">
+                <Mail className="h-7 w-7" />
               </div>
-              <p className="text-xs text-slate-300 mt-1 font-medium">
-                Dynamic Email Template Engine & Live Audit Queue with HTML Preview Support
-              </p>
+              <div>
+                <h1 className="text-2xl font-black tracking-tight">Email System Logs</h1>
+                <p className="text-xs text-slate-300 mt-1 font-medium">
+                  Dynamic Email Template Engine & Live Audit Queue with HTML Preview Support
+                </p>
+              </div>
             </div>
-          </div>
 
-          <button
-            onClick={() => setIsIdentityModalOpen(true)}
-            className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/15 font-bold text-xs flex items-center gap-2 transition-all backdrop-blur-xs"
-          >
-            <Settings className="h-4 w-4 text-amber-400" />
-            <span>Configure Email Identity</span>
-          </button>
+            <button
+              onClick={() => setIsIdentityModalOpen(true)}
+              className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/15 font-bold text-xs flex items-center gap-2 transition-all backdrop-blur-xs"
+            >
+              <Settings className="h-4 w-4 text-amber-400" />
+              <span>Configure Email Identity</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modern Light KPI Stats Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-5 shadow-xs flex items-center justify-between">
+          <div>
+            <span className="text-slate-400 font-extrabold text-[11px] uppercase tracking-wider block">Total Logged</span>
+            <span className="text-2xl font-black text-slate-900 mt-1 block">{totalCount}</span>
+          </div>
+          <div className="h-10 w-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600 shrink-0">
+            <Mail className="h-5 w-5" />
+          </div>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mt-6 pt-6 border-t border-white/10 text-xs">
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-3.5">
-            <span className="text-slate-400 block font-bold text-[11px]">TOTAL LOGGED</span>
-            <span className="text-xl font-black text-white mt-0.5 block">{totalCount}</span>
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-5 shadow-xs flex items-center justify-between">
+          <div>
+            <span className="text-amber-600 font-extrabold text-[11px] uppercase tracking-wider block">Pending Queue</span>
+            <span className="text-2xl font-black text-amber-600 mt-1 block">{pendingCount}</span>
           </div>
-
-          <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-3.5">
-            <span className="text-amber-300 block font-bold text-[11px]">PENDING QUEUE</span>
-            <span className="text-xl font-black text-amber-400 mt-0.5 block">{pendingCount}</span>
+          <div className="h-10 w-10 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 shrink-0">
+            <Clock className="h-5 w-5" />
           </div>
+        </div>
 
-          <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-3.5">
-            <span className="text-emerald-300 block font-bold text-[11px]">DELIVERED (SENT)</span>
-            <span className="text-xl font-black text-emerald-400 mt-0.5 block">{sentCount}</span>
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-5 shadow-xs flex items-center justify-between">
+          <div>
+            <span className="text-emerald-600 font-extrabold text-[11px] uppercase tracking-wider block">Delivered (Sent)</span>
+            <span className="text-2xl font-black text-emerald-600 mt-1 block">{sentCount}</span>
           </div>
+          <div className="h-10 w-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 shrink-0">
+            <CheckCircle2 className="h-5 w-5" />
+          </div>
+        </div>
 
-          <div className="bg-rose-500/10 border border-rose-500/20 rounded-2xl p-3.5">
-            <span className="text-rose-300 block font-bold text-[11px]">FAILED DELIVERY</span>
-            <span className="text-xl font-black text-rose-400 mt-0.5 block">{failedCount}</span>
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-5 shadow-xs flex items-center justify-between">
+          <div>
+            <span className="text-rose-600 font-extrabold text-[11px] uppercase tracking-wider block">Failed Delivery</span>
+            <span className="text-2xl font-black text-rose-600 mt-1 block">{failedCount}</span>
+          </div>
+          <div className="h-10 w-10 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 shrink-0">
+            <AlertTriangle className="h-5 w-5" />
           </div>
         </div>
       </div>
@@ -281,6 +303,7 @@ export const EmailLogsClient: React.FC<EmailLogsClientProps> = ({
               className="bg-transparent font-bold text-slate-700 outline-hidden text-xs"
             >
               <option value="ALL">All Event Types</option>
+              <option value="SMTP_TEST">SMTP TEST</option>
               <option value="REQUIREMENT_RECEIVED">REQUIREMENT RECEIVED</option>
               <option value="REQUIREMENT_ASSIGNED">REQUIREMENT ASSIGNED</option>
               <option value="REQUIREMENT_ACCEPTED">REQUIREMENT ACCEPTED</option>
@@ -368,6 +391,18 @@ export const EmailLogsClient: React.FC<EmailLogsClientProps> = ({
 
                     <td className="py-4 px-6 text-right">
                       <div className="flex items-center justify-end gap-2">
+                        {/* View Error Button for FAILED logs */}
+                        {log.status === 'FAILED' && (
+                          <button
+                            onClick={() => setInspectingErrorLog(log)}
+                            className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-900 border border-rose-200/80 font-extrabold text-xs flex items-center gap-1.5 transition-colors"
+                            title="Inspect full SMTP delivery error details"
+                          >
+                            <AlertTriangle className="h-3.5 w-3.5 text-rose-600" />
+                            <span>View Error</span>
+                          </button>
+                        )}
+
                         {/* Retry / Resend Button */}
                         {(log.status === 'FAILED' || log.status === 'PENDING') && (
                           <button
@@ -761,6 +796,105 @@ export const EmailLogsClient: React.FC<EmailLogsClientProps> = ({
               </button>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* Modal 3: ISSUE #4 Error Inspection Modal for FAILED Email Logs */}
+      {inspectingErrorLog && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl space-y-6 border border-slate-100 relative">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600">
+                  <AlertTriangle className="h-6 w-6" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-slate-900">SMTP Delivery Failure Audit</h3>
+                  <p className="text-xs text-slate-500">Detailed error trace and delivery metadata</p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setInspectingErrorLog(null)}
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Error Details Summary Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+              <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4">
+                <span className="text-[11px] font-extrabold uppercase text-slate-400 block mb-1">Target Recipient</span>
+                <span className="font-black text-slate-900 break-all">{inspectingErrorLog.recipientEmail}</span>
+              </div>
+
+              <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4">
+                <span className="text-[11px] font-extrabold uppercase text-slate-400 block mb-1">Logged Timestamp</span>
+                <span className="font-black text-slate-900">
+                  {new Date(inspectingErrorLog.createdAt).toLocaleString()}
+                </span>
+              </div>
+
+              <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4">
+                <span className="text-[11px] font-extrabold uppercase text-slate-400 block mb-1">Event Type</span>
+                <span className="font-black text-purple-700 uppercase">{inspectingErrorLog.eventType}</span>
+              </div>
+
+              <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4">
+                <span className="text-[11px] font-extrabold uppercase text-slate-400 block mb-1">Subject Line</span>
+                <span className="font-black text-slate-900 truncate block">{inspectingErrorLog.subject}</span>
+              </div>
+            </div>
+
+            {/* Error Message Box */}
+            <div className="space-y-2">
+              <label className="block text-xs font-black uppercase tracking-wider text-rose-700">
+                Exact Error Exception Message
+              </label>
+              <div className="bg-rose-950 text-rose-200 border border-rose-800/60 rounded-2xl p-4 text-xs font-mono whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto">
+                {inspectingErrorLog.errorMessage || 'No error message string recorded in database.'}
+              </div>
+            </div>
+
+            {/* Metadata Payload Trace */}
+            {inspectingErrorLog.metadata && (
+              <div className="space-y-2">
+                <label className="block text-xs font-black uppercase tracking-wider text-slate-600">
+                  Metadata & Event Payload
+                </label>
+                <div className="bg-slate-900 text-amber-400 border border-slate-800 rounded-2xl p-4 text-xs font-mono max-h-40 overflow-y-auto">
+                  <pre>
+                    {typeof inspectingErrorLog.metadata === 'string'
+                      ? JSON.stringify(JSON.parse(inspectingErrorLog.metadata), null, 2)
+                      : JSON.stringify(inspectingErrorLog.metadata, null, 2)}
+                  </pre>
+                </div>
+              </div>
+            )}
+
+            {/* Footer Action Buttons */}
+            <div className="flex items-center justify-between border-t border-slate-100 pt-4 text-xs">
+              <button
+                onClick={() => setInspectingErrorLog(null)}
+                className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-700 font-bold hover:bg-slate-100 transition-colors"
+              >
+                Close Audit
+              </button>
+
+              <button
+                onClick={() => {
+                  const logId = inspectingErrorLog.id;
+                  setInspectingErrorLog(null);
+                  handleRetryEmail(logId);
+                }}
+                className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black flex items-center gap-2 transition-all shadow-md shadow-indigo-600/20"
+              >
+                <RotateCw className="h-4 w-4" />
+                <span>Retry Dispatch Now</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -53,8 +53,8 @@ export async function createAgencyTransport(agencyId: string) {
   }
 
   const portNumber = Number(agency.smtpPort);
-  // Default to secure: true if port is 465, otherwise use explicitly set smtpSecure
-  const isSecure = agency.smtpSecure || portNumber === 465;
+  // Auto-determine SSL/TLS: Port 465 uses implicit SSL (secure: true), Port 587 uses STARTTLS (secure: false)
+  const isSecure = portNumber === 465;
 
   const transport = nodemailer.createTransport({
     host: agency.smtpHost.trim(),
