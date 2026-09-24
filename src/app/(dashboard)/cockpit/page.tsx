@@ -4,10 +4,7 @@ import Link from 'next/link';
 import { Calendar, Plus } from 'lucide-react';
 import { KpiMetricStrip } from '@/components/cockpit/KpiMetricStrip';
 import { MandatesGridControl } from '@/components/cockpit/MandatesGridControl';
-import { RecruiterActionQueueWidget } from '@/components/cockpit/RecruiterActionQueueWidget';
-import { SlaWatchdogWidget } from '@/components/cockpit/SlaWatchdogWidget';
-import { CockpitNotificationsFeed } from '@/components/cockpit/CockpitNotificationsFeed';
-import { KpiMetricItem, MandateSummaryCard, RecruiterActionQueueItem, SlaWatchdogItem } from '@/types/cockpit';
+import { KpiMetricItem, MandateSummaryCard } from '@/types/cockpit';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/rbac';
 
@@ -35,11 +32,7 @@ export default async function CockpitPage() {
     monthlyPlacementsCount,
     incomingReqPendingCount,
     totalIncomingReqCount,
-    dbMandates,
-    scheduledInterviewsCount,
-    pendingFeedbackSubmissions,
-    dbNotifications,
-    noSubmissionsOldMandates
+    dbMandates
   ] = await Promise.all([
     prisma.jobMandate.count({
       where: { agencyId, status: { in: ['ACTIVE', 'OPEN'] } }
@@ -56,91 +49,26 @@ export default async function CockpitPage() {
       }
     }).catch(() => 0),
 
-    agencyId ? (prisma as any).incomingRequirement.count({
+    agencyId ? prisma.incomingRequirement.count({
       where: { agencyId, status: { in: ['Pending Review', 'Assigned'] } }
     }).catch(() => 0) : 0,
 
-    agencyId ? (prisma as any).incomingRequirement.count({
+    agencyId ? prisma.incomingRequirement.count({
       where: { agencyId }
     }).catch(() => 0) : 0,
 
     prisma.jobMandate.findMany({
       where: { agencyId },
       orderBy: { createdAt: 'desc' },
-      take: 25,
+      take: 20,
       include: {
         client: {
           select: { companyName: true }
         },
-        incomingRequirements: {
-          select: {
-            assignedRecruiterId: true,
-            createdAt: true,
-            createdBy: true,
-            priority: true,
-            assignedRecruiter: {
-              select: { id: true, firstName: true, lastName: true, email: true }
-            }
-          }
-        },
         submissions: {
-          select: {
-            id: true,
-            stage: true,
-            slaStatus: true,
-            createdAt: true,
-            recruiterId: true,
-            recruiter: {
-              select: { id: true, firstName: true, lastName: true, email: true }
-            }
-          }
+          select: { id: true, stage: true, slaStatus: true }
         }
       }
-    }).catch(() => []),
-
-    prisma.interviewSchedule.count({
-      where: {
-        agencyId,
-        status: { in: ['SCHEDULED', 'PENDING'] }
-      }
-    }).catch(() => 0),
-
-    prisma.candidateSubmission.findMany({
-      where: {
-        agencyId,
-        stage: 'SUBMITTED_TO_CLIENT'
-      },
-      select: {
-        id: true,
-        stage: true,
-        createdAt: true,
-        slaStatus: true,
-        job: { select: { title: true, client: { select: { companyName: true } } } },
-        candidate: { select: { firstName: true, lastName: true } }
-      },
-      take: 10
-    }).catch(() => []),
-
-    (prisma as any).notification.findMany({
-      where: { recipientUserId: dbUser.id },
-      orderBy: { createdAt: 'desc' },
-      take: 10
-    }).catch(() => []),
-
-    prisma.jobMandate.findMany({
-      where: {
-        agencyId,
-        status: { in: ['ACTIVE', 'OPEN'] },
-        createdAt: { lte: new Date(Date.now() - 48 * 60 * 60 * 1000) },
-        submissions: { none: {} }
-      },
-      select: {
-        id: true,
-        title: true,
-        createdAt: true,
-        client: { select: { companyName: true } }
-      },
-      take: 5
     }).catch(() => [])
   ]);
 
@@ -201,47 +129,18 @@ export default async function CockpitPage() {
     const stageCounts: Record<string, number> = {};
     let warningCount = 0;
 
-    const assignedRecruiterIdsSet = new Set<string>();
     m.submissions.forEach((sub) => {
       const stageKey = sub.stage || 'SCREENED';
       stageCounts[stageKey] = (stageCounts[stageKey] || 0) + 1;
       if (sub.slaStatus === 'WARNING' || sub.slaStatus === 'BREACHED') {
         warningCount++;
       }
-      if (sub.recruiterId) {
-        assignedRecruiterIdsSet.add(sub.recruiterId);
-      }
     });
-
-    const originReq = m.incomingRequirements?.[0];
-    if (originReq?.assignedRecruiterId) {
-      assignedRecruiterIdsSet.add(originReq.assignedRecruiterId);
-    }
-
-    const assignedRecruiterIds = Array.from(assignedRecruiterIdsSet);
-    const assignedRecruitersCount = Math.max(assignedRecruiterIds.length, 1);
-
-    const isAssignedToCurrentUser =
-      assignedRecruiterIds.includes(dbUser.id) ||
-      originReq?.assignedRecruiterId === dbUser.id;
-
-    const recruiterPositionIndex = assignedRecruiterIds.indexOf(dbUser.id);
-    const recruiterPositionText = isAssignedToCurrentUser
-      ? recruiterPositionIndex === 0
-        ? 'Lead Recruiter (#1)'
-        : `Recruiter #${recruiterPositionIndex + 1}`
-      : 'Team Member';
-
-    const daysSinceAssignment = Math.floor(
-      (now.getTime() - new Date(originReq?.createdAt || m.createdAt).getTime()) / (1000 * 60 * 60 * 24)
-    );
 
     const stageBreakdown = Object.entries(stageCounts).map(([stage, count]) => ({
       stage: stage as any,
       count
     }));
-
-    const leadRecruiterUser = originReq?.assignedRecruiter || m.submissions[0]?.recruiter;
 
     return {
       id: m.id,
@@ -254,21 +153,10 @@ export default async function CockpitPage() {
       feePercentage: m.feePercentage ? Number(m.feePercentage) : 8.33,
       headcount: m.headcount,
       status: statusMap[m.status] || 'OPEN',
-      priority: (originReq?.priority as any) || 'Medium',
-      assignedBy: {
-        name: `${dbUser.firstName} ${dbUser.lastName}`,
-        email: dbUser.email
-      },
-      assignedRecruiterIds,
-      assignedRecruitersCount,
-      recruiterPositionText,
-      isAssignedToCurrentUser,
-      assignmentDate: new Date(originReq?.createdAt || m.createdAt).toISOString(),
-      daysSinceAssignment,
       leadRecruiter: {
-        userId: leadRecruiterUser?.id || dbUser.id,
-        name: leadRecruiterUser ? `${leadRecruiterUser.firstName} ${leadRecruiterUser.lastName}` : `${dbUser.firstName} ${dbUser.lastName}`,
-        email: leadRecruiterUser?.email || dbUser.email
+        userId: 'recruiter-default',
+        name: 'Assigned Team',
+        email: 'team@recruitos.local'
       },
       totalSubmissions: m.submissions.length,
       slaWarningCount: warningCount,
@@ -280,97 +168,8 @@ export default async function CockpitPage() {
     };
   });
 
-  // Action Queue Metrics
-  const mandatesZeroSubCount = dbMandates.filter(m => m.submissions.length === 0).length;
-
-  const actionQueueItems: RecruiterActionQueueItem[] = [
-    {
-      id: 'aq-candidate-sub',
-      title: 'Need Candidate Submission',
-      count: mandatesZeroSubCount,
-      description: 'Active mandates currently having 0 candidate submissions',
-      badgeVariant: 'amber',
-      href: '/jobs',
-      iconName: 'FileQuestion'
-    },
-    {
-      id: 'aq-interview-confirm',
-      title: 'Interview Confirmation Pending',
-      count: scheduledInterviewsCount,
-      description: 'Interviews scheduled awaiting client/candidate confirmation',
-      badgeVariant: 'blue',
-      href: '/interviews',
-      iconName: 'CalendarClock'
-    },
-    {
-      id: 'aq-client-feedback',
-      title: 'Client Feedback Awaiting',
-      count: pendingFeedbackSubmissions.length,
-      description: 'Candidates submitted to client awaiting decision/feedback',
-      badgeVariant: 'purple',
-      href: '/submissions',
-      iconName: 'MessageSquareQuote'
-    },
-    {
-      id: 'aq-incoming-req',
-      title: 'Requirement Intake Assigned',
-      count: incomingReqPendingCount,
-      description: 'Incoming client requirements assigned for intake conversion',
-      badgeVariant: 'emerald',
-      href: '/incoming-requirements',
-      iconName: 'UserCheck'
-    }
-  ];
-
-  // SLA Watchdog Metrics
-  const slaWatchdogItems: SlaWatchdogItem[] = [];
-
-  noSubmissionsOldMandates.forEach((m) => {
-    const hoursElapsed = Math.floor((now.getTime() - new Date(m.createdAt).getTime()) / (1000 * 60 * 60));
-    slaWatchdogItems.push({
-      id: `sla-mandate-0sub-${m.id}`,
-      mandateId: m.id,
-      title: 'No Candidate Submissions (>48h)',
-      severity: hoursElapsed > 72 ? 'BREACHED' : 'WARNING',
-      entityTitle: m.title,
-      clientName: m.client?.companyName || 'Unassigned Client',
-      hoursElapsed,
-      message: `Mandate open for ${hoursElapsed} hours without any candidate submissions.`,
-      href: `/jobs/${m.id}`
-    });
-  });
-
-  pendingFeedbackSubmissions.forEach((sub) => {
-    const daysElapsed = Math.floor((now.getTime() - new Date(sub.createdAt).getTime()) / (1000 * 60 * 60 * 24));
-    if (daysElapsed >= 3 || sub.slaStatus === 'BREACHED' || sub.slaStatus === 'WARNING') {
-      slaWatchdogItems.push({
-        id: `sla-sub-feedback-${sub.id}`,
-        submissionId: sub.id,
-        title: 'Client Feedback Overdue',
-        severity: daysElapsed >= 5 || sub.slaStatus === 'BREACHED' ? 'BREACHED' : 'WARNING',
-        entityTitle: `${sub.candidate.firstName} ${sub.candidate.lastName} - ${sub.job.title}`,
-        clientName: sub.job.client?.companyName || 'Client',
-        daysElapsed,
-        message: `Submitted to client ${daysElapsed} days ago. Client feedback pending.`,
-        href: `/submissions`
-      });
-    }
-  });
-
-  const formattedNotifications = dbNotifications.map((n: any) => ({
-    id: n.id,
-    title: n.title,
-    message: n.message,
-    type: String(n.type),
-    category: String(n.category),
-    entityType: n.entityType,
-    entityId: n.entityId,
-    isRead: Boolean(n.isRead),
-    createdAt: n.createdAt.toISOString()
-  }));
-
   return (
-    <div className="space-y-8 pb-12">
+    <div className="space-y-8">
       {/* Page Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -378,7 +177,7 @@ export default async function CockpitPage() {
             <h1 className="text-2xl font-black tracking-tight text-slate-900">Recruiter Cockpit</h1>
           </div>
           <p className="mt-1 text-xs text-slate-600 font-semibold">
-            Real-time recruiter pipeline analytics, assignment tracking, and operational telemetry.
+            Real-time pipeline analytics, mandate tracking, and operational telemetry.
           </p>
         </div>
 
@@ -396,15 +195,6 @@ export default async function CockpitPage() {
 
       {/* KPI Metric Strip */}
       <KpiMetricStrip metrics={kpiMetrics} />
-
-      {/* Recruiter Action Queue Widget */}
-      <RecruiterActionQueueWidget items={actionQueueItems} />
-
-      {/* SLA Watchdog & Notification Center Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <SlaWatchdogWidget items={slaWatchdogItems} />
-        <CockpitNotificationsFeed notifications={formattedNotifications} />
-      </div>
 
       {/* Main Cockpit Workspace Grid */}
       <div className="w-full">

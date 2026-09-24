@@ -29,17 +29,6 @@ export interface MandateSummaryCard {
   feePercentage: number;
   headcount: number;
   status: 'OPEN' | 'ON_HOLD' | 'FILLED' | 'CLOSED';
-  priority?: 'Urgent' | 'High' | 'Medium' | 'Low';
-  assignedBy?: {
-    name: string;
-    email: string;
-  };
-  assignedRecruiterIds?: string[];
-  assignedRecruitersCount?: number;
-  recruiterPositionText?: string;
-  isAssignedToCurrentUser?: boolean;
-  assignmentDate?: string;
-  daysSinceAssignment?: number;
   leadRecruiter: {
     userId: string;
     name: string;
@@ -56,28 +45,4 @@ export interface MandateFilterParams {
   searchQuery?: string;
   statusFilter?: string;
   recruiterId?: string;
-}
-
-export interface RecruiterActionQueueItem {
-  id: string;
-  title: string;
-  count: number;
-  description: string;
-  badgeVariant: 'amber' | 'blue' | 'purple' | 'emerald' | 'rose';
-  href: string;
-  iconName: 'FileQuestion' | 'CalendarClock' | 'MessageSquareQuote' | 'UserCheck';
-}
-
-export interface SlaWatchdogItem {
-  id: string;
-  mandateId?: string;
-  submissionId?: string;
-  title: string;
-  severity: 'WARNING' | 'BREACHED' | 'HIGH_RISK';
-  entityTitle: string;
-  clientName?: string;
-  hoursElapsed?: number;
-  daysElapsed?: number;
-  message: string;
-  href: string;
 }

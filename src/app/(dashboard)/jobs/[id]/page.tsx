@@ -480,40 +480,10 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                   </div>
                 </div>
 
-                <div className="pt-2.5 border-t border-slate-100 space-y-2.5 text-xs">
-                  <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-1.5">
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span className="font-extrabold text-slate-500 uppercase tracking-wider text-[10px]">Assigned By:</span>
-                      <span className="font-extrabold text-slate-900">{acceptedUser ? `${acceptedUser.firstName} ${acceptedUser.lastName}` : 'Agency Owner'}</span>
-                    </div>
-
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span className="font-extrabold text-slate-500 uppercase tracking-wider text-[10px]">Assignment Date:</span>
-                      <span className="font-bold text-slate-800">
-                        {originReq?.acceptedDate
-                          ? new Date(originReq.acceptedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-                          : new Date(job.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span className="font-extrabold text-slate-500 uppercase tracking-wider text-[10px]">Total Recruiters Assigned:</span>
-                      <span className="font-extrabold text-indigo-700">
-                        {job.submissions.map(s => s.recruiterId).filter(Boolean).length || 1} Recruiters
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between text-[11px] pt-1 border-t border-slate-200/60">
-                      <span className="font-extrabold text-slate-500 uppercase tracking-wider text-[10px]">Your Assignment Rank:</span>
-                      <span className="font-black text-emerald-700">
-                        {originReq?.assignedRecruiterId === dbUser.id ? 'Lead Recruiter (#1)' : 'Assigned Team Member'}
-                      </span>
-                    </div>
-                  </div>
-
+                <div className="pt-2 border-t border-slate-100 space-y-2.5">
                   <div>
                     <span className="text-slate-500 block text-[10px] font-extrabold uppercase tracking-wider">Assigned Recruiter</span>
-                    {originReq?.assignedRecruiter ? (
+                    {originReq.assignedRecruiter ? (
                       <div className="mt-0.5">
                         <span className="font-extrabold text-slate-900 text-xs block">
                           {originReq.assignedRecruiter.firstName} {originReq.assignedRecruiter.lastName}
@@ -524,6 +494,22 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                       </div>
                     ) : (
                       <span className="font-bold text-slate-400 text-xs mt-0.5 block italic">Unassigned</span>
+                    )}
+                  </div>
+
+                  <div>
+                    <span className="text-slate-500 block text-[10px] font-extrabold uppercase tracking-wider">Accepted By</span>
+                    {acceptedUser ? (
+                      <div className="mt-0.5">
+                        <span className="font-extrabold text-slate-900 text-xs block">
+                          {acceptedUser.firstName} {acceptedUser.lastName}
+                        </span>
+                        <span className="text-[11px] text-slate-500 font-medium block">
+                          {acceptedUser.email}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="font-bold text-slate-400 text-xs mt-0.5 block italic">Not Recorded</span>
                     )}
                   </div>
                 </div>
