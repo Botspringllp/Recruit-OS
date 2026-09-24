@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import { Search, LayoutGrid, List, SlidersHorizontal } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Search, LayoutGrid, List, SlidersHorizontal, UserCheck } from 'lucide-react';
 import { MandateSummaryCard } from '@/types/cockpit';
 import { MandateCard } from './MandateCard';
 
@@ -16,9 +17,26 @@ export const MandatesGridControl: React.FC<MandatesGridControlProps> = ({
   onViewMandate,
   onAddCandidate
 }) => {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = React.useState('');
-  const [statusTab, setStatusTab] = React.useState<'ALL' | 'OPEN' | 'ON_HOLD' | 'FILLED'>('OPEN');
+  const [statusTab, setStatusTab] = React.useState<'MY_ASSIGNED' | 'OPEN' | 'ALL' | 'ON_HOLD' | 'FILLED'>('OPEN');
   const [viewMode, setViewMode] = React.useState<'grid' | 'list'>('grid');
+
+  const defaultViewMandate = (id: string) => {
+    if (onViewMandate) {
+      onViewMandate(id);
+    } else {
+      router.push(`/jobs/${id}`);
+    }
+  };
+
+  const defaultAddCandidate = (id: string) => {
+    if (onAddCandidate) {
+      onAddCandidate(id);
+    } else {
+      router.push(`/candidates/new?jobId=${id}`);
+    }
+  };
 
   const filteredMandates = mandates.filter(m => {
     const matchesSearch =
@@ -26,10 +44,17 @@ export const MandatesGridControl: React.FC<MandatesGridControlProps> = ({
       m.companyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       m.location.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchesStatus = statusTab === 'ALL' || m.status === statusTab;
+    let matchesStatus = true;
+    if (statusTab === 'MY_ASSIGNED') {
+      matchesStatus = Boolean(m.isAssignedToCurrentUser);
+    } else if (statusTab !== 'ALL') {
+      matchesStatus = m.status === statusTab;
+    }
 
     return matchesSearch && matchesStatus;
   });
+
+  const myAssignedCount = mandates.filter(m => m.isAssignedToCurrentUser).length;
 
   return (
     <div className="space-y-4">
@@ -37,9 +62,9 @@ export const MandatesGridControl: React.FC<MandatesGridControlProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
         <div className="flex items-center gap-3">
           <h2 className="text-base font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
-            <span>Active Mandates Board</span>
+            <span>My Assigned Requirements & Mandates</span>
             <span className="px-2.5 py-0.5 text-xs font-extrabold rounded-full bg-indigo-100 text-indigo-950 border border-indigo-300">
-              {filteredMandates.length} Jobs
+              {filteredMandates.length} Mandates
             </span>
           </h2>
         </div>
@@ -51,7 +76,7 @@ export const MandatesGridControl: React.FC<MandatesGridControlProps> = ({
             <Search className="h-3.5 w-3.5 text-indigo-600 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Search title, client, or city..."
+              placeholder="Search title, client, or location..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-white border border-slate-300 text-xs text-slate-900 placeholder:text-slate-500 font-medium focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 transition-all duration-200"
@@ -83,9 +108,10 @@ export const MandatesGridControl: React.FC<MandatesGridControlProps> = ({
       </div>
 
       {/* Status Filter Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-200 pb-3">
+      <div className="flex items-center gap-2 border-b border-slate-200 pb-3 flex-wrap">
         {[
           { id: 'OPEN', label: 'Active Open' },
+          { id: 'MY_ASSIGNED', label: `My Assigned (${myAssignedCount})` },
           { id: 'ALL', label: 'All Mandates' },
           { id: 'ON_HOLD', label: 'On Hold' },
           { id: 'FILLED', label: 'Filled / Completed' }
@@ -93,13 +119,14 @@ export const MandatesGridControl: React.FC<MandatesGridControlProps> = ({
           <button
             key={tab.id}
             onClick={() => setStatusTab(tab.id as any)}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all duration-200 ${
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all duration-200 flex items-center gap-1.5 ${
               statusTab === tab.id
                 ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/20'
                 : 'text-slate-700 hover:text-slate-950 hover:bg-slate-100'
             }`}
           >
-            {tab.label}
+            {tab.id === 'MY_ASSIGNED' && <UserCheck className="h-3.5 w-3.5" />}
+            <span>{tab.label}</span>
           </button>
         ))}
       </div>
@@ -110,19 +137,19 @@ export const MandatesGridControl: React.FC<MandatesGridControlProps> = ({
           <div className="h-12 w-12 rounded-2xl bg-slate-50 border border-slate-200 text-slate-400 flex items-center justify-center mx-auto">
             <SlidersHorizontal className="h-6 w-6" />
           </div>
-          <h3 className="text-sm font-extrabold text-slate-900">No Mandates Match Your Search</h3>
+          <h3 className="text-sm font-extrabold text-slate-900">No Mandates Match Your Filter</h3>
           <p className="text-xs text-slate-500 max-w-sm mx-auto font-medium">
-            Try adjusting your search terms or filter tabs to view active client job mandates.
+            Try switching to "All Mandates" or clear your search term to view active job mandates.
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 gap-4' : 'space-y-4'}>
           {filteredMandates.map(mandate => (
             <MandateCard
               key={mandate.id}
               mandate={mandate}
-              onViewMandate={onViewMandate}
-              onAddCandidate={onAddCandidate}
+              onViewMandate={defaultViewMandate}
+              onAddCandidate={defaultAddCandidate}
             />
           ))}
         </div>
