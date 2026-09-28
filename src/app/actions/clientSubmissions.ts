@@ -431,6 +431,7 @@ export async function getClientReviewBatchAction(token: string): Promise<{
       include: {
         job: {
           select: {
+            id: true,
             title: true,
             client: {
               select: {
@@ -474,6 +475,10 @@ export async function getClientReviewBatchAction(token: string): Promise<{
         submissionId: sub.id,
         status: sub.status || 'PENDING',
         candidateId: c.id,
+        jobId: sub.job.id,
+        jobTitle: sub.job.title,
+        positionTitle: sub.job.title,
+        clientName: sub.job.client?.companyName || 'Valued Client',
         firstName: c.firstName,
         lastName: c.lastName,
         email: c.email,
