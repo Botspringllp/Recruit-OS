@@ -13,7 +13,7 @@ interface MandateCardProps {
 export const MandateCard: React.FC<MandateCardProps> = ({
   mandate,
   onViewMandate,
-  onAddCandidate
+  onAddCandidate     
 }) => {
   const getStageCount = (stageName: string) => {
     const found = mandate.stageBreakdown.find(s => s.stage === stageName);
