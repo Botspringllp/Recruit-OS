@@ -444,9 +444,6 @@ export async function getClientReviewBatchAction(token: string): Promise<{
           include: {
             discussionNote: true,
             documents: {
-              where: {
-                documentType: { in: ['RAW_RESUME', 'SANITIZED_RESUME'] }
-              },
               orderBy: { createdAt: 'desc' },
               take: 1
             }
@@ -469,7 +466,6 @@ export async function getClientReviewBatchAction(token: string): Promise<{
       const c = sub.candidate;
       const note = c.discussionNote;
       const doc = c.documents[0];
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
       return {
         submissionId: sub.id,
@@ -495,7 +491,10 @@ export async function getClientReviewBatchAction(token: string): Promise<{
         totalExperience: note?.totalExperience || (c.totalExperienceYears ? `${c.totalExperienceYears} Yrs` : 'N/A'),
         relevantExperience: note?.relevantExperience || 'N/A',
         resumeUrl: doc ? `/api/documents/${doc.id}` : null,
-        resumeFileName: doc?.fileName || null
+        resumeFileName: doc?.fileName || 'Resume.pdf',
+        resumeFileType: doc?.documentType || 'RAW_RESUME',
+        resumeFileSize: doc?.fileSizeBytes || 0,
+        resumeCreatedAt: doc?.createdAt ? doc.createdAt.toISOString() : null
       };
     });
 

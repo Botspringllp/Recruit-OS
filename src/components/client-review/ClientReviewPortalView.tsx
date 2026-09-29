@@ -25,7 +25,9 @@ import {
   Calendar,
   Layers,
   Filter,
-  Eye
+  Eye,
+  Download,
+  Paperclip
 } from 'lucide-react';
 import { updateClientDecisionAction } from '@/app/actions/clientSubmissions';
 
@@ -52,7 +54,18 @@ export interface SubmittedCandidateViewItem {
   reasonOfLeaving: string;
   offerInHand: string;
   resumeUrl: string | null;
-  resumeFileName: string | null;
+  resumeFileName?: string | null;
+  resumeFileType?: string | null;
+  resumeFileSize?: number | null;
+  resumeCreatedAt?: string | null;
+}
+
+function formatFileSize(bytes?: number | null): string {
+  if (!bytes || bytes === 0) return '0 KB';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 }
 
 interface ClientReviewPortalViewProps {
@@ -662,59 +675,67 @@ export function ClientReviewPortalView({
                 </div>
               </div>
 
-              {/* EMBEDDED RESUME PREVIEW BOX */}
-              {selectedCandidate.resumeUrl ? (
-                <div className="space-y-3 pt-6 border-t border-slate-100">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-amber-600" />
-                      Candidate Resume Preview
-                    </h3>
-                    <a
-                      href={selectedCandidate.resumeUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <span>Open PDF in New Tab</span>
-                      <ExternalLink className="h-3.5 w-3.5 text-amber-600" />
-                    </a>
-                  </div>
+              {/* ATTACHED RESUME / CV DOCUMENT CARD */}
+              <div className="space-y-4 pt-6 border-t border-slate-100">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-black text-sm text-slate-900 flex items-center gap-2">
+                    <FileText className="h-5 w-5 text-amber-500" />
+                    Attached Resume / CV Document
+                  </h3>
+                  <span className="text-[11px] font-extrabold text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-300">
+                    Verified Storage
+                  </span>
+                </div>
 
-                  <div className="bg-slate-100 rounded-2xl border border-slate-200 overflow-hidden h-[600px] relative shadow-inner">
-                    <object
-                      data={selectedCandidate.resumeUrl}
-                      type="application/pdf"
-                      className="w-full h-full"
-                    >
-                      <iframe
-                        src={selectedCandidate.resumeUrl}
-                        title="Candidate Resume Preview"
-                        className="w-full h-full border-0"
+                {selectedCandidate.resumeUrl ? (
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-slate-300 transition-all">
+                    <div className="flex items-center gap-3.5">
+                      <div className="p-3 bg-amber-500/10 border border-amber-300/50 text-amber-600 rounded-xl shrink-0">
+                        <FileText className="h-6 w-6 stroke-[2]" />
+                      </div>
+                      <div>
+                        <h4 className="font-black text-xs text-slate-900 tracking-tight flex items-center gap-2">
+                          {selectedCandidate.resumeFileName || `${selectedCandidate.firstName}_${selectedCandidate.lastName}_Resume.pdf`}
+                          <span className="px-2 py-0.5 text-[9px] font-extrabold bg-slate-200 text-slate-700 rounded-md uppercase">
+                            {selectedCandidate.resumeFileType || 'RAW_RESUME'}
+                          </span>
+                        </h4>
+                        <p className="text-[11px] text-slate-500 font-semibold mt-1 flex items-center gap-3">
+                          <span>Size: <strong className="text-slate-800">{formatFileSize(selectedCandidate.resumeFileSize)}</strong></span>
+                          <span>•</span>
+                          <span>Uploaded: <strong className="text-slate-800">{selectedCandidate.resumeCreatedAt ? new Date(selectedCandidate.resumeCreatedAt).toLocaleDateString() : new Date().toLocaleDateString()}</strong></span>
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <a
+                        href={selectedCandidate.resumeUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3.5 py-2 bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-slate-950 rounded-xl text-xs font-black shadow-xs flex items-center gap-1.5 transition-all"
                       >
-                        <div className="flex flex-col items-center justify-center h-full p-8 text-center space-y-4">
-                          <FileText className="h-12 w-12 text-slate-400" />
-                          <p className="text-sm font-bold text-slate-700">Unable to preview PDF directly in browser.</p>
-                          <a
-                            href={selectedCandidate.resumeUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl text-xs font-black"
-                          >
-                            Click to View / Download Candidate Resume
-                          </a>
-                        </div>
-                      </iframe>
-                    </object>
+                        <Eye className="h-3.5 w-3.5 stroke-[2.5]" />
+                        View CV
+                      </a>
+
+                      <a
+                        href={selectedCandidate.resumeUrl}
+                        download={selectedCandidate.resumeFileName || `${selectedCandidate.firstName}_${selectedCandidate.lastName}_Resume.pdf`}
+                        className="px-3 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-800 rounded-xl text-xs font-extrabold shadow-xs flex items-center gap-1.5 transition-all"
+                      >
+                        <Download className="h-3.5 w-3.5 stroke-[2.5]" />
+                        Download
+                      </a>
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <div className="pt-6 border-t border-slate-100 text-center py-8 bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-slate-400 space-y-2">
-                  <FileText className="h-8 w-8 mx-auto opacity-40" />
-                  <p className="text-xs font-bold text-slate-600">No Resume File Attached</p>
-                  <p className="text-[11px]">There is no PDF resume document linked to this candidate submission.</p>
-                </div>
-              )}
+                ) : (
+                  <div className="py-8 text-center text-slate-500 font-bold text-xs bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 space-y-1">
+                    <Paperclip className="h-6 w-6 text-slate-400 mx-auto mb-1" />
+                    <p>No attached resume or CV document found for this candidate.</p>
+                  </div>
+                )}
+              </div>
 
               {/* BOTTOM DECISION BAR WITH 3 PROMINENT ACTION BUTTONS */}
               <div className="p-6 bg-slate-900 text-white rounded-2xl shadow-xl flex flex-col sm:flex-row items-center justify-between gap-6 border border-slate-800">
