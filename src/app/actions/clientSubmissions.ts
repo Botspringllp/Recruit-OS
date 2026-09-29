@@ -82,7 +82,7 @@ export async function getActiveMandatesForShareAction(): Promise<{
 }
 
 /**
- * Creates CandidateSubmission records and sends structured client review email to divyanshu@botspring.in.
+ * Creates CandidateSubmission records and generates structured client review email template and portal link.
  */
 export async function createCandidateSubmissionsAction(payload: ShareToClientPayload): Promise<{
   success: boolean;
@@ -318,10 +318,14 @@ export async function createCandidateSubmissionsAction(payload: ShareToClientPay
 
     const emailBodyText = `Please have a look at the tracker and attached candidate profiles for ${positionTitle}.\n\n${payload.recruiterMessage ? `Recruiter Note: "${payload.recruiterMessage}"\n\n` : ''}Client Review Portal (Track & Record Decisions Online):\n${reviewUrl}\n\nCandidate Tracker:\nDate\tSource\tClient Name\tApplied Position Name\tCandidate Name\tEmail ID\tNumber\tLocation\tReady to Relocate\tExperience\tRelevant Exp\tDesignation\tQualification\tCurrent/Last Company\tCurrent Salary\tExpectation\tNotice Period\tReason of Leaving\tOffer in Hand\n${candidateTableRowsText}\n\nRegards,\nRecruitment Team`;
 
-    const targetRecipient = payload.clientEmail?.trim() || '';
+    // Clean and validate target recipient email
+    let targetRecipient = payload.clientEmail?.trim() || '';
+    if (targetRecipient.endsWith('@botspringhq.in')) {
+      targetRecipient = targetRecipient.replace('@botspringhq.in', '@botspring.in');
+    }
 
     try {
-      if (targetRecipient && process.env.SMTP_HOST && process.env.SMTP_USER) {
+      if (targetRecipient && targetRecipient.includes('@') && process.env.SMTP_HOST && process.env.SMTP_USER) {
         const transporter = nodemailer.createTransport({
           host: process.env.SMTP_HOST,
           port: parseInt(process.env.SMTP_PORT || '587', 10),
@@ -340,7 +344,7 @@ export async function createCandidateSubmissionsAction(payload: ShareToClientPay
           text: emailBodyText
         });
       } else {
-        console.log(`[CLIENT_SUBMISSION_EMAIL] Target Recipient: ${targetRecipient || 'Manual mailto trigger'}`);
+        console.log(`[CLIENT_SUBMISSION_EMAIL] Target Recipient: ${targetRecipient || 'Manual share trigger'}`);
         console.log(`[CLIENT_SUBMISSION_EMAIL] Subject: ${emailSubject}`);
         console.log(`[CLIENT_SUBMISSION_EMAIL] Review Link: ${reviewUrl}`);
       }
@@ -348,46 +352,51 @@ export async function createCandidateSubmissionsAction(payload: ShareToClientPay
       console.warn('Mail transport execution warning:', mailErr);
     }
 
-    // Trigger Email Event: CANDIDATE_SUBMITTED
+    // Trigger Email Event: CANDIDATE_SUBMITTED (only if valid recipient email)
     try {
       const { logCandidateSubmittedEmail } = await import('@/lib/email');
-      const recipient = targetRecipient || user.email || 'client@company.com';
+      let recipient = targetRecipient || user.email || '';
+      if (recipient.endsWith('@botspringhq.in')) {
+        recipient = recipient.replace('@botspringhq.in', '@botspring.in');
+      }
 
-      const trackerRows = candidates.map((c: any) => {
-        const note = c.discussionNote;
-        return {
-          date: new Date().toLocaleDateString(),
-          source: 'Headhunted',
-          clientName: clientName,
-          appliedPositionName: positionTitle,
-          candidateName: `${c.firstName} ${c.lastName}`.trim(),
-          emailId: c.email || 'N/A',
-          number: c.phone || 'N/A',
-          location: c.currentLocation || 'N/A',
-          readyToRelocate: note?.readyToRelocate || 'N/A',
-          experience: note?.totalExperience || (c.totalExperienceYears ? `${c.totalExperienceYears}yr` : 'N/A'),
-          relevantExperience: note?.relevantExperience || 'N/A',
-          designation: note?.currentDesignation || c.currentDesignation || 'N/A',
-          qualification: note?.qualification || 'N/A',
-          currentLastCompany: note?.currentCompany || c.currentCompany || 'N/A',
-          currentSalary: note?.currentSalary || (c.currentCtcLpa ? `${c.currentCtcLpa}LPA` : 'N/A'),
-          expectedSalary: note?.expectedSalary || (c.expectedCtcLpa ? `${c.expectedCtcLpa}LPA` : 'N/A'),
-          noticePeriod: note?.noticePeriod || 'N/A',
-          reasonOfLeaving: note?.reasonOfLeaving || 'N/A',
-          offerInHand: note?.offerInHand || 'N/A',
-          resumeUrl: c.resumeUrl || null
-        };
-      });
+      if (recipient && recipient.includes('@')) {
+        const trackerRows = candidates.map((c: any) => {
+          const note = c.discussionNote;
+          return {
+            date: new Date().toLocaleDateString(),
+            source: 'Headhunted',
+            clientName: clientName,
+            appliedPositionName: positionTitle,
+            candidateName: `${c.firstName} ${c.lastName}`.trim(),
+            emailId: c.email || 'N/A',
+            number: c.phone || 'N/A',
+            location: c.currentLocation || 'N/A',
+            readyToRelocate: note?.readyToRelocate || 'N/A',
+            experience: note?.totalExperience || (c.totalExperienceYears ? `${c.totalExperienceYears}yr` : 'N/A'),
+            relevantExperience: note?.relevantExperience || 'N/A',
+            designation: note?.currentDesignation || c.currentDesignation || 'N/A',
+            qualification: note?.qualification || 'N/A',
+            currentLastCompany: note?.currentCompany || c.currentCompany || 'N/A',
+            currentSalary: note?.currentSalary || (c.currentCtcLpa ? `${c.currentCtcLpa}LPA` : 'N/A'),
+            expectedSalary: note?.expectedSalary || (c.expectedCtcLpa ? `${c.expectedCtcLpa}LPA` : 'N/A'),
+            noticePeriod: note?.noticePeriod || 'N/A',
+            reasonOfLeaving: note?.reasonOfLeaving || 'N/A',
+            offerInHand: note?.offerInHand || 'N/A',
+            resumeUrl: c.resumeUrl || null
+          };
+        });
 
-      await logCandidateSubmittedEmail(
-        user.agencyId,
-        recipient,
-        clientName,
-        positionTitle,
-        secureReviewToken,
-        trackerRows,
-        payload.recruiterMessage
-      );
+        await logCandidateSubmittedEmail(
+          user.agencyId,
+          recipient,
+          clientName,
+          positionTitle,
+          secureReviewToken,
+          trackerRows,
+          payload.recruiterMessage
+        );
+      }
     } catch (emailErr) {
       console.error('Failed creating email log for candidate submission:', emailErr);
     }
@@ -420,13 +429,18 @@ export async function getClientReviewBatchAction(token: string): Promise<{
   error?: string;
 }> {
   try {
-    if (!token || typeof token !== 'string') {
+    const cleanToken = (token || '').trim();
+    if (!cleanToken) {
       return { success: false, error: 'Invalid client review link.' };
     }
 
+    // Support exact match or prefix match in case token was truncated by an email client
     const submissions = await prisma.candidateSubmission.findMany({
       where: {
-        secureReviewToken: token
+        OR: [
+          { secureReviewToken: cleanToken },
+          cleanToken.length >= 10 ? { secureReviewToken: { startsWith: cleanToken } } : { secureReviewToken: cleanToken }
+        ]
       },
       include: {
         job: {
