@@ -494,7 +494,7 @@ export async function getClientReviewBatchAction(token: string): Promise<{
         offerInHand: note?.offerInHand || 'N/A',
         totalExperience: note?.totalExperience || (c.totalExperienceYears ? `${c.totalExperienceYears} Yrs` : 'N/A'),
         relevantExperience: note?.relevantExperience || 'N/A',
-        resumeUrl: doc ? `${baseUrl}/api/documents/${doc.id}` : null,
+        resumeUrl: doc ? `/api/documents/${doc.id}` : null,
         resumeFileName: doc?.fileName || null
       };
     });

@@ -102,29 +102,21 @@ export function ClientReviewPortalView({
   }, [candidates, defaultPositionTitle, defaultClientName]);
 
   // View state: 'JOBS' (Level 1) | 'CANDIDATES' (Level 2) | 'PROFILE' (Level 3)
-  const [activeView, setActiveView] = useState<'JOBS' | 'CANDIDATES' | 'PROFILE'>(() => {
-    // If there's only 1 job mandate, land directly on candidate list view for convenience
-    return jobsMap.length > 1 ? 'JOBS' : 'CANDIDATES';
-  });
+  // Always land on 'JOBS' view first on link click
+  const [activeView, setActiveView] = useState<'JOBS' | 'CANDIDATES' | 'PROFILE'>('JOBS');
 
   const [selectedJobId, setSelectedJobId] = useState<string | null>(() => {
     return jobsMap.length > 0 ? jobsMap[0].jobId : null;
   });
 
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [selectedSubmissions, setSelectedSubmissions] = useState<string[]>([]);
 
   // Currently selected Job Object
   const currentJob = jobsMap.find(j => j.jobId === selectedJobId) || jobsMap[0];
 
   // Candidates for the currently selected job
   const jobCandidates = currentJob ? currentJob.candidates : candidates;
-
-  // Filtered candidates by status
-  const filteredCandidates = React.useMemo(() => {
-    if (statusFilter === 'ALL') return jobCandidates;
-    return jobCandidates.filter(c => c.status === statusFilter);
-  }, [jobCandidates, statusFilter]);
 
   // Currently selected Candidate Object (for Level 3 Profile View)
   const selectedCandidate = candidates.find(c => c.candidateId === selectedCandidateId) || jobCandidates[0];
@@ -144,6 +136,15 @@ export function ClientReviewPortalView({
     }
   }
 
+  async function handleBulkDecision(decision: 'INTERVIEW' | 'HOLD' | 'REJECT') {
+    if (selectedSubmissions.length === 0) return;
+
+    for (const submissionId of selectedSubmissions) {
+      await handleDecision(submissionId, decision);
+    }
+    setSelectedSubmissions([]);
+  }
+
   // Calculate overall metrics
   const totalSubmissions = candidates.length;
   const totalInterview = candidates.filter(c => c.status === 'INTERVIEW').length;
@@ -159,35 +160,24 @@ export function ClientReviewPortalView({
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between gap-4">
           
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 text-slate-950 font-black text-lg flex items-center justify-center shadow-md shadow-amber-500/20">
+            {/* Elegant RecruitOS Logo Tile */}
+            <div className="h-9 w-9 rounded-xl bg-slate-900 text-amber-400 font-black text-sm flex items-center justify-center shadow-xs shrink-0">
               R
             </div>
-            <div>
+            
+            <div className="flex items-center gap-2.5 flex-wrap">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-black uppercase tracking-wider text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md">
-                  RecruitOS
-                </span>
-                <span className="text-xs font-bold text-slate-400">|</span>
-                <span className="text-xs font-extrabold text-slate-600">Client Candidate Review Portal</span>
+                <span className="font-extrabold text-slate-900 text-base tracking-tight">RecruitOS</span>
+                <span className="text-slate-300 font-normal">·</span>
+                <span className="text-xs font-semibold text-slate-500">Candidate Review Portal</span>
               </div>
-              <h1 className="text-base font-black text-slate-900 tracking-tight">
-                {currentJob ? currentJob.clientName : defaultClientName}
-              </h1>
-            </div>
-          </div>
 
-          {/* Top Quick Metrics */}
-          <div className="hidden sm:flex items-center gap-2 text-xs font-bold">
-            <div className="px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-xl text-slate-700">
-              Total Candidates: <span className="font-black text-slate-900">{totalSubmissions}</span>
-            </div>
-            <div className="px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 flex items-center gap-1.5">
-              <CheckCircle className="h-3.5 w-3.5 text-emerald-600" />
-              <span>Shortlisted: {totalInterview}</span>
-            </div>
-            <div className="px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-xl text-blue-800 flex items-center gap-1.5">
-              <Clock className="h-3.5 w-3.5 text-blue-600" />
-              <span>Pending: {totalPending}</span>
+              {/* Client Context Badge */}
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-100 border border-slate-200/80 text-slate-700 text-xs font-semibold">
+                <Building2 className="h-3 w-3 text-slate-500" />
+                <span>Client:</span>
+                <span className="text-slate-900 font-extrabold">{currentJob ? currentJob.clientName : defaultClientName}</span>
+              </div>
             </div>
           </div>
 
@@ -212,79 +202,79 @@ export function ClientReviewPortalView({
           </div>
         )}
 
-        {/* BREADCRUMB NAVIGATION BAR */}
-        <nav className="flex items-center justify-between bg-white border border-slate-200/80 rounded-2xl px-5 py-3 shadow-xs">
-          <div className="flex items-center gap-2 text-xs font-extrabold text-slate-500 overflow-x-auto">
-            
-            {/* Level 1 Link: All Jobs */}
-            <button
-              onClick={() => {
-                setActiveView('JOBS');
-                setSelectedCandidateId(null);
-              }}
-              className={`flex items-center gap-1.5 hover:text-slate-900 transition-colors ${
-                activeView === 'JOBS' ? 'text-amber-600 font-black' : ''
-              }`}
-            >
-              <Briefcase className="h-4 w-4" />
-              <span>Job Mandates ({jobsMap.length})</span>
-            </button>
+        {/* BREADCRUMB NAVIGATION BAR (Only shown when inside Candidate List or Profile views) */}
+        {activeView !== 'JOBS' && (
+          <nav className="flex items-center justify-between bg-white border border-slate-200/80 rounded-2xl px-5 py-3 shadow-xs">
+            <div className="flex items-center gap-2 text-xs font-extrabold text-slate-500 overflow-x-auto">
+              
+              {/* Level 1 Link: All Jobs */}
+              <button
+                onClick={() => {
+                  setActiveView('JOBS');
+                  setSelectedCandidateId(null);
+                }}
+                className="flex items-center gap-1.5 hover:text-slate-900 text-slate-600 font-bold transition-colors cursor-pointer"
+              >
+                <Briefcase className="h-4 w-4 text-amber-600" />
+                <span>Job Mandates</span>
+              </button>
 
-            {/* Breadcrumb Separator & Level 2 */}
-            {(activeView === 'CANDIDATES' || activeView === 'PROFILE') && currentJob && (
-              <>
-                <ChevronRight className="h-3.5 w-3.5 text-slate-300 shrink-0" />
-                <button
-                  onClick={() => {
-                    setActiveView('CANDIDATES');
-                    setSelectedCandidateId(null);
-                  }}
-                  className={`flex items-center gap-1.5 hover:text-slate-900 transition-colors ${
-                    activeView === 'CANDIDATES' ? 'text-amber-600 font-black' : ''
-                  }`}
-                >
-                  <Layers className="h-4 w-4" />
-                  <span className="truncate max-w-[200px]">{currentJob.jobTitle}</span>
-                  <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full text-[10px] font-black">
-                    {currentJob.candidates.length}
+              {/* Breadcrumb Separator & Level 2 */}
+              {currentJob && (
+                <>
+                  <ChevronRight className="h-3.5 w-3.5 text-slate-300 shrink-0" />
+                  <button
+                    onClick={() => {
+                      setActiveView('CANDIDATES');
+                      setSelectedCandidateId(null);
+                    }}
+                    className={`flex items-center gap-1.5 hover:text-slate-900 transition-colors ${
+                      activeView === 'CANDIDATES' ? 'text-amber-600 font-black' : ''
+                    }`}
+                  >
+                    <Layers className="h-4 w-4" />
+                    <span className="truncate max-w-[200px]">{currentJob.jobTitle}</span>
+                    <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full text-[10px] font-black">
+                      {currentJob.candidates.length}
+                    </span>
+                  </button>
+                </>
+              )}
+
+              {/* Breadcrumb Separator & Level 3 */}
+              {activeView === 'PROFILE' && selectedCandidate && (
+                <>
+                  <ChevronRight className="h-3.5 w-3.5 text-slate-300 shrink-0" />
+                  <span className="text-amber-600 font-black flex items-center gap-1.5 truncate max-w-[180px]">
+                    <User className="h-4 w-4" />
+                    {selectedCandidate.firstName} {selectedCandidate.lastName}
                   </span>
-                </button>
-              </>
+                </>
+              )}
+            </div>
+
+            {/* Back Action Button */}
+            {activeView === 'CANDIDATES' && (
+              <button
+                onClick={() => setActiveView('JOBS')}
+                className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-extrabold flex items-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+                <span>Back to Job Mandates</span>
+              </button>
             )}
 
-            {/* Breadcrumb Separator & Level 3 */}
-            {activeView === 'PROFILE' && selectedCandidate && (
-              <>
-                <ChevronRight className="h-3.5 w-3.5 text-slate-300 shrink-0" />
-                <span className="text-amber-600 font-black flex items-center gap-1.5 truncate max-w-[180px]">
-                  <User className="h-4 w-4" />
-                  {selectedCandidate.firstName} {selectedCandidate.lastName}
-                </span>
-              </>
+            {activeView === 'PROFILE' && (
+              <button
+                onClick={() => setActiveView('CANDIDATES')}
+                className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-extrabold flex items-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+                <span>Back to Candidate List</span>
+              </button>
             )}
-          </div>
-
-          {/* Back Action Button */}
-          {activeView === 'CANDIDATES' && jobsMap.length > 1 && (
-            <button
-              onClick={() => setActiveView('JOBS')}
-              className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-extrabold flex items-center gap-1.5 transition-colors"
-            >
-              <ArrowLeft className="h-3.5 w-3.5" />
-              <span>Change Job</span>
-            </button>
-          )}
-
-          {activeView === 'PROFILE' && (
-            <button
-              onClick={() => setActiveView('CANDIDATES')}
-              className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-extrabold flex items-center gap-1.5 transition-colors"
-            >
-              <ArrowLeft className="h-3.5 w-3.5" />
-              <span>Back to Candidate List</span>
-            </button>
-          )}
-        </nav>
+          </nav>
+        )}
 
 
         {/* ===================================================================== */}
@@ -382,232 +372,169 @@ export function ClientReviewPortalView({
             <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 text-white rounded-3xl p-6 sm:p-8 shadow-lg relative overflow-hidden">
               <div className="absolute right-0 top-0 translate-x-8 -translate-y-8 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
               
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 relative z-10">
                 <div className="space-y-2">
                   <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-full text-xs font-black uppercase tracking-wider">
-                    <Briefcase className="h-3.5 w-3.5" />
-                    Active Job Mandate
+                    <UserCheck className="h-3.5 w-3.5" />
+                    Submitted Candidate List
                   </div>
-                  <h2 className="text-3xl font-black text-white tracking-tight">
-                    {currentJob.jobTitle}
+                  <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+                    Candidates for {currentJob.jobTitle}
                   </h2>
                   <p className="text-xs font-medium text-slate-300 flex items-center gap-2">
                     <Building2 className="h-4 w-4 text-slate-400" />
-                    Submitted for <strong>{currentJob.clientName}</strong>
+                    Submitted for <strong>{currentJob.clientName}</strong> ({jobCandidates.length} Candidates)
                   </p>
-                </div>
-
-                {/* Status Tabs Bar */}
-                <div className="flex flex-wrap items-center gap-2 bg-slate-950/60 p-1.5 rounded-2xl border border-slate-800 text-xs font-bold">
-                  <button
-                    onClick={() => setStatusFilter('ALL')}
-                    className={`px-3 py-1.5 rounded-xl transition-all ${
-                      statusFilter === 'ALL' ? 'bg-amber-500 text-slate-950 font-black' : 'text-slate-300 hover:text-white'
-                    }`}
-                  >
-                    All ({jobCandidates.length})
-                  </button>
-                  <button
-                    onClick={() => setStatusFilter('PENDING')}
-                    className={`px-3 py-1.5 rounded-xl transition-all ${
-                      statusFilter === 'PENDING' ? 'bg-amber-500 text-slate-950 font-black' : 'text-slate-300 hover:text-white'
-                    }`}
-                  >
-                    Pending ({jobCandidates.filter(c => c.status === 'PENDING').length})
-                  </button>
-                  <button
-                    onClick={() => setStatusFilter('INTERVIEW')}
-                    className={`px-3 py-1.5 rounded-xl transition-all ${
-                      statusFilter === 'INTERVIEW' ? 'bg-emerald-500 text-white font-black' : 'text-slate-300 hover:text-white'
-                    }`}
-                  >
-                    Shortlisted ({jobCandidates.filter(c => c.status === 'INTERVIEW').length})
-                  </button>
-                  <button
-                    onClick={() => setStatusFilter('HOLD')}
-                    className={`px-3 py-1.5 rounded-xl transition-all ${
-                      statusFilter === 'HOLD' ? 'bg-amber-600 text-white font-black' : 'text-slate-300 hover:text-white'
-                    }`}
-                  >
-                    Hold ({jobCandidates.filter(c => c.status === 'HOLD').length})
-                  </button>
-                  <button
-                    onClick={() => setStatusFilter('REJECT')}
-                    className={`px-3 py-1.5 rounded-xl transition-all ${
-                      statusFilter === 'REJECT' ? 'bg-rose-600 text-white font-black' : 'text-slate-300 hover:text-white'
-                    }`}
-                  >
-                    Reject ({jobCandidates.filter(c => c.status === 'REJECT').length})
-                  </button>
                 </div>
               </div>
             </div>
 
-            {/* Candidates Grid / List */}
-            <div className="space-y-4">
-              {filteredCandidates.length === 0 ? (
-                <div className="bg-white border border-slate-200/80 rounded-3xl p-12 text-center text-slate-500 space-y-3 shadow-xs">
-                  <UserCheck className="h-10 w-10 mx-auto opacity-30 text-slate-400" />
-                  <p className="font-extrabold text-slate-800 text-base">No Candidates Found</p>
-                  <p className="text-xs text-slate-400">There are no candidates matching the selected status filter.</p>
+            {/* CONDITIONAL ACTION DECISION BAR (Only visible when candidate(s) are selected) */}
+            {selectedSubmissions.length > 0 && (
+              <div className="bg-slate-900 text-white p-4 sm:p-5 rounded-2xl shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4 border border-slate-800 sticky top-20 z-20 transition-all animate-in fade-in slide-in-from-top-2">
+                <div className="flex items-center gap-3">
+                  <span className="h-7 w-7 rounded-xl bg-amber-500 text-slate-950 font-black text-xs flex items-center justify-center">
+                    {selectedSubmissions.length}
+                  </span>
+                  <span className="text-xs font-bold text-slate-200">
+                    {selectedSubmissions.length === 1 ? '1 Candidate Selected' : `${selectedSubmissions.length} Candidates Selected`}
+                  </span>
                 </div>
-              ) : (
-                filteredCandidates.map((c, index) => {
-                  const isUpdating = Boolean(loadingMap[c.submissionId]);
 
-                  return (
-                    <div
-                      key={c.submissionId}
-                      className="bg-white border border-slate-200/90 rounded-3xl p-6 shadow-xs hover:shadow-md transition-all space-y-5"
-                    >
-                      {/* Candidate Row Top Bar */}
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
-                        <div className="flex items-center gap-4">
-                          <div className="h-12 w-12 rounded-2xl bg-amber-500/10 text-amber-700 font-black text-lg flex items-center justify-center border border-amber-200 shrink-0">
-                            #{index + 1}
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-3">
-                              <h3
-                                onClick={() => {
-                                  setSelectedCandidateId(c.candidateId);
-                                  setActiveView('PROFILE');
-                                }}
-                                className="text-lg font-black text-slate-900 tracking-tight hover:text-amber-600 cursor-pointer transition-colors"
-                              >
-                                {c.firstName} {c.lastName}
-                              </h3>
+                <div className="flex items-center gap-2.5 w-full sm:w-auto">
+                  <button
+                    type="button"
+                    onClick={() => handleBulkDecision('INTERVIEW')}
+                    className="flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-500 text-white transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                  >
+                    <CheckCircle className="h-4 w-4" />
+                    <span>Interview</span>
+                  </button>
 
-                              {/* Status Badge */}
-                              {c.status === 'INTERVIEW' && (
-                                <span className="px-3 py-1 rounded-full text-xs font-black bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
-                                  <CheckCircle className="h-3.5 w-3.5 text-emerald-600" /> SHORTLISTED / INTERVIEW
-                                </span>
-                              )}
-                              {c.status === 'HOLD' && (
-                                <span className="px-3 py-1 rounded-full text-xs font-black bg-amber-50 text-amber-700 border border-amber-200 flex items-center gap-1">
-                                  <PauseCircle className="h-3.5 w-3.5 text-amber-600" /> ON HOLD
-                                </span>
-                              )}
-                              {c.status === 'REJECT' && (
-                                <span className="px-3 py-1 rounded-full text-xs font-black bg-rose-50 text-rose-700 border border-rose-200 flex items-center gap-1">
-                                  <XCircle className="h-3.5 w-3.5 text-rose-600" /> REJECTED
-                                </span>
-                              )}
-                              {c.status === 'PENDING' && (
-                                <span className="px-3 py-1 rounded-full text-xs font-black bg-blue-50 text-blue-700 border border-blue-200 flex items-center gap-1">
-                                  <Clock className="h-3.5 w-3.5 text-blue-600" /> PENDING REVIEW
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-xs font-bold text-slate-500 mt-1">
-                              {c.currentDesignation} at <strong className="text-slate-800">{c.currentCompany}</strong> ({c.totalExperience} Exp)
-                            </p>
-                          </div>
-                        </div>
+                  <button
+                    type="button"
+                    onClick={() => handleBulkDecision('HOLD')}
+                    className="flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-black bg-amber-500 hover:bg-amber-400 text-slate-950 transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                  >
+                    <PauseCircle className="h-4 w-4" />
+                    <span>Hold</span>
+                  </button>
 
-                        {/* Resume CTA */}
-                        {c.resumeUrl && (
-                          <a
-                            href={c.resumeUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-extrabold border border-slate-200 transition-colors flex items-center gap-2 self-start sm:self-auto"
-                          >
-                            <FileText className="h-4 w-4 text-amber-600" />
-                            <span>View Resume PDF</span>
-                          </a>
-                        )}
+                  <button
+                    type="button"
+                    onClick={() => handleBulkDecision('REJECT')}
+                    className="flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-black bg-rose-600 hover:bg-rose-500 text-white transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                  >
+                    <XCircle className="h-4 w-4" />
+                    <span>Reject</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSelectedSubmissions([])}
+                    className="px-3 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white transition cursor-pointer"
+                  >
+                    Deselect All
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Candidates Roster List */}
+            <div className="space-y-3">
+              {jobCandidates.map((c, index) => {
+                const isSelected = selectedSubmissions.includes(c.submissionId);
+
+                return (
+                  <div
+                    key={c.submissionId}
+                    className={`bg-white border rounded-2xl p-5 shadow-xs hover:shadow-md transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+                      isSelected ? 'border-amber-400 bg-amber-50/20' : 'border-slate-200/90'
+                    }`}
+                  >
+                    <div className="flex items-center gap-4">
+                      {/* Checkbox for selection */}
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedSubmissions(prev => [...prev, c.submissionId]);
+                          } else {
+                            setSelectedSubmissions(prev => prev.filter(id => id !== c.submissionId));
+                          }
+                        }}
+                        className="h-5 w-5 rounded-lg border-slate-300 text-amber-500 focus:ring-amber-400 cursor-pointer shrink-0"
+                      />
+
+                      {/* Candidate Initials Avatar (Clickable to open profile) */}
+                      <div
+                        onClick={() => {
+                          setSelectedCandidateId(c.candidateId);
+                          setActiveView('PROFILE');
+                        }}
+                        className="h-11 w-11 rounded-2xl bg-amber-500/10 text-amber-700 font-black text-sm flex items-center justify-center border border-amber-200 shrink-0 cursor-pointer hover:scale-105 transition-transform"
+                      >
+                        {c.firstName.charAt(0)}{c.lastName.charAt(0)}
                       </div>
 
-                      {/* Candidate Key Information Grid */}
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
-                        <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-100">
-                          <span className="text-[10px] font-extrabold uppercase text-slate-400 block mb-0.5">Total Exp / Rel Exp</span>
-                          <span className="font-black text-slate-900">{c.totalExperience}</span>
-                          <span className="text-amber-600 font-bold ml-1">({c.relevantExperience} Rel)</span>
+                      {/* Candidate Name & Info (Clickable to open profile) */}
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-3">
+                          <h3
+                            onClick={() => {
+                              setSelectedCandidateId(c.candidateId);
+                              setActiveView('PROFILE');
+                            }}
+                            className="text-base font-black text-slate-900 tracking-tight hover:text-amber-600 cursor-pointer transition-colors"
+                          >
+                            {c.firstName} {c.lastName}
+                          </h3>
+
+                          {/* Status Badge */}
+                          {c.status === 'INTERVIEW' && (
+                            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
+                              <CheckCircle className="h-3 w-3 text-emerald-600" /> SHORTLISTED
+                            </span>
+                          )}
+                          {c.status === 'HOLD' && (
+                            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-amber-50 text-amber-700 border border-amber-200 flex items-center gap-1">
+                              <PauseCircle className="h-3 w-3 text-amber-600" /> ON HOLD
+                            </span>
+                          )}
+                          {c.status === 'REJECT' && (
+                            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-rose-50 text-rose-700 border border-rose-200 flex items-center gap-1">
+                              <XCircle className="h-3 w-3 text-rose-600" /> REJECTED
+                            </span>
+                          )}
+                          {c.status === 'PENDING' && (
+                            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-blue-50 text-blue-700 border border-blue-200 flex items-center gap-1">
+                              <Clock className="h-3 w-3 text-blue-600" /> PENDING
+                            </span>
+                          )}
                         </div>
 
-                        <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-100">
-                          <span className="text-[10px] font-extrabold uppercase text-slate-400 block mb-0.5">Current Salary</span>
-                          <span className="font-black text-emerald-700">{c.currentSalary}</span>
-                        </div>
-
-                        <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-100">
-                          <span className="text-[10px] font-extrabold uppercase text-slate-400 block mb-0.5">Expected Salary</span>
-                          <span className="font-black text-amber-700">{c.expectedSalary}</span>
-                        </div>
-
-                        <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-100">
-                          <span className="text-[10px] font-extrabold uppercase text-slate-400 block mb-0.5">Notice Period</span>
-                          <span className="font-black text-slate-900">{c.noticePeriod}</span>
-                        </div>
+                        <p className="text-xs font-semibold text-slate-500">
+                          {c.currentDesignation} at <strong className="text-slate-800">{c.currentCompany}</strong> ({c.totalExperience} Exp)
+                        </p>
                       </div>
-
-                      {/* Decision Action Buttons & Full Profile Link */}
-                      <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedCandidateId(c.candidateId);
-                            setActiveView('PROFILE');
-                          }}
-                          className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black transition-all flex items-center gap-2 shadow-xs"
-                        >
-                          <Eye className="h-4 w-4" />
-                          <span>Review Full Profile & Decision →</span>
-                        </button>
-
-                        {/* Quick 3 Action Buttons */}
-                        <div className="flex items-center gap-2.5 w-full sm:w-auto">
-                          <button
-                            type="button"
-                            disabled={isUpdating}
-                            onClick={() => handleDecision(c.submissionId, 'INTERVIEW')}
-                            className={`px-4 py-2 rounded-xl text-xs font-black transition flex items-center gap-1.5 ${
-                              c.status === 'INTERVIEW'
-                                ? 'bg-emerald-600 text-white shadow-xs'
-                                : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200'
-                            }`}
-                          >
-                            {isUpdating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle className="h-3.5 w-3.5" />}
-                            <span>Interview</span>
-                          </button>
-
-                          <button
-                            type="button"
-                            disabled={isUpdating}
-                            onClick={() => handleDecision(c.submissionId, 'HOLD')}
-                            className={`px-4 py-2 rounded-xl text-xs font-black transition flex items-center gap-1.5 ${
-                              c.status === 'HOLD'
-                                ? 'bg-amber-500 text-slate-950 shadow-xs'
-                                : 'bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200'
-                            }`}
-                          >
-                            {isUpdating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <PauseCircle className="h-3.5 w-3.5" />}
-                            <span>Hold</span>
-                          </button>
-
-                          <button
-                            type="button"
-                            disabled={isUpdating}
-                            onClick={() => handleDecision(c.submissionId, 'REJECT')}
-                            className={`px-4 py-2 rounded-xl text-xs font-black transition flex items-center gap-1.5 ${
-                              c.status === 'REJECT'
-                                ? 'bg-rose-600 text-white shadow-xs'
-                                : 'bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200'
-                            }`}
-                          >
-                            {isUpdating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <XCircle className="h-3.5 w-3.5" />}
-                            <span>Reject</span>
-                          </button>
-                        </div>
-                      </div>
-
                     </div>
-                  );
-                })
-              )}
+
+                    {/* Simple Right Arrow CTA Link to Profile */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedCandidateId(c.candidateId);
+                        setActiveView('PROFILE');
+                      }}
+                      className="text-xs font-bold text-amber-600 hover:text-amber-700 flex items-center gap-1 cursor-pointer self-end sm:self-center"
+                    >
+                      <span>View Profile</span>
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
@@ -736,8 +663,8 @@ export function ClientReviewPortalView({
               </div>
 
               {/* EMBEDDED RESUME PREVIEW BOX */}
-              {selectedCandidate.resumeUrl && (
-                <div className="space-y-3 pt-4 border-t border-slate-100">
+              {selectedCandidate.resumeUrl ? (
+                <div className="space-y-3 pt-6 border-t border-slate-100">
                   <div className="flex items-center justify-between">
                     <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 flex items-center gap-2">
                       <FileText className="h-4 w-4 text-amber-600" />
@@ -747,19 +674,45 @@ export function ClientReviewPortalView({
                       href={selectedCandidate.resumeUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-xs font-bold text-amber-600 hover:text-amber-700 flex items-center gap-1"
+                      className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
                     >
-                      Open in New Tab <ExternalLink className="h-3.5 w-3.5" />
+                      <span>Open PDF in New Tab</span>
+                      <ExternalLink className="h-3.5 w-3.5 text-amber-600" />
                     </a>
                   </div>
 
-                  <div className="bg-slate-100 rounded-2xl border border-slate-200 overflow-hidden h-[500px]">
-                    <iframe
-                      src={selectedCandidate.resumeUrl}
-                      title="Candidate Resume Preview"
-                      className="w-full h-full border-0"
-                    />
+                  <div className="bg-slate-100 rounded-2xl border border-slate-200 overflow-hidden h-[600px] relative shadow-inner">
+                    <object
+                      data={selectedCandidate.resumeUrl}
+                      type="application/pdf"
+                      className="w-full h-full"
+                    >
+                      <iframe
+                        src={selectedCandidate.resumeUrl}
+                        title="Candidate Resume Preview"
+                        className="w-full h-full border-0"
+                      >
+                        <div className="flex flex-col items-center justify-center h-full p-8 text-center space-y-4">
+                          <FileText className="h-12 w-12 text-slate-400" />
+                          <p className="text-sm font-bold text-slate-700">Unable to preview PDF directly in browser.</p>
+                          <a
+                            href={selectedCandidate.resumeUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl text-xs font-black"
+                          >
+                            Click to View / Download Candidate Resume
+                          </a>
+                        </div>
+                      </iframe>
+                    </object>
                   </div>
+                </div>
+              ) : (
+                <div className="pt-6 border-t border-slate-100 text-center py-8 bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-slate-400 space-y-2">
+                  <FileText className="h-8 w-8 mx-auto opacity-40" />
+                  <p className="text-xs font-bold text-slate-600">No Resume File Attached</p>
+                  <p className="text-[11px]">There is no PDF resume document linked to this candidate submission.</p>
                 </div>
               )}
 
