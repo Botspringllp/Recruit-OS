@@ -78,20 +78,6 @@ export async function uploadToStorage(options: UploadFileOptions): Promise<Uploa
   const safeEntityId = entityId || 'general';
   const filePath = `${agencyId}/${safeEntityId}/${timestamp}_${sanitizedFileName}`;
 
-  // Save to local disk backup as fallback storage
-  try {
-    const fs = require('fs');
-    const path = require('path');
-    const localDir = path.join(process.cwd(), 'public', 'uploads', bucket, path.dirname(filePath));
-    if (!fs.existsSync(localDir)) {
-      fs.mkdirSync(localDir, { recursive: true });
-    }
-    const localFilePath = path.join(process.cwd(), 'public', 'uploads', bucket, filePath);
-    fs.writeFileSync(localFilePath, fileBuffer as Buffer);
-  } catch (err: any) {
-    console.warn(`[Local Storage Backup] Save exception:`, err?.message);
-  }
-
   const baseUrl = env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = env.SUPABASE_SERVICE_ROLE_KEY;
 
