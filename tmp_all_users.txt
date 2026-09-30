@@ -1,0 +1,13 @@
+﻿=== ALL USERS IN PRISMA USER TABLE (including deletedAt != null) ===
+Total count: 7
+ID: 6c1806a2-4853-4e21-81d4-1241c0e58164 | Email: harsh@botspring.in | Role: RECRUITER | Active: true | Status: ACTIVE | DeletedAt: null
+ID: 29f1bbd7-38cc-483b-a05e-ce0f7b1106d2 | Email: divyanshu@botspring.in | Role: RECRUITER | Active: true | Status: ACTIVE | DeletedAt: null
+ID: 1946d916-2bc9-4cab-9632-d8414da17fe2 | Email: kashyap@botspring.in | Role: RECRUITER | Active: true | Status: ACTIVE | DeletedAt: null
+ID: 8a71102e-22e9-4239-aa81-c84ccf680189 | Email: vikrant@botspring.in | Role: RECRUITER | Active: true | Status: ACTIVE | DeletedAt: null
+ID: 21fcdbe1-22e2-4f30-8a38-c17f4475f3f5 | Email: ankur@botspring.in | Role: AGENCY_OWNER | Active: true | Status: ACTIVE | DeletedAt: null
+ID: 8262c1ef-b842-4949-84cf-c7a38513ae00 | Email: neetu@botspring.in | Role: AGENCY_OWNER | Active: true | Status: ACTIVE | DeletedAt: null
+ID: 90016ad0-2164-46ca-aebd-ed5ccd8ad243 | Email: superadmin@recruitos.in | Role: SUPER_ADMIN | Active: true | Status: ACTIVE | DeletedAt: null
+
+=== ALL AGENCIES ===
+ID: eacdd6d4-0586-4b58-91dc-752361ccd092 | Name: Botspring HQ | Subdomain: botspring-hq | Status: ACTIVE | DeletedAt: null
+ID: a0ad53ef-e550-4a50-bd11-3948d35d7879 | Name: Botspring LLP | Subdomain: botspring-llp | Status: ACTIVE | DeletedAt: null
