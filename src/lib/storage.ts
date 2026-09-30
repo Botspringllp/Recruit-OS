@@ -102,6 +102,24 @@ export async function uploadToStorage(options: UploadFileOptions): Promise<Uploa
     }
   }
 
+  // Always save a local copy to public/uploads to guarantee fast, offline local retrieval
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const localDirPath = path.join(process.cwd(), 'public', 'uploads', bucket, path.dirname(filePath));
+    if (!fs.existsSync(localDirPath)) {
+      fs.mkdirSync(localDirPath, { recursive: true });
+    }
+    const localFilePath = path.join(process.cwd(), 'public', 'uploads', bucket, filePath);
+    if (Buffer.isBuffer(fileBuffer)) {
+      fs.writeFileSync(localFilePath, fileBuffer);
+    } else if (fileBuffer instanceof Uint8Array) {
+      fs.writeFileSync(localFilePath, Buffer.from(fileBuffer));
+    }
+  } catch (localErr: any) {
+    console.warn('[Storage Local Backup] Failed to write local copy:', localErr.message);
+  }
+
   const fileUrl = `${baseUrl}/storage/v1/object/public/${bucket}/${filePath}`;
 
   let fileSize = 0;

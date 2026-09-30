@@ -6,15 +6,10 @@ import { PipelineStage, SlaStatus } from '@prisma/client';
 import { calculateSlaStatus } from '@/lib/sla';
 import { requirePermission } from '@/lib/rbac';
 
+import { getResolvedAgencyId } from '@/lib/agency/resolver';
+
 async function getDemoAgencyId(): Promise<string> {
-  const agency = await prisma.agency.findFirst({
-    where: { subdomain: 'demo' },
-    select: { id: true }
-  });
-  if (!agency) {
-    throw new Error('Default agency contextual record not found');
-  }
-  return agency.id;
+  return getResolvedAgencyId();
 }
 
 export type SubmissionActionResult = {

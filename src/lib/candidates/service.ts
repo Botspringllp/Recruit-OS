@@ -65,27 +65,62 @@ export async function importParsedCandidate(
     }
   }
 
-  // 1. Create Candidate Record in Prisma
-  const candidate = await prisma.candidateRecord.create({
-    data: {
+  // 1. Create or Update Candidate Record in Prisma (resilient to unique constraint collisions)
+  const existingCandidate = await prisma.candidateRecord.findFirst({
+    where: {
       agencyId,
-      firstName: candidateData.firstName,
-      lastName: candidateData.lastName,
-      email: candidateData.email,
-      phone: candidateData.phone,
-      currentCompany: candidateData.currentCompany || null,
-      currentDesignation: candidateData.currentDesignation || null,
-      totalExperienceYears: candidateData.totalExperienceYears,
-      noticePeriodDays: candidateData.noticePeriodDays || 60,
-      currentCtcLpa: candidateData.currentCtcLpa || null,
-      expectedCtcLpa: candidateData.expectedCtcLpa || null,
-      currentLocation: candidateData.currentLocation || null,
-      preferredLocations: candidateData.preferredLocations || [],
-      primarySkills: candidateData.skills || [],
-      sanitizedSummary: candidateData.summary || null,
-      assignedRecruiterId: validAssignedRecruiterId
+      OR: [
+        { email: candidateData.email },
+        ...(candidateData.phone ? [{ phone: candidateData.phone }] : [])
+      ]
     }
   });
+
+  let candidate;
+  if (existingCandidate) {
+    candidate = await prisma.candidateRecord.update({
+      where: { id: existingCandidate.id },
+      data: {
+        firstName: candidateData.firstName || existingCandidate.firstName,
+        lastName: candidateData.lastName || existingCandidate.lastName,
+        email: candidateData.email || existingCandidate.email,
+        phone: candidateData.phone || existingCandidate.phone,
+        currentCompany: candidateData.currentCompany || existingCandidate.currentCompany,
+        currentDesignation: candidateData.currentDesignation || existingCandidate.currentDesignation,
+        totalExperienceYears: candidateData.totalExperienceYears ?? existingCandidate.totalExperienceYears,
+        noticePeriodDays: candidateData.noticePeriodDays || existingCandidate.noticePeriodDays,
+        currentCtcLpa: candidateData.currentCtcLpa ?? existingCandidate.currentCtcLpa,
+        expectedCtcLpa: candidateData.expectedCtcLpa ?? existingCandidate.expectedCtcLpa,
+        currentLocation: candidateData.currentLocation || existingCandidate.currentLocation,
+        primarySkills: candidateData.skills && candidateData.skills.length > 0 ? candidateData.skills : existingCandidate.primarySkills,
+        sanitizedSummary: candidateData.summary || existingCandidate.sanitizedSummary,
+        assignedRecruiterId: validAssignedRecruiterId || existingCandidate.assignedRecruiterId,
+        deletedAt: null,
+        updatedAt: new Date()
+      }
+    });
+  } else {
+    candidate = await prisma.candidateRecord.create({
+      data: {
+        agencyId,
+        firstName: candidateData.firstName,
+        lastName: candidateData.lastName,
+        email: candidateData.email,
+        phone: candidateData.phone,
+        currentCompany: candidateData.currentCompany || null,
+        currentDesignation: candidateData.currentDesignation || null,
+        totalExperienceYears: candidateData.totalExperienceYears,
+        noticePeriodDays: candidateData.noticePeriodDays || 60,
+        currentCtcLpa: candidateData.currentCtcLpa || null,
+        expectedCtcLpa: candidateData.expectedCtcLpa || null,
+        currentLocation: candidateData.currentLocation || null,
+        preferredLocations: candidateData.preferredLocations || [],
+        primarySkills: candidateData.skills || [],
+        sanitizedSummary: candidateData.summary || null,
+        assignedRecruiterId: validAssignedRecruiterId
+      }
+    });
+  }
 
   let documentId: string | undefined;
   let storagePath: string | undefined;
@@ -105,6 +140,14 @@ export async function importParsedCandidate(
 
       storagePath = uploadResult.filePath;
       storageUrl = uploadResult.fileUrl;
+
+      // Delete older RAW_RESUME documents for this candidate to ensure only the latest resume is attached
+      await prisma.candidateDocument.deleteMany({
+        where: {
+          candidateId: candidate.id,
+          documentType: DocCategory.RAW_RESUME
+        }
+      });
 
       // 3. Create Candidate Document Link in Database
       const doc = await prisma.candidateDocument.create({

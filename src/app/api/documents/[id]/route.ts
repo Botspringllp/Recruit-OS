@@ -171,9 +171,10 @@ export async function GET(
     // 1. Try local file path first if available
     if (doc.filePath) {
       const possibleLocalPaths = [
+        path.join(process.cwd(), 'public', 'uploads', bucket, doc.filePath),
+        path.join(process.cwd(), 'public', 'uploads', doc.filePath),
         path.join(process.cwd(), doc.filePath),
         path.join(process.cwd(), 'public', doc.filePath),
-        path.join(process.cwd(), 'public', 'uploads', doc.filePath),
         path.join(process.cwd(), 'uploads', doc.filePath)
       ];
 

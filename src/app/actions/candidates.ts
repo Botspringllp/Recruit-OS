@@ -5,15 +5,10 @@ import { prisma } from '@/lib/prisma';
 import { CandidateSource } from '@prisma/client';
 import { requirePermission } from '@/lib/rbac';
 
+import { getResolvedAgencyId } from '@/lib/agency/resolver';
+
 async function getDemoAgencyId(): Promise<string> {
-  const agency = await prisma.agency.findFirst({
-    where: { subdomain: 'demo' },
-    select: { id: true }
-  });
-  if (!agency) {
-    throw new Error('Default agency contextual record not found');
-  }
-  return agency.id;
+  return getResolvedAgencyId();
 }
 
 export type CandidateFormData = {
@@ -84,16 +79,42 @@ export async function createCandidateAction(prevState: any, formData: FormData, 
       return { success: false, errors };
     }
 
-    // Check duplicate email or phone within tenant
+    // Check duplicate email or phone within tenant (including soft-deleted)
     const existingCandidate = await prisma.candidateRecord.findFirst({
       where: {
         agencyId,
-        deletedAt: null,
         OR: [{ email }, { phone }]
       }
     });
 
+    const validSource = Object.values(CandidateSource).includes(sourceStr as CandidateSource)
+      ? (sourceStr as CandidateSource)
+      : CandidateSource.DIRECT_INTAKE;
+
     if (existingCandidate) {
+      if (existingCandidate.deletedAt) {
+        // Soft-deleted record found: restore and update with new candidate details
+        const reactivated = await prisma.candidateRecord.update({
+          where: { id: existingCandidate.id },
+          data: {
+            firstName,
+            lastName,
+            email,
+            phone,
+            currentCompany,
+            currentDesignation,
+            totalExperienceYears: totalExperienceYears !== null ? totalExperienceYears : undefined,
+            currentLocation,
+            source: validSource,
+            deletedAt: null,
+            updatedAt: new Date()
+          }
+        });
+
+        revalidatePath('/candidates');
+        return { success: true, candidateId: reactivated.id };
+      }
+
       if (existingCandidate.email === email) {
         return { success: false, error: 'A candidate with this email address already exists.' };
       }
@@ -101,10 +122,6 @@ export async function createCandidateAction(prevState: any, formData: FormData, 
         return { success: false, error: 'A candidate with this phone number already exists.' };
       }
     }
-
-    const validSource = Object.values(CandidateSource).includes(sourceStr as CandidateSource)
-      ? (sourceStr as CandidateSource)
-      : CandidateSource.DIRECT_INTAKE;
 
     const newCandidate = await prisma.candidateRecord.create({
       data: {
@@ -124,6 +141,9 @@ export async function createCandidateAction(prevState: any, formData: FormData, 
     revalidatePath('/candidates');
     return { success: true, candidateId: newCandidate.id };
   } catch (err: any) {
+    if (err.code === 'P2002' || err.message?.includes('Unique constraint failed')) {
+      return { success: false, error: 'A candidate with this phone number or email address already exists.' };
+    }
     return { success: false, error: err.message || 'Failed to create candidate record' };
   }
 }
@@ -216,7 +236,7 @@ export async function deleteCandidateAction(candidateId: string, userOverride?: 
     const agencyId = await getDemoAgencyId();
 
     const existing = await prisma.candidateRecord.findFirst({
-      where: { id: candidateId, agencyId, deletedAt: null }
+      where: { id: candidateId, deletedAt: null }
     });
 
     if (!existing) {

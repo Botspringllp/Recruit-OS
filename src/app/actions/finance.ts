@@ -6,16 +6,10 @@ import { Prisma } from '@prisma/client';
 import { logEvent } from '@/lib/logger';
 import { requirePermission } from '@/lib/rbac';
 
+import { getResolvedAgencyId } from '@/lib/agency/resolver';
+
 async function getDemoAgencyId(): Promise<string> {
-  const agency = await prisma.agency.findFirst({
-    where: { subdomain: 'demo' },
-    select: { id: true }
-  });
-  if (!agency) {
-    logEvent.authFailure('Demo agency contextual record not found');
-    throw new Error('Default agency contextual record not found');
-  }
-  return agency.id;
+  return getResolvedAgencyId();
 }
 
 export type FinanceActionResult = {
