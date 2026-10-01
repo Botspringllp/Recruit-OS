@@ -30,6 +30,7 @@ import {
   Paperclip
 } from 'lucide-react';
 import { updateClientDecisionAction } from '@/app/actions/clientSubmissions';
+import { scheduleClientInterviewAction } from '@/app/actions/interviews';
 
 export interface SubmittedCandidateViewItem {
   submissionId: string;
@@ -68,6 +69,96 @@ function formatFileSize(bytes?: number | null): string {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 }
 
+interface SlotPickerInputProps {
+  index: number;
+  value: string;
+  onChange: (val: string) => void;
+}
+
+function SlotPickerInput({ index, value, onChange }: SlotPickerInputProps) {
+  const dateStr = value && value.includes('T') ? value.split('T')[0] : new Date().toISOString().slice(0, 10);
+  const timePart = value && value.includes('T') ? value.split('T')[1] : '10:00';
+  
+  let rawHours = parseInt(timePart.split(':')[0] || '10', 10);
+  if (isNaN(rawHours)) rawHours = 10;
+  
+  let rawMinutes = parseInt(timePart.split(':')[1] || '00', 10);
+  if (isNaN(rawMinutes)) rawMinutes = 0;
+
+  const minuteOption = [0, 15, 30, 45].reduce((prev, curr) => 
+    Math.abs(curr - rawMinutes) < Math.abs(prev - rawMinutes) ? curr : prev
+  , 0);
+
+  const ampm = rawHours >= 12 ? 'PM' : 'AM';
+  let hour12 = rawHours % 12;
+  if (hour12 === 0) hour12 = 12;
+  const hour12Str = String(hour12).padStart(2, '0');
+  const minuteStr = String(minuteOption).padStart(2, '0');
+
+  function updateSlot(newDateStr: string, newHour12: string, newMin: string, newAmPm: string) {
+    let hr = parseInt(newHour12, 10);
+    if (newAmPm === 'PM' && hr < 12) hr += 12;
+    if (newAmPm === 'AM' && hr === 12) hr = 0;
+
+    const hrStr = String(hr).padStart(2, '0');
+    const minStr = String(newMin).padStart(2, '0');
+    const isoVal = `${newDateStr}T${hrStr}:${minStr}`;
+    onChange(isoVal);
+  }
+
+  return (
+    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 bg-slate-50 p-2.5 rounded-2xl border border-slate-200">
+      <div className="flex items-center gap-2.5 flex-1">
+        <span className="text-xs font-black text-amber-800 bg-amber-100 h-6 w-6 rounded-lg flex items-center justify-center shrink-0">
+          {index}
+        </span>
+
+        <input
+          type="date"
+          required
+          value={dateStr}
+          onChange={e => updateSlot(e.target.value, hour12Str, minuteStr, ampm)}
+          className="bg-white border border-slate-300 text-slate-900 rounded-xl px-2.5 py-1.5 text-xs font-bold focus:ring-2 focus:ring-amber-500 outline-none flex-1 min-w-[120px]"
+        />
+      </div>
+
+      <div className="flex items-center gap-1.5 justify-end">
+        <select
+          value={hour12Str}
+          onChange={e => updateSlot(dateStr, e.target.value, minuteStr, ampm)}
+          className="bg-white border border-slate-300 text-slate-900 font-black rounded-xl px-2 py-1.5 text-xs focus:ring-2 focus:ring-amber-500 outline-none cursor-pointer"
+        >
+          {['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'].map(h => (
+            <option key={h} value={h}>{h}</option>
+          ))}
+        </select>
+
+        <span className="text-xs font-black text-slate-400">:</span>
+
+        <select
+          value={minuteStr}
+          onChange={e => updateSlot(dateStr, hour12Str, e.target.value, ampm)}
+          className="bg-white border border-slate-300 text-slate-900 font-black rounded-xl px-2 py-1.5 text-xs focus:ring-2 focus:ring-amber-500 outline-none cursor-pointer"
+        >
+          <option value="00">00</option>
+          <option value="15">15</option>
+          <option value="30">30</option>
+          <option value="45">45</option>
+        </select>
+
+        <select
+          value={ampm}
+          onChange={e => updateSlot(dateStr, hour12Str, minuteStr, e.target.value)}
+          className="bg-amber-100/80 border border-amber-300 text-amber-950 font-black rounded-xl px-2.5 py-1.5 text-xs focus:ring-2 focus:ring-amber-500 outline-none cursor-pointer"
+        >
+          <option value="AM">AM</option>
+          <option value="PM">PM</option>
+        </select>
+      </div>
+    </div>
+  );
+}
+
 interface ClientReviewPortalViewProps {
   token: string;
   positionTitle: string;
@@ -85,6 +176,18 @@ export function ClientReviewPortalView({
 }: ClientReviewPortalViewProps) {
   const [candidates, setCandidates] = useState<SubmittedCandidateViewItem[]>(initialCandidates);
   const [loadingMap, setLoadingMap] = useState<Record<string, boolean>>({});
+
+  // Interview Scheduling Modal State
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [targetCandidateForScheduling, setTargetCandidateForScheduling] = useState<SubmittedCandidateViewItem | null>(null);
+  const [interviewTypeSelect, setInterviewTypeSelect] = useState<string>('Technical Round');
+  const [customInterviewType, setCustomInterviewType] = useState<string>('');
+  const [interviewNotes, setInterviewNotes] = useState<string>('');
+  const [slot1, setSlot1] = useState<string>('');
+  const [slot2, setSlot2] = useState<string>('');
+  const [slot3, setSlot3] = useState<string>('');
+  const [scheduleSubmitting, setScheduleSubmitting] = useState(false);
+  const [scheduleError, setScheduleError] = useState<string | null>(null);
 
   // Group candidates by Job Mandate (jobId or jobTitle)
   const jobsMap = React.useMemo(() => {
@@ -134,7 +237,82 @@ export function ClientReviewPortalView({
   // Currently selected Candidate Object (for Level 3 Profile View)
   const selectedCandidate = candidates.find(c => c.candidateId === selectedCandidateId) || jobCandidates[0];
 
+  function openInterviewScheduleModal(cand: SubmittedCandidateViewItem) {
+    setTargetCandidateForScheduling(cand);
+    setInterviewTypeSelect('Technical Round');
+    setCustomInterviewType('');
+    setInterviewNotes('');
+    
+    // Set smart defaults for slots
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(10, 0, 0, 0);
+    setSlot1(tomorrow.toISOString().slice(0, 16));
+
+    const tomorrow2 = new Date(tomorrow);
+    tomorrow2.setHours(14, 0, 0, 0);
+    setSlot2(tomorrow2.toISOString().slice(0, 16));
+
+    const dayAfter = new Date(tomorrow);
+    dayAfter.setDate(dayAfter.getDate() + 1);
+    dayAfter.setHours(11, 0, 0, 0);
+    setSlot3(dayAfter.toISOString().slice(0, 16));
+
+    setScheduleError(null);
+    setIsScheduleModalOpen(true);
+  }
+
+  async function submitInterviewScheduleModal(e: React.FormEvent) {
+    e.preventDefault();
+    if (!targetCandidateForScheduling) return;
+    if (!slot1 || !slot2 || !slot3) {
+      setScheduleError('Please provide all 3 proposed interview time slots.');
+      return;
+    }
+
+    const finalInterviewType =
+      interviewTypeSelect === 'Custom'
+        ? customInterviewType.trim() || 'Custom Round'
+        : interviewTypeSelect;
+
+    setScheduleSubmitting(true);
+    setScheduleError(null);
+
+    const res = await scheduleClientInterviewAction({
+      submissionId: targetCandidateForScheduling.submissionId,
+      token,
+      interviewType: finalInterviewType,
+      interviewNotes,
+      slot1,
+      slot2,
+      slot3
+    });
+
+    setScheduleSubmitting(false);
+
+    if (res.success) {
+      setCandidates(prev =>
+        prev.map(c =>
+          c.submissionId === targetCandidateForScheduling.submissionId
+            ? { ...c, status: 'INTERVIEW' }
+            : c
+        )
+      );
+      setIsScheduleModalOpen(false);
+      alert(`Interview invitation & 3 proposed slots sent for ${targetCandidateForScheduling.firstName} ${targetCandidateForScheduling.lastName}!`);
+    } else {
+      setScheduleError(res.error || 'Failed to schedule interview.');
+    }
+  }
+
   async function handleDecision(submissionId: string, decision: 'INTERVIEW' | 'HOLD' | 'REJECT') {
+    const cand = candidates.find(c => c.submissionId === submissionId);
+    
+    if (decision === 'INTERVIEW' && cand) {
+      openInterviewScheduleModal(cand);
+      return;
+    }
+
     setLoadingMap(prev => ({ ...prev, [submissionId]: true }));
 
     const res = await updateClientDecisionAction(submissionId, token, decision);
@@ -813,6 +991,127 @@ export function ClientReviewPortalView({
         )}
 
       </main>
+
+      {/* INTERVIEW SCHEDULING MODAL (PHASE IW-01) */}
+      {isScheduleModalOpen && targetCandidateForScheduling && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-xl w-full p-6 sm:p-8 space-y-6 animate-in zoom-in-95 duration-200 overflow-hidden">
+            
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center font-black">
+                  <Calendar className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-slate-900">Propose Interview Availability</h3>
+                  <p className="text-xs font-semibold text-slate-500">
+                    Candidate: <strong className="text-slate-800">{targetCandidateForScheduling.firstName} {targetCandidateForScheduling.lastName}</strong>
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsScheduleModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 font-bold p-1 rounded-xl hover:bg-slate-100 transition"
+              >
+                ✕
+              </button>
+            </div>
+
+            {scheduleError && (
+              <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl text-xs font-bold text-rose-700 flex items-center gap-2">
+                <XCircle className="h-4 w-4 shrink-0 text-rose-600" />
+                <span>{scheduleError}</span>
+              </div>
+            )}
+
+            <form onSubmit={submitInterviewScheduleModal} className="space-y-5">
+              
+              {/* Interview Round Select */}
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-700 uppercase tracking-wider block">
+                  Interview Round Type
+                </label>
+                <select
+                  value={interviewTypeSelect}
+                  onChange={e => setInterviewTypeSelect(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 text-slate-900 font-bold text-xs rounded-xl focus:ring-2 focus:ring-amber-500 focus:bg-white outline-none cursor-pointer shadow-xs transition"
+                >
+                  <option value="Technical Round">Technical Round</option>
+                  <option value="HR Round">HR Round</option>
+                  <option value="Client Discussion">Client Discussion</option>
+                  <option value="Final Round">Final Round</option>
+                  <option value="Custom">Custom</option>
+                </select>
+
+                {interviewTypeSelect === 'Custom' && (
+                  <input
+                    type="text"
+                    required
+                    value={customInterviewType}
+                    onChange={e => setCustomInterviewType(e.target.value)}
+                    placeholder="Type custom interview round name..."
+                    className="w-full px-3.5 py-2.5 bg-white border border-slate-300 text-slate-900 font-bold text-xs rounded-xl focus:ring-2 focus:ring-amber-500 outline-none shadow-xs mt-2 transition"
+                  />
+                )}
+              </div>
+
+              {/* 3 Proposed Time Slots (Date & Time Inputs) */}
+              <div className="space-y-3">
+                <label className="text-xs font-black text-slate-700 uppercase tracking-wider block">
+                  Proposed Availability
+                </label>
+
+                <div className="space-y-2.5">
+                  <SlotPickerInput index={1} value={slot1} onChange={setSlot1} />
+                  <SlotPickerInput index={2} value={slot2} onChange={setSlot2} />
+                  <SlotPickerInput index={3} value={slot3} onChange={setSlot3} />
+                </div>
+              </div>
+
+              {/* Optional Client Notes */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-black text-slate-700 uppercase tracking-wider block">
+                  Interview Notes / Focus Areas (Optional)
+                </label>
+                <textarea
+                  rows={2}
+                  value={interviewNotes}
+                  onChange={e => setInterviewNotes(e.target.value)}
+                  placeholder="e.g. Focus on System Design, React performance, and past project architecture..."
+                  className="bg-slate-50 border border-slate-200 text-slate-900 rounded-2xl p-3 text-xs font-semibold w-full focus:ring-2 focus:ring-amber-500 outline-none resize-none"
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsScheduleModalOpen(false)}
+                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={scheduleSubmitting}
+                  className="px-6 py-2.5 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-500 text-white shadow-md transition flex items-center gap-2 cursor-pointer"
+                >
+                  {scheduleSubmitting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <CheckCircle className="h-4 w-4" />
+                  )}
+                  <span>Send Interview Invitation</span>
+                </button>
+              </div>
+
+            </form>
+
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

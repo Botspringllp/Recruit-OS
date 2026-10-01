@@ -317,3 +317,463 @@ export async function updateInterviewStatusAction(
     return { success: false, error: err.message || 'Failed to update interview status' };
   }
 }
+
+/**
+ * SECTION A & B: Client Interview Scheduling Action (Triggered from Client Review Portal)
+ */
+export async function scheduleClientInterviewAction(payload: {
+  submissionId: string;
+  token: string;
+  interviewType: string;
+  interviewNotes?: string;
+  slot1: string;
+  slot2: string;
+  slot3: string;
+}): Promise<{
+  success: boolean;
+  interviewId?: string;
+  candidateToken?: string;
+  error?: string;
+}> {
+  try {
+    const { submissionId, token, interviewType, interviewNotes, slot1, slot2, slot3 } = payload;
+
+    if (!submissionId || !token) {
+      return { success: false, error: 'Invalid candidate submission request.' };
+    }
+
+    if (!interviewType || !interviewType.trim()) {
+      return { success: false, error: 'Interview type is required.' };
+    }
+
+    if (!slot1 || !slot2 || !slot3) {
+      return { success: false, error: 'Minimum 3 availability slots are required.' };
+    }
+
+    const d1 = new Date(slot1);
+    const d2 = new Date(slot2);
+    const d3 = new Date(slot3);
+
+    if (isNaN(d1.getTime()) || isNaN(d2.getTime()) || isNaN(d3.getTime())) {
+      return { success: false, error: 'Invalid date/time format for one or more slots.' };
+    }
+
+    // Security check: Verify submission & secure token
+    const submission = await (prisma as any).candidateSubmission.findFirst({
+      where: {
+        id: submissionId,
+        secureReviewToken: token
+      },
+      include: {
+        job: {
+          select: {
+            id: true,
+            title: true,
+            agencyId: true,
+            client: { select: { companyName: true, contacts: { select: { email: true }, take: 1 } } }
+          }
+        },
+        candidate: {
+          select: { id: true, firstName: true, lastName: true, email: true, phone: true }
+        },
+        recruiter: {
+          select: { id: true, firstName: true, lastName: true, email: true }
+        }
+      }
+    });
+
+    if (!submission) {
+      return { success: false, error: 'Unauthorized or invalid submission review token.' };
+    }
+
+    const agencyId = submission.agencyId || submission.job.agencyId;
+    const crypto = await import('crypto');
+    const candidateToken = crypto.randomBytes(32).toString('hex');
+    const tokenExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days validity
+
+    // Map interview type string to enum if applicable
+    let mappedType: InterviewType = InterviewType.CLIENT_DISCUSSION;
+    if (interviewType === 'Technical Round') mappedType = InterviewType.TECHNICAL_ROUND;
+    else if (interviewType === 'HR Round') mappedType = InterviewType.HR_ROUND;
+    else if (interviewType === 'Client Discussion') mappedType = InterviewType.CLIENT_DISCUSSION;
+    else if (interviewType === 'Final Round') mappedType = InterviewType.FINAL_ROUND;
+    else if (interviewType === 'Custom') mappedType = InterviewType.CUSTOM;
+
+    // Create InterviewSchedule record
+    const interview = await prisma.interviewSchedule.create({
+      data: {
+        agencyId,
+        submissionId: submission.id,
+        roundType: mappedType,
+        notes: interviewNotes || null,
+        status: 'PENDING_SLOT_SELECTION',
+        candidateToken,
+        tokenExpiresAt,
+        meetingProvider: 'MANUAL',
+        createdBy: 'CLIENT'
+      }
+    });
+
+    // Create 3 ProposedInterviewSlot records
+    const slotTimes = [d1, d2, d3];
+    const createdSlots = await Promise.all(
+      slotTimes.map(st =>
+        prisma.proposedInterviewSlot.create({
+          data: {
+            agencyId,
+            submissionId: submission.id,
+            startTime: st,
+            endTime: new Date(st.getTime() + 45 * 60 * 1000),
+            isSelected: false
+          }
+        })
+      )
+    );
+
+    // Update Submission Status
+    await prisma.candidateSubmission.update({
+      where: { id: submission.id },
+      data: {
+        status: 'INTERVIEW',
+        updatedAt: new Date()
+      }
+    });
+
+    const candidateName = `${submission.candidate.firstName} ${submission.candidate.lastName}`.trim();
+    const positionTitle = submission.job.title;
+    const companyName = submission.job.client?.companyName || 'Client';
+
+    // SECTION I: Trigger Notification IW-01-A to Recruiter
+    if (submission.recruiter?.id) {
+      const { createNotification, NotificationType, NotificationCategory } = await import('@/lib/notifications');
+      await createNotification({
+        agencyId,
+        recipientUserId: submission.recruiter.id,
+        title: `Interview Requested: ${candidateName}`,
+        message: `Client ${companyName} requested an interview (${interviewType}) for ${candidateName} on ${positionTitle}. Waiting for candidate slot selection.`,
+        type: NotificationType.INFO,
+        category: NotificationCategory.CANDIDATE,
+        entityType: 'INTERVIEW',
+        entityId: interview.id
+      });
+    }
+
+    // SECTION C: Trigger Email Event CLIENT_INTERVIEW_INVITATION to Candidate & Recruiter
+    const { logClientInterviewInvitationEmail } = await import('@/lib/email');
+
+    const formattedSlots = slotTimes.map((st, idx) => ({
+      index: idx + 1,
+      dateTimeStr: st.toLocaleString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      })
+    }));
+
+    // Email to Candidate
+    if (submission.candidate.email) {
+      await logClientInterviewInvitationEmail(
+        agencyId,
+        submission.candidate.email,
+        candidateName,
+        positionTitle,
+        companyName,
+        interviewType,
+        interviewNotes,
+        formattedSlots,
+        candidateToken
+      );
+    }
+
+    // Email to Recruiter
+    if (submission.recruiter?.email) {
+      await logClientInterviewInvitationEmail(
+        agencyId,
+        submission.recruiter.email,
+        candidateName,
+        positionTitle,
+        companyName,
+        interviewType,
+        interviewNotes,
+        formattedSlots,
+        candidateToken
+      );
+    }
+
+    revalidatePath('/interviews');
+    revalidatePath('/submissions');
+
+    return {
+      success: true,
+      interviewId: interview.id,
+      candidateToken
+    };
+  } catch (err: any) {
+    console.error('Error in scheduleClientInterviewAction:', err);
+    return { success: false, error: err.message || 'Failed to schedule client interview.' };
+  }
+}
+
+/**
+ * SECTION D: Candidate Slot Selection Public Query Action
+ */
+export async function getInterviewSlotSelectionDataAction(candidateToken: string): Promise<{
+  success: boolean;
+  isConsumed?: boolean;
+  interview?: any;
+  error?: string;
+}> {
+  try {
+    if (!candidateToken || typeof candidateToken !== 'string') {
+      return { success: false, error: 'Invalid candidate interview link.' };
+    }
+
+    const interview = await (prisma as any).interviewSchedule.findUnique({
+      where: { candidateToken },
+      include: {
+        submission: {
+          include: {
+            job: {
+              select: {
+                title: true,
+                client: { select: { companyName: true } }
+              }
+            },
+            candidate: {
+              select: { firstName: true, lastName: true, email: true }
+            }
+          }
+        }
+      }
+    });
+
+    if (!interview) {
+      return { success: false, error: 'Interview scheduling link not found or invalid.' };
+    }
+
+    const slots = await prisma.proposedInterviewSlot.findMany({
+      where: { submissionId: interview.submissionId },
+      orderBy: { startTime: 'asc' }
+    });
+
+    const candidateName = `${interview.submission.candidate.firstName} ${interview.submission.candidate.lastName}`.trim();
+    const positionTitle = interview.submission.job.title;
+    const companyName = interview.submission.job.client?.companyName || 'Client Company';
+
+    const formattedSlots = slots.map((s, i) => ({
+      slotId: s.id,
+      index: i + 1,
+      startTime: s.startTime.toISOString(),
+      endTime: s.endTime.toISOString(),
+      isSelected: s.isSelected,
+      formattedStr: s.startTime.toLocaleString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      })
+    }));
+
+    return {
+      success: true,
+      isConsumed: !!interview.tokenConsumedAt,
+      interview: {
+        id: interview.id,
+        candidateName,
+        positionTitle,
+        companyName,
+        roundType: interview.roundType || 'Client Discussion',
+        notes: interview.notes,
+        status: interview.status,
+        confirmedStartTime: interview.confirmedStartTime ? interview.confirmedStartTime.toISOString() : null,
+        tokenConsumedAt: interview.tokenConsumedAt ? interview.tokenConsumedAt.toISOString() : null,
+        slots: formattedSlots
+      }
+    };
+  } catch (err: any) {
+    console.error('Error in getInterviewSlotSelectionDataAction:', err);
+    return { success: false, error: err.message || 'Failed to load interview slot details.' };
+  }
+}
+
+/**
+ * SECTION D & E: Candidate Slot Selection Submission Action
+ */
+export async function confirmCandidateSlotSelectionAction(
+  candidateToken: string,
+  selectedSlotId: string
+): Promise<{
+  success: boolean;
+  confirmedStartTime?: string;
+  error?: string;
+}> {
+  try {
+    if (!candidateToken || !selectedSlotId) {
+      return { success: false, error: 'Invalid candidate slot selection request.' };
+    }
+
+    const interview = await (prisma as any).interviewSchedule.findUnique({
+      where: { candidateToken },
+      include: {
+        submission: {
+          include: {
+            job: {
+              select: {
+                title: true,
+                agencyId: true,
+                client: {
+                  select: {
+                    companyName: true,
+                    contacts: { select: { email: true }, take: 1 }
+                  }
+                }
+              }
+            },
+            candidate: { select: { firstName: true, lastName: true, email: true } },
+            recruiter: { select: { id: true, email: true } }
+          }
+        }
+      }
+    });
+
+    if (!interview) {
+      return { success: false, error: 'Interview invitation token not found.' };
+    }
+
+    if (interview.tokenConsumedAt) {
+      return {
+        success: false,
+        error: `This interview slot link has already been used on ${new Date(interview.tokenConsumedAt).toLocaleString()}. Duplicate submissions are not allowed.`
+      };
+    }
+
+    const slot = await prisma.proposedInterviewSlot.findFirst({
+      where: { id: selectedSlotId, submissionId: interview.submissionId }
+    });
+
+    if (!slot) {
+      return { success: false, error: 'Selected time slot not found.' };
+    }
+
+    const agencyId = interview.agencyId || interview.submission.job.agencyId;
+
+    // Update selected slot
+    await prisma.proposedInterviewSlot.update({
+      where: { id: slot.id },
+      data: { isSelected: true }
+    });
+
+    // Update InterviewSchedule to SCHEDULED & mark token consumed
+    const updatedInterview = await prisma.interviewSchedule.update({
+      where: { id: interview.id },
+      data: {
+        slotId: slot.id,
+        confirmedStartTime: slot.startTime,
+        status: 'SCHEDULED',
+        tokenConsumedAt: new Date(),
+        updatedAt: new Date()
+      }
+    });
+
+    // Update CandidateSubmission stage to INTERVIEW_SCHEDULED
+    await prisma.candidateSubmission.update({
+      where: { id: interview.submissionId },
+      data: {
+        stage: PipelineStage.INTERVIEW_SCHEDULED,
+        updatedAt: new Date()
+      }
+    });
+
+    const candidateName = `${interview.submission.candidate.firstName} ${interview.submission.candidate.lastName}`.trim();
+    const positionTitle = interview.submission.job.title;
+    const companyName = interview.submission.job.client?.companyName || 'Client Company';
+    const selectedSlotStr = slot.startTime.toLocaleString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+
+    // SECTION I: Trigger Notifications IW-01-B & IW-01-C
+    const { createNotification, NotificationType, NotificationCategory } = await import('@/lib/notifications');
+
+    // Notify Recruiter
+    if (interview.submission.recruiter?.id) {
+      await createNotification({
+        agencyId,
+        recipientUserId: interview.submission.recruiter.id,
+        title: `Interview Scheduled: ${candidateName}`,
+        message: `Candidate ${candidateName} confirmed slot ${selectedSlotStr} for ${positionTitle} (${companyName}).`,
+        type: NotificationType.SUCCESS,
+        category: NotificationCategory.CANDIDATE,
+        entityType: 'INTERVIEW',
+        entityId: interview.id
+      });
+    }
+
+    // SECTION C & E: Trigger Email Event INTERVIEW_SLOT_SELECTED to Candidate, Recruiter, and Client
+    const { logInterviewSlotSelectedEmail } = await import('@/lib/email');
+
+    // Email Candidate
+    if (interview.submission.candidate.email) {
+      await logInterviewSlotSelectedEmail(
+        agencyId,
+        interview.submission.candidate.email,
+        candidateName,
+        positionTitle,
+        companyName,
+        interview.roundType || 'Client Discussion',
+        selectedSlotStr
+      );
+    }
+
+    // Email Recruiter
+    if (interview.submission.recruiter?.email) {
+      await logInterviewSlotSelectedEmail(
+        agencyId,
+        interview.submission.recruiter.email,
+        candidateName,
+        positionTitle,
+        companyName,
+        interview.roundType || 'Client Discussion',
+        selectedSlotStr
+      );
+    }
+
+    // Email Client Contact
+    const clientEmail = interview.submission.job.client?.contacts[0]?.email;
+    if (clientEmail) {
+      await logInterviewSlotSelectedEmail(
+        agencyId,
+        clientEmail,
+        candidateName,
+        positionTitle,
+        companyName,
+        interview.roundType || 'Client Discussion',
+        selectedSlotStr
+      );
+    }
+
+    revalidatePath('/interviews');
+    revalidatePath('/submissions');
+
+    return {
+      success: true,
+      confirmedStartTime: slot.startTime.toISOString()
+    };
+  } catch (err: any) {
+    console.error('Error in confirmCandidateSlotSelectionAction:', err);
+    return { success: false, error: err.message || 'Failed to confirm interview slot.' };
+  }
+}
+

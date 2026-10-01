@@ -658,3 +658,124 @@ Manage Subscription: ${ctaUrl}`;
     text: textContent
   };
 }
+export interface ClientInterviewInvitationParams {
+  agency: BaseAgencyContext;
+  candidateName: string;
+  positionTitle: string;
+  companyName: string;
+  interviewType: string;
+  interviewNotes?: string | null;
+  slots: Array<{ index: number; dateTimeStr: string }>;
+  token: string;
+  baseUrl?: string;
+}
+
+export function generateClientInterviewInvitationTemplate(params: ClientInterviewInvitationParams): RenderedEmail {
+  const { agency, candidateName, positionTitle, companyName, interviewType, interviewNotes, slots, token, baseUrl } = params;
+  const appUrl = baseUrl || DEFAULT_BASE_URL;
+  const title = `Interview Invitation: ${positionTitle} at ${companyName}`;
+  const slotSelectionUrl = `${appUrl}/interview/select/${token}`;
+
+  const slotsListHtml = slots.map(s => `
+    <tr style="border-bottom: 1px solid #e2e8f0;">
+      <td style="padding: 10px 12px; font-weight: 700; color: #0d3859; width: 80px;">Option ${s.index}:</td>
+      <td style="padding: 10px 12px; font-weight: 600; color: #1e293b;">${s.dateTimeStr}</td>
+    </tr>
+  `).join('');
+
+  const htmlContent = `
+    <p style="margin-top: 0;">Hello <strong>${candidateName}</strong>,</p>
+    <p>You have been invited for an interview for the position of <strong>${positionTitle}</strong> with <strong>${companyName}</strong>.</p>
+
+    <div style="background-color: #f1f5f9; border-left: 4px solid #0d3859; padding: 16px; border-radius: 6px; margin: 20px 0;">
+      <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="4" style="font-size: 13px; color: #1e293b;">
+        <tr><td width="35%" style="font-weight: 700; color: #475569;">Position Title:</td><td style="font-weight: 700; color: #0d3859;">${positionTitle}</td></tr>
+        <tr><td style="font-weight: 700; color: #475569;">Company Name:</td><td style="font-weight: 700;">${companyName}</td></tr>
+        <tr><td style="font-weight: 700; color: #475569;">Interview Type:</td><td><span style="background-color: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 11px;">${interviewType}</span></td></tr>
+        ${interviewNotes ? `<tr><td style="font-weight: 700; color: #475569;">Client Notes:</td><td>${interviewNotes}</td></tr>` : ''}
+      </table>
+    </div>
+
+    <h3 style="font-size: 15px; font-weight: 800; color: #0f172a; margin: 24px 0 12px 0;">Available Time Slots</h3>
+    <div style="background-color: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; margin-bottom: 24px;">
+      <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="font-size: 13px;">
+        <tbody>
+          ${slotsListHtml}
+        </tbody>
+      </table>
+    </div>
+
+    <p>Please click the button below to confirm your preferred interview slot.</p>
+  `;
+
+  const textContent = `Interview Invitation: ${positionTitle} at ${companyName}\n
+Candidate Name: ${candidateName}
+Position: ${positionTitle}
+Company: ${companyName}
+Interview Type: ${interviewType}
+${interviewNotes ? `Notes: ${interviewNotes}\n` : ''}
+Available Slots:
+${slots.map(s => `Option ${s.index}: ${s.dateTimeStr}`).join('\n')}
+
+Choose Interview Slot: ${slotSelectionUrl}`;
+
+  return {
+    subject: title,
+    html: wrapMasterLayout(agency, title, htmlContent, { label: 'Choose Interview Slot', url: slotSelectionUrl }),
+    text: textContent
+  };
+}
+
+// =========================================================
+// 11. INTERVIEW SLOT SELECTED TEMPLATE (Section C)
+// =========================================================
+export interface InterviewSlotSelectedParams {
+  agency: BaseAgencyContext;
+  candidateName: string;
+  positionTitle: string;
+  companyName: string;
+  interviewType: string;
+  selectedSlotStr: string;
+  baseUrl?: string;
+}
+
+export function generateInterviewSlotSelectedTemplate(params: InterviewSlotSelectedParams): RenderedEmail {
+  const { agency, candidateName, positionTitle, companyName, interviewType, selectedSlotStr, baseUrl } = params;
+  const appUrl = baseUrl || DEFAULT_BASE_URL;
+  const title = `Interview Confirmed - ${candidateName} (${positionTitle})`;
+  const ctaUrl = `${appUrl}/interviews`;
+
+  const htmlContent = `
+    <p style="margin-top: 0;">The interview slot has been confirmed by candidate <strong>${candidateName}</strong>.</p>
+
+    <div style="background-color: #ecfdf5; border-left: 4px solid #10b981; padding: 16px; border-radius: 6px; margin: 20px 0;">
+      <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="4" style="font-size: 13px; color: #1e293b;">
+        <tr><td width="35%" style="font-weight: 700; color: #047857;">Candidate Name:</td><td style="font-weight: 800; color: #065f46;">${candidateName}</td></tr>
+        <tr><td style="font-weight: 700; color: #047857;">Position:</td><td style="font-weight: 700; color: #0d3859;">${positionTitle}</td></tr>
+        <tr><td style="font-weight: 700; color: #047857;">Company:</td><td>${companyName}</td></tr>
+        <tr><td style="font-weight: 700; color: #047857;">Interview Round:</td><td>${interviewType}</td></tr>
+        <tr><td style="font-weight: 700; color: #047857;">Confirmed Slot:</td><td style="font-weight: 800; color: #0d3859;">${selectedSlotStr}</td></tr>
+        <tr><td style="font-weight: 700; color: #047857;">Status:</td><td><span style="background-color: #d1fae5; color: #065f46; padding: 2px 8px; border-radius: 4px; font-weight: 800; font-size: 11px;">SCHEDULED</span></td></tr>
+      </table>
+    </div>
+
+    <p>The status of this candidate submission has been updated to <strong>SCHEDULED</strong> in RecruitOS.</p>
+  `;
+
+  const textContent = `Interview Confirmed - ${candidateName} (${positionTitle})\n
+Candidate Name: ${candidateName}
+Position: ${positionTitle}
+Company: ${companyName}
+Interview Round: ${interviewType}
+Confirmed Slot: ${selectedSlotStr}
+Status: SCHEDULED
+
+Open Interviews: ${ctaUrl}`;
+
+  return {
+    subject: title,
+    html: wrapMasterLayout(agency, title, htmlContent, { label: 'Open Interviews Hub', url: ctaUrl }),
+    text: textContent
+  };
+}
+

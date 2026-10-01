@@ -42,7 +42,8 @@ export default async function InterviewDetailPage({ params }: InterviewDetailPag
 
   const candidate = interview.submission.candidate;
   const job = interview.submission.job;
-  const scheduledTime = new Date(interview.confirmedStartTime);
+  const hasConfirmedTime = Boolean(interview.confirmedStartTime);
+  const scheduledTime = hasConfirmedTime ? new Date(interview.confirmedStartTime!) : null;
 
   return (
     <div className="space-y-6 pb-12">
@@ -100,7 +101,9 @@ export default async function InterviewDetailPage({ params }: InterviewDetailPag
               <div>
                 <span className="text-slate-400 text-[11px] block">Date & Time</span>
                 <span className="font-bold text-white text-sm">
-                  {scheduledTime.toLocaleDateString()} at {scheduledTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  {scheduledTime
+                    ? `${scheduledTime.toLocaleDateString()} at ${scheduledTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                    : 'Awaiting Candidate Slot Selection'}
                 </span>
               </div>
               <div>

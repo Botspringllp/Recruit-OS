@@ -127,6 +127,7 @@ export default async function InterviewsPage({ searchParams }: InterviewsPagePro
               className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 font-bold focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 transition-all duration-200"
             >
               <option value="">All Statuses</option>
+              <option value="PENDING_SLOT_SELECTION">AWAITING CANDIDATE SLOT</option>
               <option value="SCHEDULED">SCHEDULED</option>
               <option value="CONFIRMED">CONFIRMED</option>
               <option value="RESCHEDULED">RESCHEDULED</option>
@@ -145,11 +146,10 @@ export default async function InterviewsPage({ searchParams }: InterviewsPagePro
             >
               <option value="">All Round Types</option>
               <option value="HR_ROUND">HR Round</option>
-              <option value="TECHNICAL_ASSESSMENT">Technical Assessment</option>
-              <option value="CLIENT_ROUND_1">Client Round 1</option>
-              <option value="CLIENT_ROUND_2">Client Round 2</option>
-              <option value="FINAL_MANAGERIAL">Final Managerial</option>
-              <option value="INTERNAL_SCREENING">Internal Screening</option>
+              <option value="TECHNICAL_ROUND">Technical Round</option>
+              <option value="CLIENT_DISCUSSION">Client Discussion</option>
+              <option value="FINAL_ROUND">Final Round</option>
+              <option value="CUSTOM">Custom</option>
             </select>
           </div>
 
@@ -172,7 +172,8 @@ export default async function InterviewsPage({ searchParams }: InterviewsPagePro
           interviews.map((interview) => {
             const candidate = interview.submission.candidate;
             const job = interview.submission.job;
-            const scheduledTime = new Date(interview.confirmedStartTime);
+            const hasConfirmedTime = Boolean(interview.confirmedStartTime);
+            const scheduledTime = hasConfirmedTime ? new Date(interview.confirmedStartTime!) : null;
 
             return (
               <div
@@ -185,12 +186,23 @@ export default async function InterviewsPage({ searchParams }: InterviewsPagePro
                     <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-indigo-100 text-indigo-950 border border-indigo-300 uppercase tracking-wide">
                       {interview.roundType ? interview.roundType.replace('_', ' ') : 'INTERVIEW ROUND'}
                     </span>
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-100 text-purple-950 border border-purple-300 uppercase tracking-wide">
-                      {interview.mode ? interview.mode.replace('_', ' ') : 'VIRTUAL'}
-                    </span>
+                    
+                    {interview.status === 'PENDING_SLOT_SELECTION' ? (
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300 uppercase tracking-wide flex items-center gap-1">
+                        <Clock className="h-3 w-3 text-amber-600" />
+                        AWAITING CANDIDATE SLOT SELECTION
+                      </span>
+                    ) : (
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-100 text-purple-950 border border-purple-300 uppercase tracking-wide">
+                        {interview.mode ? interview.mode.replace('_', ' ') : 'VIRTUAL'}
+                      </span>
+                    )}
+
                     <span className="text-xs text-slate-700 font-bold flex items-center gap-1">
                       <Clock className="h-3.5 w-3.5 text-indigo-600" />
-                      {scheduledTime.toLocaleDateString()} at {scheduledTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} ({interview.durationMinutes} mins)
+                      {scheduledTime
+                        ? `${scheduledTime.toLocaleDateString()} at ${scheduledTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                        : 'Proposed slots sent (Awaiting selection)'}
                     </span>
                   </div>
 

@@ -31,7 +31,7 @@ export default async function EditInterviewPage({ params }: EditInterviewPagePro
   }
 
   // Format scheduledAt to datetime-local ISO format: YYYY-MM-DDTHH:mm
-  const scheduledDate = new Date(interview.confirmedStartTime);
+  const scheduledDate = interview.confirmedStartTime ? new Date(interview.confirmedStartTime) : new Date();
   const scheduledAtFormatted = scheduledDate.toISOString().slice(0, 16);
 
   const initialData = {

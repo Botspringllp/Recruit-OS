@@ -7,6 +7,8 @@ import {
   generateRequirementRejectedTemplate,
   generateCandidateSubmissionTemplate,
   generateInterviewSelectedTemplate,
+  generateClientInterviewInvitationTemplate,
+  generateInterviewSlotSelectedTemplate,
   generateCandidateHoldTemplate,
   generateCandidateRejectedTemplate,
   generateSubscriptionExpiryTemplate,
@@ -20,6 +22,8 @@ export enum EmailEventType {
   REQUIREMENT_REJECTED = 'REQUIREMENT_REJECTED',
   CANDIDATE_SUBMITTED = 'CANDIDATE_SUBMITTED',
   CLIENT_INTERVIEW = 'CLIENT_INTERVIEW',
+  CLIENT_INTERVIEW_INVITATION = 'CLIENT_INTERVIEW_INVITATION',
+  INTERVIEW_SLOT_SELECTED = 'INTERVIEW_SLOT_SELECTED',
   CLIENT_HOLD = 'CLIENT_HOLD',
   CLIENT_REJECT = 'CLIENT_REJECT',
   SUBSCRIPTION_EXPIRY = 'SUBSCRIPTION_EXPIRY',
@@ -610,6 +614,89 @@ export async function logSubscriptionExpiryEmail(
       daysRemaining,
       planName,
       expiryDate
+    }
+  });
+}
+
+/**
+ * Helper: Logs CLIENT_INTERVIEW_INVITATION email event (Section C)
+ */
+export async function logClientInterviewInvitationEmail(
+  agencyId: string | null,
+  recipientEmail: string,
+  candidateName: string,
+  positionTitle: string,
+  companyName: string,
+  interviewType: string,
+  interviewNotes: string | null | undefined,
+  slots: Array<{ index: number; dateTimeStr: string }>,
+  token: string
+) {
+  const agency = await fetchAgencyContext(agencyId);
+  const rendered = generateClientInterviewInvitationTemplate({
+    agency,
+    candidateName,
+    positionTitle,
+    companyName,
+    interviewType,
+    interviewNotes,
+    slots,
+    token
+  });
+
+  return createEmailLog({
+    agencyId,
+    eventType: EmailEventType.CLIENT_INTERVIEW_INVITATION,
+    recipientEmail,
+    subject: rendered.subject,
+    htmlBody: rendered.html,
+    textBody: rendered.text,
+    metadata: {
+      candidateName,
+      positionTitle,
+      companyName,
+      interviewType,
+      token,
+      slotCount: slots.length
+    }
+  });
+}
+
+/**
+ * Helper: Logs INTERVIEW_SLOT_SELECTED email event (Section C & E)
+ */
+export async function logInterviewSlotSelectedEmail(
+  agencyId: string | null,
+  recipientEmail: string,
+  candidateName: string,
+  positionTitle: string,
+  companyName: string,
+  interviewType: string,
+  selectedSlotStr: string
+) {
+  const agency = await fetchAgencyContext(agencyId);
+  const rendered = generateInterviewSlotSelectedTemplate({
+    agency,
+    candidateName,
+    positionTitle,
+    companyName,
+    interviewType,
+    selectedSlotStr
+  });
+
+  return createEmailLog({
+    agencyId,
+    eventType: EmailEventType.INTERVIEW_SLOT_SELECTED,
+    recipientEmail,
+    subject: rendered.subject,
+    htmlBody: rendered.html,
+    textBody: rendered.text,
+    metadata: {
+      candidateName,
+      positionTitle,
+      companyName,
+      interviewType,
+      selectedSlotStr
     }
   });
 }
