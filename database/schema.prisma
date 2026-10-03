@@ -221,6 +221,7 @@ enum MeetingProvider {
   GOOGLE_MEET
   ZOOM
   MICROSOFT_TEAMS
+  JITSI
   MANUAL
 
   @@map("meeting_provider")
@@ -326,6 +327,8 @@ model Agency {
   websiteConfiguration   WebsiteConfiguration?
   realNotifications      Notification[]
   emailLogs              EmailLog[]
+  interviewFeedbacks     InterviewFeedback[]
+  preparationKits        InterviewPreparationKit[]
 
   @@map("agencies")
 }
@@ -490,6 +493,7 @@ model CandidateRecord {
   partnerSubmissions     PartnerCandidateSubmission[]
   storefrontShowcases    StorefrontTalentShowcase[]
   discussionNote         CandidateDiscussionNote?
+  preparationKits        InterviewPreparationKit[]
 
   @@unique([agencyId, phone], name: "ux_candidate_agency_phone")
   @@unique([agencyId, email], name: "ux_candidate_agency_email")
@@ -665,6 +669,8 @@ model CandidateSubmission {
   clientHrHandoffs   ClientHrHandoff[]
   probationTracker   ProbationGuaranteeTracker?
   partnerSplits      PartnerSplitLedger[]
+  interviewFeedbacks InterviewFeedback[]
+  preparationKits    InterviewPreparationKit[]
 
   @@unique([jobId, candidateId], name: "ux_submission_job_candidate")
   @@index([agencyId, stage])
@@ -776,6 +782,14 @@ model InterviewSchedule {
   meetingProvider    MeetingProvider? @default(MANUAL) @map("meeting_provider")
   meetingLink        String?          @map("meeting_link")
   meetingUrl         String?          @map("meeting_url") @db.VarChar(512)
+  meetingId          String?          @map("meeting_id") @db.VarChar(255)
+  hostUserId         String?          @map("host_user_id") @db.Uuid
+  scheduledStart     DateTime?        @map("scheduled_start") @db.Timestamptz
+  scheduledEnd       DateTime?        @map("scheduled_end") @db.Timestamptz
+  candidateJoinedAt  DateTime?        @map("candidate_joined_at") @db.Timestamptz
+  clientJoinedAt     DateTime?        @map("client_joined_at") @db.Timestamptz
+  recruiterJoinedAt  DateTime?        @map("recruiter_joined_at") @db.Timestamptz
+  meetingStatus      String?          @default("SCHEDULED") @map("meeting_status") @db.VarChar(32)
   meetingGeneratedAt DateTime?        @map("meeting_generated_at") @db.Timestamptz
   notes              String?          @map("notes")
   status             String           @default("PENDING_SLOT_SELECTION") @map("status") @db.VarChar(32)
@@ -792,8 +806,29 @@ model InterviewSchedule {
   slot              ProposedInterviewSlot?       @relation(fields: [slotId], references: [id], onDelete: SetNull)
   prepLogs          CandidatePrepLog[]
   interviewFeedback CandidateInterviewFeedback[]
+  feedbacks         InterviewFeedback[]
+  preparationKit    InterviewPreparationKit?
 
   @@map("interview_schedules")
+}
+
+model InterviewFeedback {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @map("feedback_id") @db.Uuid
+  agencyId      String   @map("agency_id") @db.Uuid
+  interviewId   String   @map("interview_id") @db.Uuid
+  submissionId  String   @map("submission_id") @db.Uuid
+  rating        Int?     @map("rating")
+  feedbackNotes String?  @map("feedback_notes")
+  decision      String   @map("decision") @db.VarChar(32)
+  submittedBy   String   @default("CLIENT") @map("submitted_by") @db.VarChar(32)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  agency     Agency              @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  interview  InterviewSchedule   @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+  submission CandidateSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@map("interview_feedbacks")
 }
 
 model CandidatePrepLog {
@@ -821,6 +856,54 @@ model CandidateInterviewFeedback {
   schedule InterviewSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
 
   @@map("candidate_interview_feedback")
+}
+
+enum InterviewPreparationStatus {
+  PENDING
+  SENT
+  OPENED
+  COMPLETED
+  EXPIRED
+
+  @@map("interview_preparation_status")
+}
+
+model InterviewPreparationKit {
+  id                    String                     @id @default(dbgenerated("gen_random_uuid()")) @map("prep_kit_id") @db.Uuid
+  agencyId              String                     @map("agency_id") @db.Uuid
+  interviewScheduleId   String                     @unique @map("interview_schedule_id") @db.Uuid
+  candidateId           String                     @map("candidate_id") @db.Uuid
+  candidateSubmissionId String                     @map("candidate_submission_id") @db.Uuid
+  secureToken           String                     @unique @default(dbgenerated("gen_random_uuid()")) @map("secure_token") @db.VarChar(255)
+  title                 String                     @db.VarChar(255)
+  description           String?                    @db.Text
+  companyOverview       String?                    @map("company_overview") @db.Text
+  jobSummary            String?                    @map("job_summary") @db.Text
+  skillsToRevise        String[]                   @map("skills_to_revise")
+  bestPractices         String[]                   @map("best_practices")
+  meetingInstructions   String?                    @map("meeting_instructions") @db.Text
+  contactInfo           String?                    @map("contact_info") @db.Text
+  checklistItems        Json?                      @default("[]") @map("checklist_items") @db.JsonB
+  candidateNotes        String?                    @map("candidate_notes") @db.Text
+  status                InterviewPreparationStatus @default(PENDING)
+  sentAt                DateTime?                  @map("sent_at") @db.Timestamptz
+  openedAt              DateTime?                  @map("opened_at") @db.Timestamptz
+  completedAt           DateTime?                  @map("completed_at") @db.Timestamptz
+  firstReminderSentAt   DateTime?                  @map("first_reminder_sent_at") @db.Timestamptz
+  secondReminderSentAt  DateTime?                  @map("second_reminder_sent_at") @db.Timestamptz
+  createdAt             DateTime                   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt             DateTime                   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  agency     Agency              @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  interview  InterviewSchedule   @relation(fields: [interviewScheduleId], references: [id], onDelete: Cascade)
+  candidate  CandidateRecord     @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  submission CandidateSubmission @relation(fields: [candidateSubmissionId], references: [id], onDelete: Cascade)
+
+  @@index([agencyId])
+  @@index([interviewScheduleId])
+  @@index([candidateSubmissionId])
+  @@index([status])
+  @@map("interview_preparation_kits")
 }
 
 // =============================================================================
@@ -1463,6 +1546,14 @@ enum EmailEventType {
   CLIENT_REJECT
   SUBSCRIPTION_EXPIRY
   SMTP_TEST
+  INTERVIEW_SELECTED
+  INTERVIEW_HOLD
+  INTERVIEW_REJECTED
+  INTERVIEW_FEEDBACK_PENDING
+  INTERVIEW_CONFIRMED
+  INTERVIEW_PREP_SENT
+  INTERVIEW_PREP_REMINDER
+  INTERVIEW_PREP_FINAL_REMINDER
 
   @@map("email_event_type")
 }

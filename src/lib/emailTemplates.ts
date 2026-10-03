@@ -736,45 +736,205 @@ export interface InterviewSlotSelectedParams {
   companyName: string;
   interviewType: string;
   selectedSlotStr: string;
+  meetingUrl?: string | null;
+  timezoneStr?: string;
+  recipientType?: 'CANDIDATE' | 'RECRUITER' | 'CLIENT';
   baseUrl?: string;
 }
 
 export function generateInterviewSlotSelectedTemplate(params: InterviewSlotSelectedParams): RenderedEmail {
-  const { agency, candidateName, positionTitle, companyName, interviewType, selectedSlotStr, baseUrl } = params;
+  const { agency, candidateName, positionTitle, companyName, interviewType, selectedSlotStr, meetingUrl, timezoneStr, recipientType = 'CANDIDATE', baseUrl } = params;
   const appUrl = baseUrl || DEFAULT_BASE_URL;
-  const title = `Interview Confirmed - ${candidateName} (${positionTitle})`;
-  const ctaUrl = `${appUrl}/interviews`;
+  const title = `Interview Confirmed - ${positionTitle} at ${companyName}`;
+  const tzName = timezoneStr || 'IST (UTC+5:30)';
+  
+  const meetingLinkDisplay = meetingUrl || `https://meet.jit.si/recruitos-interview-${encodeURIComponent(candidateName.toLowerCase().replace(/\s+/g, '-'))}`;
+  const cta = { label: 'Join Interview', url: meetingLinkDisplay };
 
   const htmlContent = `
-    <p style="margin-top: 0;">The interview slot has been confirmed by candidate <strong>${candidateName}</strong>.</p>
+    <p style="margin-top: 0;">Your interview has been officially confirmed and scheduled.</p>
 
-    <div style="background-color: #ecfdf5; border-left: 4px solid #10b981; padding: 16px; border-radius: 6px; margin: 20px 0;">
-      <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="4" style="font-size: 13px; color: #1e293b;">
+    <div style="background-color: #ecfdf5; border-left: 4px solid #10b981; padding: 18px; border-radius: 8px; margin: 20px 0;">
+      <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="5" style="font-size: 13px; color: #1e293b;">
         <tr><td width="35%" style="font-weight: 700; color: #047857;">Candidate Name:</td><td style="font-weight: 800; color: #065f46;">${candidateName}</td></tr>
-        <tr><td style="font-weight: 700; color: #047857;">Position:</td><td style="font-weight: 700; color: #0d3859;">${positionTitle}</td></tr>
-        <tr><td style="font-weight: 700; color: #047857;">Company:</td><td>${companyName}</td></tr>
+        <tr><td style="font-weight: 700; color: #047857;">Position Title:</td><td style="font-weight: 800; color: #0d3859;">${positionTitle}</td></tr>
+        <tr><td style="font-weight: 700; color: #047857;">Company:</td><td style="font-weight: 700;">${companyName}</td></tr>
         <tr><td style="font-weight: 700; color: #047857;">Interview Round:</td><td>${interviewType}</td></tr>
-        <tr><td style="font-weight: 700; color: #047857;">Confirmed Slot:</td><td style="font-weight: 800; color: #0d3859;">${selectedSlotStr}</td></tr>
-        <tr><td style="font-weight: 700; color: #047857;">Status:</td><td><span style="background-color: #d1fae5; color: #065f46; padding: 2px 8px; border-radius: 4px; font-weight: 800; font-size: 11px;">SCHEDULED</span></td></tr>
+        <tr><td style="font-weight: 700; color: #047857;">Confirmed Time:</td><td style="font-weight: 800; color: #0d3859;">${selectedSlotStr}</td></tr>
+        <tr><td style="font-weight: 700; color: #047857;">Timezone:</td><td style="font-weight: 600; color: #475569;">${tzName}</td></tr>
+        <tr><td style="font-weight: 700; color: #047857;">Meeting Link:</td><td><a href="${meetingLinkDisplay}" target="_blank" style="color: #0284c7; font-weight: 700; word-break: break-all;">${meetingLinkDisplay}</a></td></tr>
       </table>
     </div>
 
-    <p>The status of this candidate submission has been updated to <strong>SCHEDULED</strong> in RecruitOS.</p>
+    <p style="font-size: 13px; color: #475569;">Please ensure you join 5 minutes prior to the scheduled start time.</p>
   `;
 
-  const textContent = `Interview Confirmed - ${candidateName} (${positionTitle})\n
+  const textContent = `Interview Confirmed - ${positionTitle} at ${companyName}\n
 Candidate Name: ${candidateName}
 Position: ${positionTitle}
 Company: ${companyName}
 Interview Round: ${interviewType}
-Confirmed Slot: ${selectedSlotStr}
-Status: SCHEDULED
+Confirmed Time: ${selectedSlotStr}
+Timezone: ${tzName}
+Meeting Link: ${meetingLinkDisplay}
 
-Open Interviews: ${ctaUrl}`;
+Join Interview: ${meetingLinkDisplay}`;
 
   return {
     subject: title,
-    html: wrapMasterLayout(agency, title, htmlContent, { label: 'Open Interviews Hub', url: ctaUrl }),
+    html: wrapMasterLayout(agency, title, htmlContent, cta),
+    text: textContent
+  };
+}
+
+// =========================================================
+// 12. INTERVIEW OUTCOME TEMPLATE (SELECTED / HOLD / REJECTED)
+// =========================================================
+export interface InterviewOutcomeParams {
+  agency: BaseAgencyContext;
+  candidateName: string;
+  positionTitle: string;
+  companyName: string;
+  decision: 'SELECTED' | 'HOLD' | 'REJECTED';
+  feedbackNotes?: string;
+  recipientRole: 'CANDIDATE' | 'RECRUITER' | 'CLIENT';
+  baseUrl?: string;
+}
+
+export function generateInterviewOutcomeTemplate(params: InterviewOutcomeParams): RenderedEmail {
+  const { agency, candidateName, positionTitle, companyName, decision, feedbackNotes, recipientRole, baseUrl } = params;
+  const appUrl = baseUrl || DEFAULT_BASE_URL;
+
+  let title = '';
+  let statusBadgeColor = '#0284c7';
+  let statusBadgeBg = '#e0f2fe';
+  let headline = '';
+
+  if (decision === 'SELECTED') {
+    title = `Interview Outcome: Selected - ${candidateName} (${positionTitle})`;
+    statusBadgeColor = '#065f46';
+    statusBadgeBg = '#d1fae5';
+    headline = recipientRole === 'CANDIDATE'
+      ? `Congratulations! You have been <strong>SELECTED</strong> following your interview for ${positionTitle} at ${companyName}.`
+      : `Candidate <strong>${candidateName}</strong> has been <strong>SELECTED</strong> for ${positionTitle} at ${companyName}.`;
+  } else if (decision === 'HOLD') {
+    title = `Interview Outcome: On Hold - ${candidateName} (${positionTitle})`;
+    statusBadgeColor = '#b45309';
+    statusBadgeBg = '#fef3c7';
+    headline = recipientRole === 'CANDIDATE'
+      ? `Your interview for ${positionTitle} at ${companyName} has been placed <strong>ON HOLD</strong>.`
+      : `Candidate <strong>${candidateName}</strong> has been placed <strong>ON HOLD</strong> for ${positionTitle} at ${companyName}.`;
+  } else {
+    title = `Interview Outcome: Rejected - ${candidateName} (${positionTitle})`;
+    statusBadgeColor = '#991b1b';
+    statusBadgeBg = '#fee2e2';
+    headline = recipientRole === 'CANDIDATE'
+      ? `Thank you for taking the time to interview for ${positionTitle} at ${companyName}.`
+      : `Candidate <strong>${candidateName}</strong> was <strong>REJECTED</strong> following the interview for ${positionTitle} at ${companyName}.`;
+  }
+
+  const htmlContent = `
+    <p style="margin-top: 0;">${headline}</p>
+
+    <div style="background-color: ${statusBadgeBg}; border-left: 4px solid ${statusBadgeColor}; padding: 18px; border-radius: 8px; margin: 20px 0;">
+      <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="5" style="font-size: 13px; color: #1e293b;">
+        <tr><td width="35%" style="font-weight: 700;">Candidate Name:</td><td style="font-weight: 800;">${candidateName}</td></tr>
+        <tr><td style="font-weight: 700;">Position Title:</td><td style="font-weight: 800;">${positionTitle}</td></tr>
+        <tr><td style="font-weight: 700;">Company:</td><td style="font-weight: 700;">${companyName}</td></tr>
+        <tr><td style="font-weight: 700;">Decision:</td><td><span style="background-color: ${statusBadgeBg}; color: ${statusBadgeColor}; padding: 2px 8px; border-radius: 4px; font-weight: 800; font-size: 11px;">${decision}</span></td></tr>
+        ${feedbackNotes ? `<tr><td style="font-weight: 700; vertical-align: top;">Client Feedback:</td><td style="font-style: italic; color: #334155;">"${feedbackNotes}"</td></tr>` : ''}
+      </table>
+    </div>
+  `;
+
+  const textContent = `${title}\n
+Candidate: ${candidateName}
+Position: ${positionTitle}
+Company: ${companyName}
+Decision: ${decision}
+${feedbackNotes ? `Feedback Notes: ${feedbackNotes}` : ''}`;
+
+  return {
+    subject: title,
+    html: wrapMasterLayout(agency, title, htmlContent, recipientRole !== 'CANDIDATE' ? { label: 'Open RecruitOS Dashboard', url: `${appUrl}/submissions` } : undefined),
+    text: textContent
+  };
+}
+
+// =========================================================
+// 13. INTERVIEW PREPARATION KIT TEMPLATE (INITIAL & REMINDERS)
+// =========================================================
+export interface InterviewPrepKitEmailParams {
+  agency: BaseAgencyContext;
+  candidateName: string;
+  positionTitle: string;
+  companyName: string;
+  roundType: string;
+  interviewDateStr: string;
+  secureToken: string;
+  isReminder?: boolean;
+  isFinalReminder?: boolean;
+  baseUrl?: string;
+}
+
+export function generateInterviewPrepKitTemplate(params: InterviewPrepKitEmailParams): RenderedEmail {
+  const {
+    agency,
+    candidateName,
+    positionTitle,
+    companyName,
+    roundType,
+    interviewDateStr,
+    secureToken,
+    isReminder,
+    isFinalReminder,
+    baseUrl
+  } = params;
+
+  const appUrl = baseUrl || DEFAULT_BASE_URL;
+  const prepUrl = `${appUrl}/interview/preparation/${secureToken}`;
+
+  let title = `Interview Preparation Kit - ${positionTitle}`;
+  let bannerNote = `Your customized Interview Preparation Kit for <strong>${positionTitle}</strong> at <strong>${companyName}</strong> is ready.`;
+
+  if (isFinalReminder) {
+    title = `FINAL REMINDER: Review Interview Preparation Kit (1 Hour Left)`;
+    bannerNote = `⚡ <strong>Urgent:</strong> Your interview starts in 1 hour. Please review your Preparation Kit to ensure readiness!`;
+  } else if (isReminder) {
+    title = `Reminder: Interview Preparation Kit - ${positionTitle}`;
+    bannerNote = `⏰ <strong>Reminder:</strong> Your interview is scheduled in 7 hours. Don't forget to review your Preparation Kit!`;
+  }
+
+  const htmlContent = `
+    <p style="margin-top: 0; font-size: 14px; color: #1e293b;">Hi <strong>${candidateName}</strong>,</p>
+    <p style="font-size: 13.5px; color: #334155; line-height: 1.5;">${bannerNote}</p>
+
+    <div style="background-color: #f8fafc; border: 1px solid #cbd5e1; border-left: 4px solid #0284c7; padding: 18px; border-radius: 8px; margin: 20px 0;">
+      <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="5" style="font-size: 13px; color: #1e293b;">
+        <tr><td width="35%" style="font-weight: 700; color: #0284c7;">Candidate Name:</td><td style="font-weight: 800;">${candidateName}</td></tr>
+        <tr><td style="font-weight: 700; color: #0284c7;">Position Title:</td><td style="font-weight: 800;">${positionTitle}</td></tr>
+        <tr><td style="font-weight: 700; color: #0284c7;">Company Name:</td><td style="font-weight: 700;">${companyName}</td></tr>
+        <tr><td style="font-weight: 700; color: #0284c7;">Interview Round:</td><td style="font-weight: 700; color: #b45309;">${roundType}</td></tr>
+        <tr><td style="font-weight: 700; color: #0284c7;">Scheduled Time:</td><td style="font-weight: 800; color: #0f172a;">${interviewDateStr}</td></tr>
+      </table>
+    </div>
+
+    <p style="font-size: 13px; color: #475569;">Inside your preparation portal, you will find company insights, technical topics to revise, meeting guidelines, and a readiness checklist.</p>
+  `;
+
+  const textContent = `${title}\n
+Hi ${candidateName},
+
+Position: ${positionTitle}
+Company: ${companyName}
+Round: ${roundType}
+Scheduled Time: ${interviewDateStr}
+
+Review Preparation Kit: ${prepUrl}`;
+
+  return {
+    subject: title,
+    html: wrapMasterLayout(agency, title, htmlContent, { label: 'Review Preparation Kit', url: prepUrl }),
     text: textContent
   };
 }

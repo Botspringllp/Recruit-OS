@@ -9,6 +9,8 @@ import {
   generateInterviewSelectedTemplate,
   generateClientInterviewInvitationTemplate,
   generateInterviewSlotSelectedTemplate,
+  generateInterviewOutcomeTemplate,
+  generateInterviewPrepKitTemplate,
   generateCandidateHoldTemplate,
   generateCandidateRejectedTemplate,
   generateSubscriptionExpiryTemplate,
@@ -27,7 +29,15 @@ export enum EmailEventType {
   CLIENT_HOLD = 'CLIENT_HOLD',
   CLIENT_REJECT = 'CLIENT_REJECT',
   SUBSCRIPTION_EXPIRY = 'SUBSCRIPTION_EXPIRY',
-  SMTP_TEST = 'SMTP_TEST'
+  SMTP_TEST = 'SMTP_TEST',
+  INTERVIEW_SELECTED = 'INTERVIEW_SELECTED',
+  INTERVIEW_HOLD = 'INTERVIEW_HOLD',
+  INTERVIEW_REJECTED = 'INTERVIEW_REJECTED',
+  INTERVIEW_FEEDBACK_PENDING = 'INTERVIEW_FEEDBACK_PENDING',
+  INTERVIEW_CONFIRMED = 'INTERVIEW_CONFIRMED',
+  INTERVIEW_PREP_SENT = 'INTERVIEW_PREP_SENT',
+  INTERVIEW_PREP_REMINDER = 'INTERVIEW_PREP_REMINDER',
+  INTERVIEW_PREP_FINAL_REMINDER = 'INTERVIEW_PREP_FINAL_REMINDER'
 }
 
 export enum EmailStatus {
@@ -678,7 +688,10 @@ export async function logInterviewSlotSelectedEmail(
   positionTitle: string,
   companyName: string,
   interviewType: string,
-  selectedSlotStr: string
+  selectedSlotStr: string,
+  meetingUrl?: string | null,
+  timezoneStr?: string,
+  recipientType?: 'CANDIDATE' | 'RECRUITER' | 'CLIENT'
 ) {
   const agency = await fetchAgencyContext(agencyId);
   const rendered = generateInterviewSlotSelectedTemplate({
@@ -687,7 +700,10 @@ export async function logInterviewSlotSelectedEmail(
     positionTitle,
     companyName,
     interviewType,
-    selectedSlotStr
+    selectedSlotStr,
+    meetingUrl,
+    timezoneStr,
+    recipientType
   });
 
   return createEmailLog({
@@ -702,7 +718,104 @@ export async function logInterviewSlotSelectedEmail(
       positionTitle,
       companyName,
       interviewType,
-      selectedSlotStr
+      selectedSlotStr,
+      meetingUrl
+    }
+  });
+}
+
+/**
+ * Helper: Logs INTERVIEW_SELECTED, INTERVIEW_HOLD, or INTERVIEW_REJECTED email event
+ */
+export async function logInterviewOutcomeEmail(
+  agencyId: string | null,
+  recipientEmail: string,
+  candidateName: string,
+  positionTitle: string,
+  companyName: string,
+  decision: 'SELECTED' | 'HOLD' | 'REJECTED',
+  feedbackNotes?: string,
+  recipientRole: 'CANDIDATE' | 'RECRUITER' | 'CLIENT' = 'CANDIDATE'
+) {
+  const agency = await fetchAgencyContext(agencyId);
+  const rendered = generateInterviewOutcomeTemplate({
+    agency,
+    candidateName,
+    positionTitle,
+    companyName,
+    decision,
+    feedbackNotes,
+    recipientRole
+  });
+
+  let eventType = EmailEventType.INTERVIEW_SELECTED;
+  if (decision === 'HOLD') {
+    eventType = EmailEventType.INTERVIEW_HOLD;
+  } else if (decision === 'REJECTED') {
+    eventType = EmailEventType.INTERVIEW_REJECTED;
+  }
+
+  return createEmailLog({
+    agencyId,
+    eventType,
+    recipientEmail,
+    subject: rendered.subject,
+    htmlBody: rendered.html,
+    textBody: rendered.text,
+    metadata: {
+      candidateName,
+      positionTitle,
+      companyName,
+      decision,
+      feedbackNotes
+    }
+  });
+}
+
+/**
+ * Helper: Logs INTERVIEW_PREP_SENT, INTERVIEW_PREP_REMINDER, or INTERVIEW_PREP_FINAL_REMINDER email event
+ */
+export async function logInterviewPrepKitEmail(
+  agencyId: string | null,
+  recipientEmail: string,
+  candidateName: string,
+  positionTitle: string,
+  companyName: string,
+  roundType: string,
+  interviewDateStr: string,
+  secureToken: string,
+  eventType: EmailEventType = EmailEventType.INTERVIEW_PREP_SENT
+) {
+  const agency = await fetchAgencyContext(agencyId);
+  const isReminder = eventType === EmailEventType.INTERVIEW_PREP_REMINDER;
+  const isFinalReminder = eventType === EmailEventType.INTERVIEW_PREP_FINAL_REMINDER;
+
+  const rendered = generateInterviewPrepKitTemplate({
+    agency,
+    candidateName,
+    positionTitle,
+    companyName,
+    roundType,
+    interviewDateStr,
+    secureToken,
+    isReminder,
+    isFinalReminder
+  });
+
+  return createEmailLog({
+    agencyId,
+    eventType,
+    recipientEmail,
+    subject: rendered.subject,
+    htmlBody: rendered.html,
+    textBody: rendered.text,
+    metadata: {
+      candidateName,
+      positionTitle,
+      companyName,
+      roundType,
+      interviewDateStr,
+      secureToken
     }
   });
 }

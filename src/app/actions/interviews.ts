@@ -1,5 +1,6 @@
 'use server';
 
+import crypto from 'crypto';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { InterviewType, InterviewMode, PipelineStage, SlaStatus } from '@prisma/client';
@@ -580,6 +581,7 @@ export async function getInterviewSlotSelectionDataAction(candidateToken: string
         roundType: interview.roundType || 'Client Discussion',
         notes: interview.notes,
         status: interview.status,
+        meetingUrl: interview.meetingUrl || interview.meetingLink || null,
         confirmedStartTime: interview.confirmedStartTime ? interview.confirmedStartTime.toISOString() : null,
         tokenConsumedAt: interview.tokenConsumedAt ? interview.tokenConsumedAt.toISOString() : null,
         slots: formattedSlots
@@ -651,23 +653,42 @@ export async function confirmCandidateSlotSelectionAction(
     }
 
     const agencyId = interview.agencyId || interview.submission.job.agencyId;
+    const candidateName = `${interview.submission.candidate.firstName} ${interview.submission.candidate.lastName}`.trim();
+    const positionTitle = interview.submission.job.title;
+    const companyName = interview.submission.job.client?.companyName || 'Client Company';
 
-    // Update selected slot
+    // Generate Meeting Record details
+    const meetingId = `meet-${crypto.randomBytes(8).toString('hex')}`;
+    const meetingUrl = interview.meetingUrl || interview.meetingLink || `https://meet.jit.si/recruitos-interview-${interview.id.slice(0, 8)}`;
+
+    // Update selected slot & unselect remaining slots
+    await prisma.proposedInterviewSlot.updateMany({
+      where: { submissionId: interview.submissionId },
+      data: { isSelected: false }
+    });
     await prisma.proposedInterviewSlot.update({
       where: { id: slot.id },
       data: { isSelected: true }
     });
 
-    // Update InterviewSchedule to SCHEDULED & mark token consumed
+    // Update InterviewSchedule with meeting details & mark token consumed
     const updatedInterview = await prisma.interviewSchedule.update({
       where: { id: interview.id },
       data: {
         slotId: slot.id,
         confirmedStartTime: slot.startTime,
+        scheduledStart: slot.startTime,
+        scheduledEnd: slot.endTime,
+        meetingId,
+        meetingUrl,
+        meetingLink: meetingUrl,
+        meetingProvider: 'JITSI' as any,
+        meetingStatus: 'SCHEDULED',
+        meetingGeneratedAt: new Date(),
         status: 'SCHEDULED',
         tokenConsumedAt: new Date(),
         updatedAt: new Date()
-      }
+      } as any
     });
 
     // Update CandidateSubmission stage to INTERVIEW_SCHEDULED
@@ -679,9 +700,6 @@ export async function confirmCandidateSlotSelectionAction(
       }
     });
 
-    const candidateName = `${interview.submission.candidate.firstName} ${interview.submission.candidate.lastName}`.trim();
-    const positionTitle = interview.submission.job.title;
-    const companyName = interview.submission.job.client?.companyName || 'Client Company';
     const selectedSlotStr = slot.startTime.toLocaleString('en-US', {
       weekday: 'short',
       month: 'short',
@@ -691,6 +709,7 @@ export async function confirmCandidateSlotSelectionAction(
       minute: '2-digit',
       hour12: true
     });
+    const timezoneStr = 'IST (UTC+5:30)';
 
     // SECTION I: Trigger Notifications IW-01-B & IW-01-C
     const { createNotification, NotificationType, NotificationCategory } = await import('@/lib/notifications');
@@ -701,7 +720,7 @@ export async function confirmCandidateSlotSelectionAction(
         agencyId,
         recipientUserId: interview.submission.recruiter.id,
         title: `Interview Scheduled: ${candidateName}`,
-        message: `Candidate ${candidateName} confirmed slot ${selectedSlotStr} for ${positionTitle} (${companyName}).`,
+        message: `Candidate ${candidateName} confirmed slot ${selectedSlotStr} for ${positionTitle} (${companyName}). Meeting Link: ${meetingUrl}`,
         type: NotificationType.SUCCESS,
         category: NotificationCategory.CANDIDATE,
         entityType: 'INTERVIEW',
@@ -721,7 +740,10 @@ export async function confirmCandidateSlotSelectionAction(
         positionTitle,
         companyName,
         interview.roundType || 'Client Discussion',
-        selectedSlotStr
+        selectedSlotStr,
+        meetingUrl,
+        timezoneStr,
+        'CANDIDATE'
       );
     }
 
@@ -734,7 +756,10 @@ export async function confirmCandidateSlotSelectionAction(
         positionTitle,
         companyName,
         interview.roundType || 'Client Discussion',
-        selectedSlotStr
+        selectedSlotStr,
+        meetingUrl,
+        timezoneStr,
+        'RECRUITER'
       );
     }
 
@@ -748,8 +773,19 @@ export async function confirmCandidateSlotSelectionAction(
         positionTitle,
         companyName,
         interview.roundType || 'Client Discussion',
-        selectedSlotStr
+        selectedSlotStr,
+        meetingUrl,
+        timezoneStr,
+        'CLIENT'
       );
+    }
+
+    // Automatically generate and dispatch Interview Preparation Kit (PHASE IW-03)
+    try {
+      const { generateAndSendPrepKitAction } = await import('@/app/actions/interviewPrep');
+      await generateAndSendPrepKitAction(interview.id);
+    } catch (prepErr) {
+      console.error('Failed to auto-generate preparation kit:', prepErr);
     }
 
     revalidatePath('/interviews');
@@ -762,6 +798,190 @@ export async function confirmCandidateSlotSelectionAction(
   } catch (err: any) {
     console.error('Error in confirmCandidateSlotSelectionAction:', err);
     return { success: false, error: err.message || 'Failed to confirm interview slot.' };
+  }
+}
+
+export interface InterviewOutcomeFeedbackParams {
+  interviewId?: string;
+  submissionId?: string;
+  decision: 'SELECTED' | 'HOLD' | 'REJECTED';
+  feedbackNotes?: string;
+  ratingStars?: number;
+  submittedByRole?: 'CLIENT' | 'RECRUITER';
+}
+
+export async function submitInterviewOutcomeFeedbackAction(
+  payload: InterviewOutcomeFeedbackParams
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { interviewId, submissionId, decision, feedbackNotes, ratingStars = 5, submittedByRole = 'CLIENT' } = payload;
+
+    if (!['SELECTED', 'HOLD', 'REJECTED'].includes(decision)) {
+      return { success: false, error: 'Invalid feedback decision choice.' };
+    }
+
+    let interview: any = null;
+
+    if (interviewId) {
+      interview = await prisma.interviewSchedule.findUnique({
+        where: { id: interviewId },
+        include: {
+          submission: {
+            include: {
+              job: { include: { client: { include: { contacts: true } } } },
+              candidate: true,
+              recruiter: true
+            }
+          }
+        }
+      });
+    } else if (submissionId) {
+      interview = await prisma.interviewSchedule.findFirst({
+        where: { submissionId },
+        orderBy: { createdAt: 'desc' },
+        include: {
+          submission: {
+            include: {
+              job: { include: { client: { include: { contacts: true } } } },
+              candidate: true,
+              recruiter: true
+            }
+          }
+        }
+      });
+    }
+
+    if (!interview) {
+      return { success: false, error: 'Interview schedule or submission record not found.' };
+    }
+
+    const agencyId = interview.agencyId || interview.submission.job.agencyId;
+    const candidateName = `${interview.submission.candidate.firstName} ${interview.submission.candidate.lastName}`.trim();
+    const positionTitle = interview.submission.job.title;
+    const companyName = interview.submission.job.client?.companyName || 'Client Company';
+
+    // 1. Create InterviewFeedback record
+    try {
+      await (prisma as any).interviewFeedback.create({
+        data: {
+          agencyId,
+          submissionId: interview.submissionId,
+          interviewScheduleId: interview.id,
+          submittedByRole,
+          ratingStars,
+          feedbackText: feedbackNotes || `Candidate marked as ${decision}`,
+          recommendationDecision: decision
+        }
+      });
+    } catch (fbErr) {
+      console.warn('Could not insert into InterviewFeedback model directly:', fbErr);
+    }
+
+    // 2. Update InterviewSchedule status
+    await prisma.interviewSchedule.update({
+      where: { id: interview.id },
+      data: {
+        status: 'COMPLETED',
+        updatedAt: new Date()
+      }
+    });
+
+    // 3. Update CandidateSubmission stage & status based on outcome
+    let targetStage = interview.submission.stage;
+    let targetStatus = interview.submission.status;
+
+    if (decision === 'SELECTED') {
+      targetStage = PipelineStage.OFFER_EXTENDED;
+      targetStatus = 'INTERVIEW_SELECTED';
+    } else if (decision === 'HOLD') {
+      targetStatus = 'CLIENT_HOLD';
+    } else if (decision === 'REJECTED') {
+      targetStage = PipelineStage.REJECTED;
+      targetStatus = 'CLIENT_REJECT';
+    }
+
+    await prisma.candidateSubmission.update({
+      where: { id: interview.submissionId },
+      data: {
+        stage: targetStage,
+        status: targetStatus,
+        updatedAt: new Date()
+      }
+    });
+
+    // 4. Create internal platform Notification
+    const { createNotification, NotificationType, NotificationCategory } = await import('@/lib/notifications');
+    if (interview.submission.recruiter?.id) {
+      await createNotification({
+        agencyId,
+        recipientUserId: interview.submission.recruiter.id,
+        title: `Interview Outcome Logged: ${candidateName}`,
+        message: `Client decision for ${candidateName} (${positionTitle}): ${decision}.${feedbackNotes ? ` Notes: "${feedbackNotes}"` : ''}`,
+        type: decision === 'SELECTED' ? NotificationType.SUCCESS : decision === 'HOLD' ? NotificationType.WARNING : NotificationType.ERROR,
+        category: NotificationCategory.CANDIDATE,
+        entityType: 'INTERVIEW',
+        entityId: interview.id
+      });
+    }
+
+    // 5. Dispatch automated email notifications
+    const { logInterviewOutcomeEmail, processPendingEmails } = await import('@/lib/email');
+
+    // Candidate Notification
+    if (interview.submission.candidate.email) {
+      await logInterviewOutcomeEmail(
+        agencyId,
+        interview.submission.candidate.email,
+        candidateName,
+        positionTitle,
+        companyName,
+        decision,
+        feedbackNotes,
+        'CANDIDATE'
+      );
+    }
+
+    // Recruiter Notification
+    if (interview.submission.recruiter?.email) {
+      await logInterviewOutcomeEmail(
+        agencyId,
+        interview.submission.recruiter.email,
+        candidateName,
+        positionTitle,
+        companyName,
+        decision,
+        feedbackNotes,
+        'RECRUITER'
+      );
+    }
+
+    // Client Contact Confirmation
+    const clientEmail = interview.submission.job.client?.contacts[0]?.email;
+    if (clientEmail) {
+      await logInterviewOutcomeEmail(
+        agencyId,
+        clientEmail,
+        candidateName,
+        positionTitle,
+        companyName,
+        decision,
+        feedbackNotes,
+        'CLIENT'
+      );
+    }
+
+    // Process pending emails immediately
+    if (agencyId) {
+      await processPendingEmails(agencyId);
+    }
+
+    revalidatePath('/interviews');
+    revalidatePath('/submissions');
+
+    return { success: true };
+  } catch (err: any) {
+    console.error('Error in submitInterviewOutcomeFeedbackAction:', err);
+    return { success: false, error: err.message || 'Failed to submit interview feedback outcome.' };
   }
 }
 

@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { Calendar, Plus, Search, Filter, Video, Clock, User, Briefcase, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
 import { InterviewStatusDropdown } from '@/components/interviews/InterviewStatusDropdown';
-
+import { InterviewReadinessWidget } from '@/components/interviews/InterviewReadinessWidget';
 import { getCurrentUser, hasPermission } from '@/lib/rbac';
 
 export const revalidate = 0;
@@ -71,8 +71,9 @@ export default async function InterviewsPage({ searchParams }: InterviewsPagePro
               include: { client: true }
             }
           }
-        }
-      },
+        },
+        preparationKit: true
+      } as any,
       orderBy: { confirmedStartTime: 'asc' },
       skip: (currentPage - 1) * pageSize,
       take: pageSize
@@ -103,6 +104,9 @@ export default async function InterviewsPage({ searchParams }: InterviewsPagePro
           Schedule New Interview
         </Link>
       </div>
+
+      {/* PART K: Interview Readiness Dashboard Widget */}
+      <InterviewReadinessWidget agencyId={agencyId} />
 
       {/* Controls Bar: Search & Filters */}
       <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm shadow-slate-200/50 space-y-4">
@@ -170,8 +174,8 @@ export default async function InterviewsPage({ searchParams }: InterviewsPagePro
       <div className="space-y-4">
         {interviews.length > 0 ? (
           interviews.map((interview) => {
-            const candidate = interview.submission.candidate;
-            const job = interview.submission.job;
+            const candidate = (interview as any).submission?.candidate || {};
+            const job = (interview as any).submission?.job || {};
             const hasConfirmedTime = Boolean(interview.confirmedStartTime);
             const scheduledTime = hasConfirmedTime ? new Date(interview.confirmedStartTime!) : null;
 
@@ -238,6 +242,57 @@ export default async function InterviewsPage({ searchParams }: InterviewsPagePro
                     <p className="text-xs text-slate-700 font-medium bg-slate-50 p-2.5 rounded-xl border border-slate-200 max-w-xl italic">
                       "{interview.notes}"
                     </p>
+                  )}
+
+                  {/* PART G: Interview Preparation Kit Readiness Status */}
+                  {Boolean((interview as any).preparationKit) && (
+                    <div className="pt-2 flex flex-wrap items-center gap-2 border-t border-slate-100 text-xs">
+                      <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">
+                        Prep Kit Status:
+                      </span>
+                      {(() => {
+                        const pk = (interview as any).preparationKit;
+                        if (pk.status === 'COMPLETED' || pk.completedAt) {
+                          return (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-extrabold bg-emerald-100 text-emerald-950 border border-emerald-300">
+                              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                              COMPLETED ({new Date(pk.completedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })})
+                            </span>
+                          );
+                        }
+                        if (pk.status === 'OPENED' || pk.openedAt) {
+                          return (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-extrabold bg-purple-100 text-purple-950 border border-purple-300">
+                              <span className="h-2 w-2 rounded-full bg-purple-500" />
+                              OPENED ({new Date(pk.openedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })})
+                            </span>
+                          );
+                        }
+                        if (pk.status === 'SENT' || pk.sentAt) {
+                          return (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-extrabold bg-sky-100 text-sky-950 border border-sky-300">
+                              <span className="h-2 w-2 rounded-full bg-sky-500" />
+                              SENT ({new Date(pk.sentAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })})
+                            </span>
+                          );
+                        }
+                        return (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-extrabold bg-amber-100 text-amber-950 border border-amber-300">
+                            PENDING
+                          </span>
+                        );
+                      })()}
+
+                      {/* Direct Candidate Preparation Kit Portal Link */}
+                      <a
+                        href={`/interview/preparation/${(interview as any).preparationKit.secureToken}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 underline ml-2"
+                      >
+                        View Prep Portal →
+                      </a>
+                    </div>
                   )}
                 </div>
 
