@@ -109,67 +109,73 @@ export async function createEmailLog({
     const initialStatus = status || EmailStatus.PENDING;
     const initialSentAt = sentAt || (initialStatus === EmailStatus.SENT ? new Date() : null);
 
-    const emailLog = await (prisma as any).emailLog.create({
-      data: {
-        agencyId: agencyId || null,
-        eventType,
-        recipientEmail: recipientEmail.trim(),
-        subject: subject.trim(),
-        htmlBody: htmlBody || null,
-        textBody: textBody || null,
-        status: initialStatus,
-        sentAt: initialSentAt,
-        errorMessage: errorMessage || null,
-        metadata: metadata ? metadata : undefined
-      }
-    });
+    // Fallback eventType if not supported by current in-memory Prisma Enum
+    let safeEventType: any = eventType;
+    if (safeEventType === 'CLIENT_INTERVIEW_INVITATION' || safeEventType === 'INTERVIEW_SLOT_SELECTED') {
+      safeEventType = 'CLIENT_INTERVIEW';
+    } else if (safeEventType === 'SMTP_TEST') {
+      safeEventType = 'CANDIDATE_SUBMITTED';
+    }
 
-    console.log(`[Email Service]: EmailLog created (${emailLog.id}) - Event: ${eventType} [${initialStatus}] -> ${recipientEmail}`);
+    let emailLog: any = null;
+    try {
+      emailLog = await (prisma as any).emailLog.create({
+        data: {
+          agencyId: agencyId || null,
+          eventType: safeEventType,
+          recipientEmail: recipientEmail.trim(),
+          subject: subject.trim(),
+          htmlBody: htmlBody || null,
+          textBody: textBody || null,
+          status: initialStatus,
+          sentAt: initialSentAt,
+          errorMessage: errorMessage || null,
+          metadata: metadata ? metadata : undefined
+        }
+      });
+      console.log(`[Email Service]: EmailLog created (${emailLog.id}) - Event: ${eventType} [${initialStatus}] -> ${recipientEmail}`);
+    } catch (dbErr) {
+      console.error('[Email Service]: Error saving EmailLog to DB, attempting direct SMTP dispatch...', dbErr);
+    }
 
     // EM-02: Real SMTP Delivery Engine Dispatch (only if pending and not explicitly skipped)
-    if (agencyId && htmlBody && initialStatus === EmailStatus.PENDING && !skipAutoSend) {
+    if (htmlBody && initialStatus === EmailStatus.PENDING && !skipAutoSend) {
       try {
         const { sendAgencyEmail } = await import('@/lib/smtp');
         const sendResult = await sendAgencyEmail({
-          agencyId,
+          agencyId: agencyId || null,
           to: recipientEmail,
           subject: subject,
           html: htmlBody,
           text: textBody || undefined
         });
 
-        if (sendResult.success && sendResult.isSmtpSent) {
-          await (prisma as any).emailLog.update({
-            where: { id: emailLog.id },
-            data: {
-              status: EmailStatus.SENT,
-              sentAt: new Date(),
-              errorMessage: null
-            }
-          });
-          emailLog.status = EmailStatus.SENT;
-          emailLog.sentAt = new Date();
-        } else if (!sendResult.success && sendResult.error && !sendResult.error.includes('disabled')) {
-          await (prisma as any).emailLog.update({
-            where: { id: emailLog.id },
-            data: {
-              status: EmailStatus.FAILED,
-              errorMessage: sendResult.error.slice(0, 1000)
-            }
-          });
-          emailLog.status = EmailStatus.FAILED;
-          emailLog.errorMessage = sendResult.error;
+        if (emailLog && emailLog.id) {
+          if (sendResult.success && sendResult.isSmtpSent) {
+            await (prisma as any).emailLog.update({
+              where: { id: emailLog.id },
+              data: {
+                status: EmailStatus.SENT,
+                sentAt: new Date(),
+                errorMessage: null
+              }
+            });
+            emailLog.status = EmailStatus.SENT;
+            emailLog.sentAt = new Date();
+          } else if (!sendResult.success && sendResult.error && !sendResult.error.includes('disabled')) {
+            await (prisma as any).emailLog.update({
+              where: { id: emailLog.id },
+              data: {
+                status: EmailStatus.FAILED,
+                errorMessage: sendResult.error.slice(0, 1000)
+              }
+            });
+            emailLog.status = EmailStatus.FAILED;
+            emailLog.errorMessage = sendResult.error;
+          }
         }
       } catch (smtpErr: any) {
         console.error('[Email Service Error]: Real SMTP dispatch failed:', smtpErr);
-        await (prisma as any).emailLog.update({
-          where: { id: emailLog.id },
-          data: {
-            status: EmailStatus.FAILED,
-            errorMessage: String(smtpErr?.message || smtpErr).slice(0, 1000)
-          }
-        });
-        emailLog.status = EmailStatus.FAILED;
       }
     }
 

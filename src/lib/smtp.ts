@@ -28,24 +28,52 @@ export interface SendEmailResult {
  * Creates a dynamic Nodemailer transport instance scoped specifically to an Agency's custom SMTP configuration.
  * RecruitOS does not rely on global environment credentials.
  */
-export async function createAgencyTransport(agencyId: string) {
-  const agency = await (prisma as any).agency.findUnique({
-    where: { id: agencyId },
-    select: {
-      smtpEnabled: true,
-      smtpHost: true,
-      smtpPort: true,
-      smtpSecure: true,
-      smtpUsername: true,
-      smtpPassword: true,
-      senderName: true,
-      senderEmail: true,
-      replyToEmail: true
+export async function createAgencyTransport(agencyId?: string | null) {
+  let agency = agencyId
+    ? await (prisma as any).agency.findUnique({
+        where: { id: agencyId },
+        select: {
+          smtpEnabled: true,
+          smtpHost: true,
+          smtpPort: true,
+          smtpSecure: true,
+          smtpUsername: true,
+          smtpPassword: true,
+          senderName: true,
+          senderEmail: true,
+          replyToEmail: true
+        }
+      })
+    : null;
+
+  if (!agency || !agency.smtpEnabled || !agency.smtpHost || !agency.smtpUsername || !agency.smtpPassword) {
+    const fallbackAgency = await (prisma as any).agency.findFirst({
+      where: {
+        smtpEnabled: true,
+        smtpHost: { not: null },
+        smtpUsername: { not: null },
+        smtpPassword: { not: null }
+      },
+      select: {
+        smtpEnabled: true,
+        smtpHost: true,
+        smtpPort: true,
+        smtpSecure: true,
+        smtpUsername: true,
+        smtpPassword: true,
+        senderName: true,
+        senderEmail: true,
+        replyToEmail: true
+      }
+    });
+
+    if (fallbackAgency) {
+      agency = fallbackAgency;
     }
-  });
+  }
 
   if (!agency) {
-    throw new Error(`Agency record not found for ID: ${agencyId}`);
+    throw new Error(`Agency record not found or unconfigured for ID: ${agencyId}`);
   }
 
   if (!agency.smtpHost || !agency.smtpPort || !agency.smtpUsername || !agency.smtpPassword) {

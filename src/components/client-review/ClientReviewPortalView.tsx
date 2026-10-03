@@ -179,7 +179,7 @@ export function ClientReviewPortalView({
 
   // Interview Scheduling Modal State
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
-  const [targetCandidateForScheduling, setTargetCandidateForScheduling] = useState<SubmittedCandidateViewItem | null>(null);
+  const [targetCandidatesForScheduling, setTargetCandidatesForScheduling] = useState<SubmittedCandidateViewItem[]>([]);
   const [interviewTypeSelect, setInterviewTypeSelect] = useState<string>('Technical Round');
   const [customInterviewType, setCustomInterviewType] = useState<string>('');
   const [interviewNotes, setInterviewNotes] = useState<string>('');
@@ -188,6 +188,14 @@ export function ClientReviewPortalView({
   const [slot3, setSlot3] = useState<string>('');
   const [scheduleSubmitting, setScheduleSubmitting] = useState(false);
   const [scheduleError, setScheduleError] = useState<string | null>(null);
+
+  // Reject / Hold Reason Modal State
+  const [isReasonModalOpen, setIsReasonModalOpen] = useState(false);
+  const [targetCandsForReason, setTargetCandsForReason] = useState<SubmittedCandidateViewItem[]>([]);
+  const [reasonDecisionType, setReasonDecisionType] = useState<'HOLD' | 'REJECT'>('REJECT');
+  const [reasonNotes, setReasonNotes] = useState<string>('');
+  const [reasonSubmitting, setReasonSubmitting] = useState(false);
+  const [reasonError, setReasonError] = useState<string | null>(null);
 
   // Group candidates by Job Mandate (jobId or jobTitle)
   const jobsMap = React.useMemo(() => {
@@ -237,8 +245,8 @@ export function ClientReviewPortalView({
   // Currently selected Candidate Object (for Level 3 Profile View)
   const selectedCandidate = candidates.find(c => c.candidateId === selectedCandidateId) || jobCandidates[0];
 
-  function openInterviewScheduleModal(cand: SubmittedCandidateViewItem) {
-    setTargetCandidateForScheduling(cand);
+  function openInterviewScheduleModal(cands: SubmittedCandidateViewItem[]) {
+    setTargetCandidatesForScheduling(cands);
     setInterviewTypeSelect('Technical Round');
     setCustomInterviewType('');
     setInterviewNotes('');
@@ -264,7 +272,7 @@ export function ClientReviewPortalView({
 
   async function submitInterviewScheduleModal(e: React.FormEvent) {
     e.preventDefault();
-    if (!targetCandidateForScheduling) return;
+    if (!targetCandidatesForScheduling || targetCandidatesForScheduling.length === 0) return;
     if (!slot1 || !slot2 || !slot3) {
       setScheduleError('Please provide all 3 proposed interview time slots.');
       return;
@@ -278,30 +286,99 @@ export function ClientReviewPortalView({
     setScheduleSubmitting(true);
     setScheduleError(null);
 
-    const res = await scheduleClientInterviewAction({
-      submissionId: targetCandidateForScheduling.submissionId,
-      token,
-      interviewType: finalInterviewType,
-      interviewNotes,
-      slot1,
-      slot2,
-      slot3
-    });
+    let successCount = 0;
+    const processedIds: string[] = [];
+    const names: string[] = [];
+
+    for (const cand of targetCandidatesForScheduling) {
+      const res = await scheduleClientInterviewAction({
+        submissionId: cand.submissionId,
+        token,
+        interviewType: finalInterviewType,
+        interviewNotes,
+        slot1,
+        slot2,
+        slot3
+      });
+
+      if (res.success) {
+        successCount++;
+        processedIds.push(cand.submissionId);
+        names.push(`${cand.firstName} ${cand.lastName}`);
+      }
+    }
 
     setScheduleSubmitting(false);
 
-    if (res.success) {
+    if (successCount > 0) {
       setCandidates(prev =>
         prev.map(c =>
-          c.submissionId === targetCandidateForScheduling.submissionId
+          processedIds.includes(c.submissionId)
             ? { ...c, status: 'INTERVIEW' }
             : c
         )
       );
       setIsScheduleModalOpen(false);
-      alert(`Interview invitation & 3 proposed slots sent for ${targetCandidateForScheduling.firstName} ${targetCandidateForScheduling.lastName}!`);
+      setSelectedSubmissions([]);
+      alert(`Interview invitation & 3 proposed slots sent for ${names.join(', ')}!`);
     } else {
-      setScheduleError(res.error || 'Failed to schedule interview.');
+      setScheduleError('Failed to schedule interview for selected candidate(s).');
+    }
+  }
+
+  function openRejectOrHoldModal(cands: SubmittedCandidateViewItem[], decision: 'HOLD' | 'REJECT') {
+    setTargetCandsForReason(cands);
+    setReasonDecisionType(decision);
+    setReasonNotes('');
+    setReasonError(null);
+    setIsReasonModalOpen(true);
+  }
+
+  async function submitRejectOrHoldModal(e: React.FormEvent) {
+    e.preventDefault();
+    if (!targetCandsForReason || targetCandsForReason.length === 0) return;
+    if (!reasonNotes.trim()) {
+      setReasonError('Please provide a reason / note for this decision.');
+      return;
+    }
+
+    setReasonSubmitting(true);
+    setReasonError(null);
+
+    let successCount = 0;
+    const processedIds: string[] = [];
+    const names: string[] = [];
+
+    for (const cand of targetCandsForReason) {
+      const res = await updateClientDecisionAction(
+        cand.submissionId,
+        token,
+        reasonDecisionType,
+        reasonNotes.trim()
+      );
+
+      if (res.success) {
+        successCount++;
+        processedIds.push(cand.submissionId);
+        names.push(`${cand.firstName} ${cand.lastName}`);
+      }
+    }
+
+    setReasonSubmitting(false);
+
+    if (successCount > 0) {
+      setCandidates(prev =>
+        prev.map(c =>
+          processedIds.includes(c.submissionId)
+            ? { ...c, status: reasonDecisionType }
+            : c
+        )
+      );
+      setIsReasonModalOpen(false);
+      setSelectedSubmissions([]);
+      alert(`Decision recorded (${reasonDecisionType}) and feedback note sent to recruiter for ${names.join(', ')}!`);
+    } else {
+      setReasonError('Failed to submit decision for selected candidate(s).');
     }
   }
 
@@ -309,7 +386,12 @@ export function ClientReviewPortalView({
     const cand = candidates.find(c => c.submissionId === submissionId);
     
     if (decision === 'INTERVIEW' && cand) {
-      openInterviewScheduleModal(cand);
+      openInterviewScheduleModal([cand]);
+      return;
+    }
+
+    if ((decision === 'HOLD' || decision === 'REJECT') && cand) {
+      openRejectOrHoldModal([cand], decision);
       return;
     }
 
@@ -329,6 +411,19 @@ export function ClientReviewPortalView({
 
   async function handleBulkDecision(decision: 'INTERVIEW' | 'HOLD' | 'REJECT') {
     if (selectedSubmissions.length === 0) return;
+
+    const selectedCands = candidates.filter(c => selectedSubmissions.includes(c.submissionId));
+    if (selectedCands.length === 0) return;
+
+    if (decision === 'INTERVIEW') {
+      openInterviewScheduleModal(selectedCands);
+      return;
+    }
+
+    if (decision === 'HOLD' || decision === 'REJECT') {
+      openRejectOrHoldModal(selectedCands, decision);
+      return;
+    }
 
     for (const submissionId of selectedSubmissions) {
       await handleDecision(submissionId, decision);
@@ -993,7 +1088,7 @@ export function ClientReviewPortalView({
       </main>
 
       {/* INTERVIEW SCHEDULING MODAL (PHASE IW-01) */}
-      {isScheduleModalOpen && targetCandidateForScheduling && (
+      {isScheduleModalOpen && targetCandidatesForScheduling.length > 0 && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-xl w-full p-6 sm:p-8 space-y-6 animate-in zoom-in-95 duration-200 overflow-hidden">
             
@@ -1005,7 +1100,11 @@ export function ClientReviewPortalView({
                 <div>
                   <h3 className="text-lg font-black text-slate-900">Propose Interview Availability</h3>
                   <p className="text-xs font-semibold text-slate-500">
-                    Candidate: <strong className="text-slate-800">{targetCandidateForScheduling.firstName} {targetCandidateForScheduling.lastName}</strong>
+                    {targetCandidatesForScheduling.length === 1 ? (
+                      <>Candidate: <strong className="text-slate-800">{targetCandidatesForScheduling[0].firstName} {targetCandidatesForScheduling[0].lastName}</strong></>
+                    ) : (
+                      <>Selected Candidates ({targetCandidatesForScheduling.length}): <strong className="text-slate-800">{targetCandidatesForScheduling.map(c => `${c.firstName} ${c.lastName}`).join(', ')}</strong></>
+                    )}
                   </p>
                 </div>
               </div>
@@ -1108,6 +1207,101 @@ export function ClientReviewPortalView({
 
             </form>
 
+          </div>
+        </div>
+      )}
+
+      {/* Reject / Hold Decision Note Modal */}
+      {isReasonModalOpen && targetCandsForReason.length > 0 && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 space-y-6 shadow-2xl border border-slate-200">
+            
+            {/* Modal Header */}
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-3">
+                <div className={`h-10 w-10 rounded-2xl flex items-center justify-center font-black text-sm ${
+                  reasonDecisionType === 'REJECT'
+                    ? 'bg-rose-100 text-rose-600 border border-rose-200'
+                    : 'bg-amber-100 text-amber-600 border border-amber-200'
+                }`}>
+                  {reasonDecisionType === 'REJECT' ? '✕' : '⏸'}
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-slate-900">
+                    {reasonDecisionType === 'REJECT' ? 'Reject Candidate' : 'Place Candidate on Hold'}
+                  </h3>
+                  <p className="text-xs font-semibold text-slate-500">
+                    {targetCandsForReason.length === 1 ? (
+                      <>Candidate: <strong className="text-slate-800">{targetCandsForReason[0].firstName} {targetCandsForReason[0].lastName}</strong></>
+                    ) : (
+                      <>Selected Candidates ({targetCandsForReason.length}): <strong className="text-slate-800">{targetCandsForReason.map(c => `${c.firstName} ${c.lastName}`).join(', ')}</strong></>
+                    )}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsReasonModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 font-bold p-1 rounded-xl hover:bg-slate-100 transition cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {reasonError && (
+              <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl text-xs font-bold text-rose-700 flex items-center gap-2">
+                <span>{reasonError}</span>
+              </div>
+            )}
+
+            <form onSubmit={submitRejectOrHoldModal} className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-700 uppercase tracking-wider block">
+                  Provide Reason / Feedback Note
+                </label>
+                <textarea
+                  required
+                  rows={3}
+                  value={reasonNotes}
+                  onChange={e => setReasonNotes(e.target.value)}
+                  placeholder={
+                    reasonDecisionType === 'REJECT'
+                      ? "e.g. Missing required React experience, Salary expectation is out of budget, Not a culture fit..."
+                      : "e.g. Holding candidates pending final budget review, Waiting for Round 1 interviews completion..."
+                  }
+                  className="w-full bg-slate-50 border border-slate-300 text-slate-900 rounded-2xl p-3.5 text-xs font-semibold focus:ring-2 focus:ring-amber-500 focus:bg-white outline-none resize-none"
+                />
+                <p className="text-[11px] font-semibold text-slate-500">
+                  This feedback reason will be logged and dispatched via email directly to the assigned agency recruiter.
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsReasonModalOpen(false)}
+                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={reasonSubmitting}
+                  className={`px-5 py-2.5 rounded-xl text-xs font-black text-white shadow-md transition flex items-center gap-2 cursor-pointer ${
+                    reasonDecisionType === 'REJECT'
+                      ? 'bg-rose-600 hover:bg-rose-700 shadow-rose-600/20'
+                      : 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/20'
+                  }`}
+                >
+                  {reasonSubmitting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : null}
+                  <span>Submit {reasonDecisionType === 'REJECT' ? 'Rejection Note' : 'Hold Note'}</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

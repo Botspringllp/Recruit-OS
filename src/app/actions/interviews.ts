@@ -459,7 +459,7 @@ export async function scheduleClientInterviewAction(payload: {
     }
 
     // SECTION C: Trigger Email Event CLIENT_INTERVIEW_INVITATION to Candidate & Recruiter
-    const { logClientInterviewInvitationEmail } = await import('@/lib/email');
+    const { logClientInterviewInvitationEmail, processPendingEmails } = await import('@/lib/email');
 
     const formattedSlots = slotTimes.map((st, idx) => ({
       index: idx + 1,
@@ -489,20 +489,8 @@ export async function scheduleClientInterviewAction(payload: {
       );
     }
 
-    // Email to Recruiter
-    if (submission.recruiter?.email) {
-      await logClientInterviewInvitationEmail(
-        agencyId,
-        submission.recruiter.email,
-        candidateName,
-        positionTitle,
-        companyName,
-        interviewType,
-        interviewNotes,
-        formattedSlots,
-        candidateToken
-      );
-    }
+    // Trigger immediate SMTP dispatch so email arrives in recipient inbox right away
+    await processPendingEmails(agencyId);
 
     revalidatePath('/interviews');
     revalidatePath('/submissions');

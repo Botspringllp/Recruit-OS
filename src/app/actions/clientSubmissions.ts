@@ -318,78 +318,64 @@ export async function createCandidateSubmissionsAction(payload: ShareToClientPay
 
     const emailBodyText = `Please have a look at the tracker and attached candidate profiles for ${positionTitle}.\n\n${payload.recruiterMessage ? `Recruiter Note: "${payload.recruiterMessage}"\n\n` : ''}Client Review Portal (Track & Record Decisions Online):\n${reviewUrl}\n\nCandidate Tracker:\nDate\tSource\tClient Name\tApplied Position Name\tCandidate Name\tEmail ID\tNumber\tLocation\tReady to Relocate\tExperience\tRelevant Exp\tDesignation\tQualification\tCurrent/Last Company\tCurrent Salary\tExpectation\tNotice Period\tReason of Leaving\tOffer in Hand\n${candidateTableRowsText}\n\nRegards,\nRecruitment Team`;
 
-    const targetRecipient = payload.clientEmail?.trim() || '';
+    let targetRecipient = payload.clientEmail?.trim() || '';
 
-    try {
-      if (targetRecipient && process.env.SMTP_HOST && process.env.SMTP_USER) {
-        const transporter = nodemailer.createTransport({
-          host: process.env.SMTP_HOST,
-          port: parseInt(process.env.SMTP_PORT || '587', 10),
-          secure: process.env.SMTP_SECURE === 'true',
-          auth: {
-            user: process.env.SMTP_USER,
-            pass: process.env.SMTP_PASS
-          }
-        });
-
-        await transporter.sendMail({
-          from: process.env.SMTP_FROM || `"RecruitOS Talent Platform" <noreply@recruitos.dev>`,
-          to: targetRecipient,
-          subject: emailSubject,
-          html: emailHtml,
-          text: emailBodyText
-        });
-      } else {
-        console.log(`[CLIENT_SUBMISSION_EMAIL] Target Recipient: ${targetRecipient || 'Manual mailto trigger'}`);
-        console.log(`[CLIENT_SUBMISSION_EMAIL] Subject: ${emailSubject}`);
-        console.log(`[CLIENT_SUBMISSION_EMAIL] Review Link: ${reviewUrl}`);
+    // If clientEmail wasn't passed in payload, fetch from client contact in DB
+    if (!targetRecipient && job.clientId) {
+      const clientContact = await prisma.clientContact.findFirst({
+        where: { clientId: job.clientId, email: { not: '' } },
+        select: { email: true }
+      });
+      if (clientContact?.email) {
+        targetRecipient = clientContact.email.trim();
       }
-    } catch (mailErr) {
-      console.warn('Mail transport execution warning:', mailErr);
     }
 
-    // Trigger Email Event: CANDIDATE_SUBMITTED
-    try {
-      const { logCandidateSubmittedEmail } = await import('@/lib/email');
-      const recipient = targetRecipient || user.email || 'client@company.com';
+    // Trigger Email Event: CANDIDATE_SUBMITTED (only if valid client email exists)
+    if (targetRecipient) {
+      try {
+        const { logCandidateSubmittedEmail } = await import('@/lib/email');
 
-      const trackerRows = candidates.map((c: any) => {
-        const note = c.discussionNote;
-        return {
-          date: new Date().toLocaleDateString(),
-          source: 'Headhunted',
-          clientName: clientName,
-          appliedPositionName: positionTitle,
-          candidateName: `${c.firstName} ${c.lastName}`.trim(),
-          emailId: c.email || 'N/A',
-          number: c.phone || 'N/A',
-          location: c.currentLocation || 'N/A',
-          readyToRelocate: note?.readyToRelocate || 'N/A',
-          experience: note?.totalExperience || (c.totalExperienceYears ? `${c.totalExperienceYears}yr` : 'N/A'),
-          relevantExperience: note?.relevantExperience || 'N/A',
-          designation: note?.currentDesignation || c.currentDesignation || 'N/A',
-          qualification: note?.qualification || 'N/A',
-          currentLastCompany: note?.currentCompany || c.currentCompany || 'N/A',
-          currentSalary: note?.currentSalary || (c.currentCtcLpa ? `${c.currentCtcLpa}LPA` : 'N/A'),
-          expectedSalary: note?.expectedSalary || (c.expectedCtcLpa ? `${c.expectedCtcLpa}LPA` : 'N/A'),
-          noticePeriod: note?.noticePeriod || 'N/A',
-          reasonOfLeaving: note?.reasonOfLeaving || 'N/A',
-          offerInHand: note?.offerInHand || 'N/A',
-          resumeUrl: c.resumeUrl || null
-        };
-      });
+        const trackerRows = candidates.map((c: any) => {
+          const note = c.discussionNote;
+          return {
+            date: formatShortDate(c.createdAt),
+            source: 'Headhunted',
+            clientName: clientName,
+            appliedPositionName: positionTitle,
+            candidateName: `${c.firstName} ${c.lastName}`.trim(),
+            emailId: c.email || 'N/A',
+            number: c.phone || 'N/A',
+            location: c.currentLocation || 'N/A',
+            readyToRelocate: note?.readyToRelocate || 'N/A',
+            experience: note?.totalExperience || (c.totalExperienceYears ? `${c.totalExperienceYears}yr` : 'N/A'),
+            relevantExperience: note?.relevantExperience || 'N/A',
+            designation: note?.currentDesignation || c.currentDesignation || 'N/A',
+            qualification: note?.qualification || 'N/A',
+            currentLastCompany: note?.currentCompany || c.currentCompany || 'N/A',
+            currentSalary: note?.currentSalary || (c.currentCtcLpa ? `${c.currentCtcLpa}LPA` : 'N/A'),
+            expectedSalary: note?.expectedSalary || (c.expectedCtcLpa ? `${c.expectedCtcLpa}LPA` : 'N/A'),
+            noticePeriod: note?.noticePeriod || 'N/A',
+            reasonOfLeaving: note?.reasonOfLeaving || 'N/A',
+            offerInHand: note?.offerInHand || 'N/A',
+            resumeUrl: c.resumeUrl || null
+          };
+        });
 
-      await logCandidateSubmittedEmail(
-        user.agencyId,
-        recipient,
-        clientName,
-        positionTitle,
-        secureReviewToken,
-        trackerRows,
-        payload.recruiterMessage
-      );
-    } catch (emailErr) {
-      console.error('Failed creating email log for candidate submission:', emailErr);
+        await logCandidateSubmittedEmail(
+          user.agencyId,
+          targetRecipient,
+          clientName,
+          positionTitle,
+          secureReviewToken,
+          trackerRows,
+          payload.recruiterMessage
+        );
+      } catch (emailErr) {
+        console.error('Failed creating email log for candidate submission:', emailErr);
+      }
+    } else {
+      console.log('[CLIENT_SUBMISSION_EMAIL] Skipped auto email dispatch: No client recipient email specified.');
     }
 
     return {
@@ -519,7 +505,8 @@ export async function getClientReviewBatchAction(token: string): Promise<{
 export async function updateClientDecisionAction(
   submissionId: string,
   token: string,
-  decision: 'INTERVIEW' | 'HOLD' | 'REJECT'
+  decision: 'INTERVIEW' | 'HOLD' | 'REJECT',
+  notes?: string
 ): Promise<{
   success: boolean;
   status?: string;
@@ -554,9 +541,9 @@ export async function updateClientDecisionAction(
       }
     });
 
-    // Trigger Email Event for Client Decisions
+    // Trigger Email Event & Process Pending Queue for Client Decisions
     try {
-      const { logClientInterviewEmail, logClientHoldEmail, logClientRejectEmail } = await import('@/lib/email');
+      const { logClientInterviewEmail, logClientHoldEmail, logClientRejectEmail, processPendingEmails } = await import('@/lib/email');
 
       const subWithDetails = await (prisma as any).candidateSubmission.findUnique({
         where: { id: submission.id },
@@ -587,7 +574,8 @@ export async function updateClientDecisionAction(
             subWithDetails.recruiter.email,
             candidateName,
             positionTitle,
-            clientName
+            clientName,
+            notes
           );
         } else {
           await logClientHoldEmail(
@@ -595,9 +583,13 @@ export async function updateClientDecisionAction(
             subWithDetails.recruiter.email,
             candidateName,
             positionTitle,
-            clientName
+            clientName,
+            notes
           );
         }
+
+        // Trigger immediate email processing for agency
+        await processPendingEmails(subWithDetails.job.agencyId);
       }
     } catch (emailErr) {
       console.error('Failed creating email log for client decision:', emailErr);
