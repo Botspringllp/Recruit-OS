@@ -329,6 +329,7 @@ model Agency {
   emailLogs              EmailLog[]
   interviewFeedbacks     InterviewFeedback[]
   preparationKits        InterviewPreparationKit[]
+  automationJobLogs      AutomationJobLog[]
 
   @@map("agencies")
 }
@@ -1562,6 +1563,7 @@ enum EmailStatus {
   PENDING
   SENT
   FAILED
+  PERMANENT_FAILURE
 
   @@map("email_status")
 }
@@ -1575,6 +1577,8 @@ model EmailLog {
   htmlBody       String?        @map("html_body") @db.Text
   textBody       String?        @map("text_body") @db.Text
   status         EmailStatus    @default(PENDING)
+  retryCount     Int            @default(0) @map("retry_count")
+  nextRetryAt    DateTime?      @map("next_retry_at") @db.Timestamptz
   errorMessage   String?        @map("error_message") @db.Text
   metadata       Json?          @db.JsonB
   createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz
@@ -1587,6 +1591,42 @@ model EmailLog {
   @@index([status])
   @@index([createdAt(sort: Desc)])
   @@map("email_logs")
+}
+
+// =============================================================================
+// DOMAIN 15: AUTOMATION & SCHEDULER INFRASTRUCTURE (PHASE CR-01)
+// =============================================================================
+
+enum AutomationJobStatus {
+  RUNNING
+  SUCCESS
+  FAILED
+  PARTIAL_SUCCESS
+
+  @@map("automation_job_status")
+}
+
+model AutomationJobLog {
+  id             String              @id @default(dbgenerated("gen_random_uuid()")) @map("log_id") @db.Uuid
+  agencyId       String?             @map("agency_id") @db.Uuid
+  jobName        String              @map("job_name") @db.VarChar(128)
+  status         AutomationJobStatus
+  startedAt      DateTime            @default(now()) @map("started_at") @db.Timestamptz
+  completedAt    DateTime?           @map("completed_at") @db.Timestamptz
+  durationMs     Int?                @map("duration_ms")
+  processedCount Int                 @default(0) @map("processed_count")
+  failedCount    Int                 @default(0) @map("failed_count")
+  errorMessage   String?             @map("error_message") @db.Text
+  metadata       Json?               @map("metadata") @db.JsonB
+  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz
+
+  agency Agency? @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  @@index([agencyId])
+  @@index([jobName])
+  @@index([status])
+  @@index([createdAt(sort: Desc)])
+  @@map("automation_job_logs")
 }
 
 
