@@ -31,11 +31,12 @@ export function SubmissionStageSelector({ submissionId, currentStage }: Submissi
   }
 
   const stages: { value: PipelineStage; label: string }[] = [
+    { value: PipelineStage.NEW, label: 'New' },
     { value: PipelineStage.SCREENED, label: 'Screened' },
     { value: PipelineStage.SUBMITTED_TO_CLIENT, label: 'Submitted to Client' },
     { value: PipelineStage.INTERVIEW_SCHEDULED, label: 'Interview Scheduled' },
-    { value: PipelineStage.OFFER_EXTENDED, label: 'Offer Extended' },
-    { value: PipelineStage.COMPLIANCE_AUDIT, label: 'Compliance Audit' },
+    { value: PipelineStage.OFFER_SENT, label: 'Offer Sent' },
+    { value: PipelineStage.OFFER_ACCEPTED, label: 'Offer Accepted' },
     { value: PipelineStage.JOINED, label: 'Joined' },
     { value: PipelineStage.REJECTED, label: 'Rejected' }
   ];

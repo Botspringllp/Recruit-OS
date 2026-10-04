@@ -91,13 +91,23 @@ enum CandidateOwnershipStatus {
 }
 
 enum PipelineStage {
+  NEW
   SCREENED
+  SUBMITTED
   SUBMITTED_TO_CLIENT
+  INTERVIEW
   INTERVIEW_SCHEDULED
+  SELECTED
+  OFFER_SENT
   OFFER_EXTENDED
-  COMPLIANCE_AUDIT
+  OFFER_ACCEPTED
+  OFFER_DECLINED
+  JOINING_PENDING
+  PRE_JOINING
   JOINED
+  PLACEMENT_CLOSED
   REJECTED
+  HOLD
 
   @@map("pipeline_stage")
 }
@@ -330,6 +340,15 @@ model Agency {
   interviewFeedbacks     InterviewFeedback[]
   preparationKits        InterviewPreparationKit[]
   automationJobLogs      AutomationJobLog[]
+  offerLetters           OfferLetter[]
+  joiningTrackers        JoiningTracker[]
+  placementRecords       PlacementRecord[]
+  revenueRecords         RevenueRecord[]
+  jobDistributionLogs    JobDistributionLog[]
+  candidateSourceRecords CandidateSourceRecord[]
+  resumeParseLogs        ResumeParseLog[]
+  candidateJobMatches    CandidateJobMatch[]
+  candidateDuplicateAudits CandidateDuplicateAudit[]
 
   @@map("agencies")
 }
@@ -370,6 +389,13 @@ model User {
   modifiedFinancialLogs  FinancialAuditLog[]
   activities             SystemActivityLog[]
   realNotifications      Notification[]
+  notificationPreferences UserNotificationPreference?
+  offerLetters           OfferLetter[]                   @relation("OfferRecruiter")
+  joiningTrackers        JoiningTracker[]                @relation("JoiningRecruiter")
+  placementRecords       PlacementRecord[]               @relation("PlacementRecruiter")
+  candidateSourceRecords CandidateSourceRecord[]         @relation("SourceRecruiter")
+  auditedDuplicates      CandidateDuplicateAudit[]       @relation("DuplicateAuditor")
+  revenueRecords         RevenueRecord[]                 @relation("RevenueRecruiter")
 
   @@index([agencyId, createdAt(sort: Desc)])
   @@map("users")
@@ -495,6 +521,15 @@ model CandidateRecord {
   storefrontShowcases    StorefrontTalentShowcase[]
   discussionNote         CandidateDiscussionNote?
   preparationKits        InterviewPreparationKit[]
+  offerLetters           OfferLetter[]
+  joiningTrackers        JoiningTracker[]
+  placementRecords       PlacementRecord[]
+  revenueRecords         RevenueRecord[]
+  sourceRecords          CandidateSourceRecord[]
+  resumeParseLogs        ResumeParseLog[]
+  candidateJobMatches    CandidateJobMatch[]
+  duplicateAuditsPrimary CandidateDuplicateAudit[]       @relation("DuplicatePrimaryCandidate")
+  duplicateAuditsMatched CandidateDuplicateAudit[]       @relation("DuplicateMatchedCandidate")
 
   @@unique([agencyId, phone], name: "ux_candidate_agency_phone")
   @@unique([agencyId, email], name: "ux_candidate_agency_email")
@@ -576,6 +611,10 @@ model Client {
   mandates JobMandate[]
   invoices InvoiceRecord[]
   submissions CandidateSubmission[]
+  offerLetters OfferLetter[]
+  joiningTrackers JoiningTracker[]
+  placementRecords PlacementRecord[]
+  revenueRecords RevenueRecord[]
 
   @@index([agencyId, companyName])
   @@map("clients")
@@ -619,6 +658,14 @@ model JobMandate {
   commLogs          CommunicationLog[]
   probationTrackers ProbationGuaranteeTracker[] @relation("ReplacementMandateRel")
   incomingRequirements IncomingRequirement[]
+  offerLetters      OfferLetter[]
+  joiningTrackers   JoiningTracker[]
+  placementRecords  PlacementRecord[]
+  revenueRecords    RevenueRecord[]
+  distributionLogs  JobDistributionLog[]
+  sourceRecords     CandidateSourceRecord[]
+  resumeParseLogs   ResumeParseLog[]
+  candidateJobMatches CandidateJobMatch[]
 
   @@map("job_mandates")
 }
@@ -672,6 +719,9 @@ model CandidateSubmission {
   partnerSplits      PartnerSplitLedger[]
   interviewFeedbacks InterviewFeedback[]
   preparationKits    InterviewPreparationKit[]
+  offerLetters       OfferLetter[]
+  joiningTrackers    JoiningTracker[]
+  placementRecords   PlacementRecord[]
 
   @@unique([jobId, candidateId], name: "ux_submission_job_candidate")
   @@index([agencyId, stage])
@@ -1520,6 +1570,8 @@ model Notification {
   isRead          Boolean              @default(false) @map("is_read")
   createdAt       DateTime             @default(now()) @map("created_at") @db.Timestamptz
   readAt          DateTime?            @map("read_at") @db.Timestamptz
+  deliveredAt     DateTime?            @map("delivered_at") @db.Timestamptz
+  clickedAt       DateTime?            @map("clicked_at") @db.Timestamptz
 
   agency        Agency? @relation(fields: [agencyId], references: [id], onDelete: Cascade)
   recipientUser User    @relation(fields: [recipientUserId], references: [id], onDelete: Cascade)
@@ -1528,6 +1580,22 @@ model Notification {
   @@index([agencyId])
   @@index([createdAt(sort: Desc)])
   @@map("notifications")
+}
+
+model UserNotificationPreference {
+  id                       String   @id @default(dbgenerated("gen_random_uuid()")) @map("preference_id") @db.Uuid
+  userId                   String   @unique @map("user_id") @db.Uuid
+  emailNotifications       Boolean  @default(true) @map("email_notifications")
+  inAppNotifications       Boolean  @default(true) @map("in_app_notifications")
+  interviewNotifications   Boolean  @default(true) @map("interview_notifications")
+  candidateNotifications   Boolean  @default(true) @map("candidate_notifications")
+  requirementNotifications Boolean  @default(true) @map("requirement_notifications")
+  systemNotifications      Boolean  @default(true) @map("system_notifications")
+  updatedAt                DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_notification_preferences")
 }
 
 // =============================================================================
@@ -1555,6 +1623,16 @@ enum EmailEventType {
   INTERVIEW_PREP_SENT
   INTERVIEW_PREP_REMINDER
   INTERVIEW_PREP_FINAL_REMINDER
+  OFFER_SENT
+  OFFER_ACCEPTED
+  OFFER_DECLINED
+  OFFER_CLARIFICATION
+  JOINING_REMINDER
+  JOINING_CONFIRMED
+  PLACEMENT_CLOSED
+  APPLICATION_RECEIVED
+  APPLICATION_SHORTLISTED
+  APPLICATION_REJECTED
 
   @@map("email_event_type")
 }
@@ -1628,5 +1706,379 @@ model AutomationJobLog {
   @@index([createdAt(sort: Desc)])
   @@map("automation_job_logs")
 }
+
+// =============================================================================
+// DOMAIN 16: OFFER MANAGEMENT, JOINING TRACKER, PLACEMENT & REVENUE (PHASE OF-01)
+// =============================================================================
+
+enum OfferStatus {
+  DRAFT
+  SENT
+  VIEWED
+  ACCEPTED
+  DECLINED
+  CLARIFICATION_REQUESTED
+  EXPIRED
+
+  @@map("offer_status")
+}
+
+enum JoiningStatus {
+  OFFER_ACCEPTED
+  PRE_JOINING
+  DOCUMENT_PENDING
+  DOCUMENT_VERIFIED
+  JOINING_CONFIRMED
+  JOINED
+  NO_SHOW
+
+  @@map("joining_status")
+}
+
+enum PlacementStatus {
+  ACTIVE
+  CLOSED
+  DROPPED
+
+  @@map("placement_status")
+}
+
+enum RevenueFeeType {
+  PERCENTAGE
+  FIXED
+
+  @@map("revenue_fee_type")
+}
+
+enum RevenueStatus {
+  PENDING
+  INVOICED
+  PAID
+
+  @@map("revenue_status")
+}
+
+model OfferLetter {
+  id                    String      @id @default(dbgenerated("gen_random_uuid()")) @map("offer_id") @db.Uuid
+  agencyId              String      @map("agency_id") @db.Uuid
+  candidateSubmissionId String      @map("submission_id") @db.Uuid
+  candidateId           String      @map("candidate_id") @db.Uuid
+  jobId                 String      @map("mandate_id") @db.Uuid
+  clientId              String?     @map("client_id") @db.Uuid
+  recruiterId           String?     @map("recruiter_id") @db.Uuid
+  token                 String      @unique @map("offer_token") @db.VarChar(255)
+  title                 String      @db.VarChar(255)
+  offeredCTC            Decimal     @map("offered_ctc") @db.Decimal(12, 2)
+  fixedSalary           Decimal?    @map("fixed_salary") @db.Decimal(12, 2)
+  variableSalary        Decimal?    @map("variable_salary") @db.Decimal(12, 2)
+  joiningDate           DateTime    @map("joining_date") @db.Date
+  workLocation          String?     @map("work_location") @db.VarChar(255)
+  employmentType        String      @default("FULL_TIME") @map("employment_type") @db.VarChar(64)
+  bondPeriod            String?     @map("bond_period") @db.VarChar(128)
+  probationPeriod       String?     @map("probation_period") @db.VarChar(128)
+  noticePeriod          String?     @map("notice_period") @db.VarChar(128)
+  benefits              String?     @db.Text
+  specialTerms          String?     @map("special_terms") @db.Text
+  internalNotes         String?     @map("internal_notes") @db.Text
+  status                OfferStatus @default(DRAFT)
+  expiresAt             DateTime?   @map("expires_at") @db.Timestamptz
+  sentAt                DateTime?   @map("sent_at") @db.Timestamptz
+  viewedAt              DateTime?   @map("viewed_at") @db.Timestamptz
+  respondedAt           DateTime?   @map("responded_at") @db.Timestamptz
+  declineReason         String?     @map("decline_reason") @db.Text
+  createdAt             DateTime    @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt             DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  agency         Agency              @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  submission     CandidateSubmission @relation(fields: [candidateSubmissionId], references: [id], onDelete: Cascade)
+  candidate      CandidateRecord     @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  job            JobMandate          @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  client         Client?             @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  recruiter      User?               @relation("OfferRecruiter", fields: [recruiterId], references: [id], onDelete: SetNull)
+  clarifications OfferClarification[]
+  joiningTracker JoiningTracker?
+
+  @@index([agencyId])
+  @@index([token])
+  @@index([status])
+  @@map("offer_letters")
+}
+
+model OfferClarification {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @map("clarification_id") @db.Uuid
+  offerLetterId   String   @map("offer_id") @db.Uuid
+  senderRole      String   @map("sender_role") @db.VarChar(64)
+  senderName      String   @map("sender_name") @db.VarChar(128)
+  questionTitle   String   @map("question_title") @db.VarChar(255)
+  questionDetails String   @map("question_details") @db.Text
+  response        String?  @db.Text
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  offerLetter OfferLetter @relation(fields: [offerLetterId], references: [id], onDelete: Cascade)
+
+  @@index([offerLetterId])
+  @@map("offer_clarifications")
+}
+
+model JoiningTracker {
+  id                    String        @id @default(dbgenerated("gen_random_uuid()")) @map("joining_id") @db.Uuid
+  agencyId              String        @map("agency_id") @db.Uuid
+  offerLetterId         String        @unique @map("offer_id") @db.Uuid
+  candidateSubmissionId String        @map("submission_id") @db.Uuid
+  candidateId           String        @map("candidate_id") @db.Uuid
+  jobId                 String        @map("mandate_id") @db.Uuid
+  recruiterId           String?       @map("recruiter_id") @db.Uuid
+  clientId              String?       @map("client_id") @db.Uuid
+  joiningDate           DateTime      @map("joining_date") @db.Date
+  status                JoiningStatus @default(OFFER_ACCEPTED)
+  recruiterConfirmed    Boolean       @default(false) @map("recruiter_confirmed")
+  recruiterConfirmedAt  DateTime?     @map("recruiter_confirmed_at") @db.Timestamptz
+  clientConfirmed       Boolean       @default(false) @map("client_confirmed")
+  clientConfirmedAt     DateTime?     @map("client_confirmed_at") @db.Timestamptz
+  requiredDocuments     Json?         @map("required_documents") @db.JsonB
+  createdAt             DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt             DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  agency          Agency              @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  offerLetter     OfferLetter         @relation(fields: [offerLetterId], references: [id], onDelete: Cascade)
+  submission      CandidateSubmission @relation(fields: [candidateSubmissionId], references: [id], onDelete: Cascade)
+  candidate       CandidateRecord     @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  job             JobMandate          @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  client          Client?             @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  recruiter       User?               @relation("JoiningRecruiter", fields: [recruiterId], references: [id], onDelete: SetNull)
+  placementRecord PlacementRecord?
+
+  @@index([agencyId])
+  @@index([status])
+  @@map("joining_trackers")
+}
+
+model PlacementRecord {
+  id                    String          @id @default(dbgenerated("gen_random_uuid()")) @map("placement_id") @db.Uuid
+  agencyId              String          @map("agency_id") @db.Uuid
+  joiningTrackerId      String          @unique @map("joining_id") @db.Uuid
+  candidateSubmissionId String          @map("submission_id") @db.Uuid
+  candidateId           String          @map("candidate_id") @db.Uuid
+  jobId                 String          @map("mandate_id") @db.Uuid
+  clientId              String?         @map("client_id") @db.Uuid
+  recruiterId           String?         @map("recruiter_id") @db.Uuid
+  joiningDate           DateTime        @map("joining_date") @db.Date
+  finalSalary           Decimal         @map("final_salary") @db.Decimal(12, 2)
+  placementStatus       PlacementStatus @default(ACTIVE)
+  closedAt              DateTime?       @map("closed_at") @db.Timestamptz
+  createdAt             DateTime        @default(now()) @map("created_at") @db.Timestamptz
+
+  agency         Agency              @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  joiningTracker JoiningTracker      @relation(fields: [joiningTrackerId], references: [id], onDelete: Cascade)
+  submission     CandidateSubmission @relation(fields: [candidateSubmissionId], references: [id], onDelete: Cascade)
+  candidate      CandidateRecord     @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  job            JobMandate          @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  client         Client?             @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  recruiter      User?               @relation("PlacementRecruiter", fields: [recruiterId], references: [id], onDelete: SetNull)
+  revenueRecord  RevenueRecord?
+
+  @@index([agencyId])
+  @@index([placementStatus])
+  @@map("placement_records")
+}
+
+model RevenueRecord {
+  id                String         @id @default(dbgenerated("gen_random_uuid()")) @map("revenue_id") @db.Uuid
+  agencyId          String         @map("agency_id") @db.Uuid
+  placementRecordId String         @unique @map("placement_id") @db.Uuid
+  recruiterId       String?        @map("recruiter_id") @db.Uuid
+  clientId          String?        @map("client_id") @db.Uuid
+  jobId             String         @map("mandate_id") @db.Uuid
+  candidateId       String         @map("candidate_id") @db.Uuid
+  feeType           RevenueFeeType @default(PERCENTAGE)
+  feePercentage     Decimal        @default(8.33) @map("fee_percentage") @db.Decimal(5, 2)
+  feeFixedAmount    Decimal?       @map("fee_fixed_amount") @db.Decimal(12, 2)
+  annualSalary      Decimal        @map("annual_salary") @db.Decimal(12, 2)
+  totalRevenue      Decimal        @map("total_revenue") @db.Decimal(12, 2)
+  status            RevenueStatus  @default(PENDING)
+  invoicedAt        DateTime?      @map("invoiced_at") @db.Timestamptz
+  paidAt            DateTime?      @map("paid_at") @db.Timestamptz
+  createdAt         DateTime       @default(now()) @map("created_at") @db.Timestamptz
+
+  agency          Agency          @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  placementRecord PlacementRecord @relation(fields: [placementRecordId], references: [id], onDelete: Cascade)
+  recruiter       User?           @relation("RevenueRecruiter", fields: [recruiterId], references: [id], onDelete: SetNull)
+  client          Client?         @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  job             JobMandate      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  candidate       CandidateRecord @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  @@index([agencyId])
+  @@index([status])
+  @@map("revenue_records")
+}
+
+// =============================================================================
+// DOMAIN 17: CANDIDATE SOURCING, CAREER PORTAL & AI MATCHING (PHASE CS-01)
+// =============================================================================
+
+enum JobDistributionChannel {
+  CAREER_PORTAL
+  LINKEDIN
+  NAUKRI
+  FOUNDIT
+  INDEED
+  CUSTOM_URL
+
+  @@map("job_distribution_channel")
+}
+
+enum DistributionStatus {
+  PUBLISHED
+  PENDING
+  FAILED
+
+  @@map("distribution_status")
+}
+
+enum CandidateSourceType {
+  CAREER_PORTAL
+  LINKEDIN
+  NAUKRI
+  FOUNDIT
+  INDEED
+  REFERRAL
+  MANUAL_ENTRY
+  IMPORT
+
+  @@map("candidate_source_type")
+}
+
+enum ResumeParseStatus {
+  SUCCESS
+  PARTIAL
+  FAILED
+
+  @@map("resume_parse_status")
+}
+
+enum DuplicateMatchStatus {
+  FLAGGED
+  MERGED
+  IGNORED
+
+  @@map("duplicate_match_status")
+}
+
+model JobDistributionLog {
+  id             String                 @id @default(dbgenerated("gen_random_uuid()")) @map("distribution_id") @db.Uuid
+  agencyId       String                 @map("agency_id") @db.Uuid
+  jobId          String                 @map("job_id") @db.Uuid
+  channel        JobDistributionChannel @default(CAREER_PORTAL)
+  status         DistributionStatus     @default(PUBLISHED)
+  externalJobUrl String?                @map("external_job_url") @db.VarChar(500)
+  publishedAt    DateTime?              @map("published_at") @db.Timestamptz
+  errorDetails   String?                @map("error_details") @db.Text
+  createdAt      DateTime               @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime               @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  agency Agency     @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  job    JobMandate @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([agencyId])
+  @@index([jobId, channel])
+  @@map("job_distribution_logs")
+}
+
+model CandidateSourceRecord {
+  id            String              @id @default(dbgenerated("gen_random_uuid()")) @map("source_record_id") @db.Uuid
+  agencyId      String              @map("agency_id") @db.Uuid
+  candidateId   String              @map("candidate_id") @db.Uuid
+  sourceType    CandidateSourceType @default(CAREER_PORTAL) @map("source_type")
+  sourceChannel String?             @map("source_channel") @db.VarChar(100)
+  sourceDate    DateTime            @default(now()) @map("source_date") @db.Timestamptz
+  jobId         String?             @map("job_id") @db.Uuid
+  recruiterId   String?             @map("recruiter_id") @db.Uuid
+  createdAt     DateTime            @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  agency    Agency          @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  candidate CandidateRecord @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  job       JobMandate?     @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  recruiter User?           @relation("SourceRecruiter", fields: [recruiterId], references: [id], onDelete: SetNull)
+
+  @@index([agencyId])
+  @@index([candidateId])
+  @@index([sourceType])
+  @@map("candidate_source_records")
+}
+
+model ResumeParseLog {
+  id              String            @id @default(dbgenerated("gen_random_uuid()")) @map("parse_log_id") @db.Uuid
+  agencyId        String            @map("agency_id") @db.Uuid
+  candidateId     String?           @map("candidate_id") @db.Uuid
+  jobId           String?           @map("job_id") @db.Uuid
+  fileName        String            @map("file_name") @db.VarChar(255)
+  fileUrl         String?           @map("file_url") @db.VarChar(500)
+  fileType        String?           @map("file_type") @db.VarChar(50)
+  parsedData      Json?             @map("parsed_data")
+  parsedSkills    String[]          @default([]) @map("parsed_skills")
+  confidenceScore Float             @default(0) @map("confidence_score")
+  status          ResumeParseStatus @default(SUCCESS)
+  errorDetails    String?           @map("error_details") @db.Text
+  createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  agency    Agency           @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  candidate CandidateRecord? @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  job       JobMandate?      @relation(fields: [jobId], references: [id], onDelete: SetNull)
+
+  @@index([agencyId])
+  @@index([candidateId])
+  @@map("resume_parse_logs")
+}
+
+model CandidateJobMatch {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @map("match_id") @db.Uuid
+  agencyId        String   @map("agency_id") @db.Uuid
+  candidateId     String   @map("candidate_id") @db.Uuid
+  jobId           String   @map("job_id") @db.Uuid
+  overallScore    Float    @map("overall_score")
+  skillScore      Float    @map("skill_score")
+  experienceScore Float    @map("experience_score")
+  locationScore   Float    @map("location_score")
+  salaryScore     Float    @map("salary_score")
+  noticeScore     Float    @map("notice_score")
+  matchDetails    Json?    @map("match_details")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  agency    Agency          @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  candidate CandidateRecord @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  job       JobMandate      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([candidateId, jobId])
+  @@index([agencyId])
+  @@index([jobId, overallScore(sort: Desc)])
+  @@map("candidate_job_matches")
+}
+
+model CandidateDuplicateAudit {
+  id                 String               @id @default(dbgenerated("gen_random_uuid()")) @map("audit_id") @db.Uuid
+  agencyId           String               @map("agency_id") @db.Uuid
+  candidateId        String               @map("candidate_id") @db.Uuid
+  matchedCandidateId String               @map("matched_candidate_id") @db.Uuid
+  matchType          String               @map("match_type") @db.VarChar(50)
+  matchedValue       String               @map("matched_value") @db.VarChar(255)
+  status             DuplicateMatchStatus @default(FLAGGED)
+  actionByUserId     String?              @map("action_by_user_id") @db.Uuid
+  actionNotes        String?              @map("action_notes") @db.Text
+  createdAt          DateTime             @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime             @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  agency           Agency          @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  candidate        CandidateRecord @relation("DuplicatePrimaryCandidate", fields: [candidateId], references: [id], onDelete: Cascade)
+  matchedCandidate CandidateRecord @relation("DuplicateMatchedCandidate", fields: [matchedCandidateId], references: [id], onDelete: Cascade)
+  actionByUser     User?           @relation("DuplicateAuditor", fields: [actionByUserId], references: [id], onDelete: SetNull)
+
+  @@index([agencyId])
+  @@index([candidateId])
+  @@map("candidate_duplicate_audits")
+}
+
 
 

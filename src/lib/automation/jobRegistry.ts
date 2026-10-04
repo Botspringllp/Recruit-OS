@@ -55,6 +55,72 @@ export const JOB_REGISTRY: Record<string, AutomationJobDef> = {
     description: 'Identify candidate submissions awaiting client review for 48+ hours and alert recruiters',
     category: 'PIPELINE',
     handler: processRecruiterFollowUpJob
+  },
+
+  OFFER_FOLLOW_UP: {
+    jobName: 'OFFER_FOLLOW_UP',
+    description: 'Automated follow-up emails for offer letters unviewed/unresponded within 24h/48h/72h (OF-01)',
+    category: 'PIPELINE',
+    handler: async () => {
+      const { checkAndSendOfferFollowUpsJob } = await import('./jobs/offerJobs');
+      const res = await checkAndSendOfferFollowUpsJob();
+      return { success: true, processedCount: res.processedCount, failedCount: 0 };
+    }
+  },
+
+  JOINING_REMINDER: {
+    jobName: 'JOINING_REMINDER',
+    description: 'Automated joining date reminders sent 7 days, 3 days, and 1 day prior to joining date (OF-01)',
+    category: 'PIPELINE',
+    handler: async () => {
+      const { checkAndSendJoiningRemindersJob } = await import('./jobs/offerJobs');
+      const res = await checkAndSendJoiningRemindersJob();
+      return { success: true, processedCount: res.processedCount, failedCount: 0 };
+    }
+  },
+
+  PLACEMENT_MONITOR: {
+    jobName: 'PLACEMENT_MONITOR',
+    description: 'Monitor active placements and audit placement revenue ledger records (OF-01)',
+    category: 'PIPELINE',
+    handler: async () => {
+      const { monitorPlacementStatusJob } = await import('./jobs/offerJobs');
+      const res = await monitorPlacementStatusJob();
+      return { success: true, processedCount: res.processedCount, failedCount: 0 };
+    }
+  },
+
+  RESUME_PARSER_PROCESSOR: {
+    jobName: 'RESUME_PARSER_PROCESSOR',
+    description: 'Processes incoming unparsed resumes and extracts structured candidate fields (CS-01)',
+    category: 'PIPELINE',
+    handler: async () => {
+      const { processResumeParserQueueJob } = await import('./jobs/sourcingJobs');
+      const res = await processResumeParserQueueJob();
+      return { success: true, processedCount: res.processedCount || 0, failedCount: 0 };
+    }
+  },
+
+  AI_MATCH_REFRESH: {
+    jobName: 'AI_MATCH_REFRESH',
+    description: 'Recalculates AI Candidate-Job Match Scores across open job mandates (CS-01)',
+    category: 'PIPELINE',
+    handler: async () => {
+      const { refreshAIMatchesJob } = await import('./jobs/sourcingJobs');
+      const res = await refreshAIMatchesJob();
+      return { success: true, processedCount: res.updatedCount || 0, failedCount: 0 };
+    }
+  },
+
+  SOURCE_ANALYTICS_AGGREGATOR: {
+    jobName: 'SOURCE_ANALYTICS_AGGREGATOR',
+    description: 'Aggregates candidate sourcing channel metrics and channel conversion rates (CS-01)',
+    category: 'PIPELINE',
+    handler: async () => {
+      const { aggregateSourceAnalyticsJob } = await import('./jobs/sourcingJobs');
+      const res = await aggregateSourceAnalyticsJob();
+      return { success: true, processedCount: 1, failedCount: 0 };
+    }
   }
 };
 

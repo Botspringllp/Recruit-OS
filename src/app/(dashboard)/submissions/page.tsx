@@ -61,11 +61,12 @@ export default async function SubmissionsPage({ searchParams }: SubmissionsPageP
   ]);
 
   const pipelineStages: { stage: PipelineStage; title: string; color: string }[] = [
+    { stage: PipelineStage.NEW, title: 'New', color: 'border-slate-700 bg-slate-900/60' },
     { stage: PipelineStage.SCREENED, title: 'Screened', color: 'border-slate-700 bg-slate-900/60' },
     { stage: PipelineStage.SUBMITTED_TO_CLIENT, title: 'Submitted to Client', color: 'border-brand-500/30 bg-brand-500/5' },
     { stage: PipelineStage.INTERVIEW_SCHEDULED, title: 'Interview Scheduled', color: 'border-cyan-500/30 bg-cyan-500/5' },
-    { stage: PipelineStage.OFFER_EXTENDED, title: 'Offer Extended', color: 'border-purple-500/30 bg-purple-500/5' },
-    { stage: PipelineStage.COMPLIANCE_AUDIT, title: 'Compliance Audit', color: 'border-amber-500/30 bg-amber-500/5' },
+    { stage: PipelineStage.OFFER_SENT, title: 'Offer Sent', color: 'border-purple-500/30 bg-purple-500/5' },
+    { stage: PipelineStage.OFFER_ACCEPTED, title: 'Offer Accepted', color: 'border-amber-500/30 bg-amber-500/5' },
     { stage: PipelineStage.JOINED, title: 'Joined / Placed', color: 'border-emerald-500/30 bg-emerald-500/5' },
     { stage: PipelineStage.REJECTED, title: 'Rejected', color: 'border-rose-500/30 bg-rose-500/5' }
   ];

@@ -9,6 +9,8 @@ export const metadata = {
   description: 'Enterprise Recruiter Workspace and Execution Engine',
 };
 
+import { NotificationToastProvider } from '@/components/notifications/NotificationToastProvider';
+
 export default async function DashboardLayout({
   children,
 }: {
@@ -43,8 +45,10 @@ export default async function DashboardLayout({
   const userPermissions = getCurrentUserPermissions(dbUser);
 
   return (
-    <DashboardShell tenant={tenantContext} user={userContext} userPermissions={userPermissions}>
-      {children}
-    </DashboardShell>
+    <NotificationToastProvider>
+      <DashboardShell tenant={tenantContext} user={userContext} userPermissions={userPermissions}>
+        {children}
+      </DashboardShell>
+    </NotificationToastProvider>
   );
 }

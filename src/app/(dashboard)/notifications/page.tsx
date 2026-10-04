@@ -1,11 +1,24 @@
 import React from 'react';
-import { NotificationsClient } from './NotificationsClient';
+import { redirect } from 'next/navigation';
+import { getCurrentUser } from '@/lib/rbac';
+import { getNotificationCenterAction } from '@/app/actions/notificationActions';
+import { NotificationsClient } from '@/components/notifications/NotificationsClient';
 
-export const metadata = {
-  title: 'Notification Center - RecruitOS',
-  description: 'Real-time platform notifications and audit event history'
-};
+export const revalidate = 0;
 
-export default function NotificationsPage() {
-  return <NotificationsClient />;
+export default async function NotificationCenterPage() {
+  const dbUser = await getCurrentUser();
+  if (!dbUser) {
+    redirect('/auth/login');
+  }
+
+  const res = await getNotificationCenterAction();
+
+  return (
+    <NotificationsClient
+      initialNotifications={res.notifications || []}
+      initialTotalCount={res.totalCount || 0}
+      initialUnreadCount={res.unreadCount || 0}
+    />
+  );
 }

@@ -37,7 +37,17 @@ export enum EmailEventType {
   INTERVIEW_CONFIRMED = 'INTERVIEW_CONFIRMED',
   INTERVIEW_PREP_SENT = 'INTERVIEW_PREP_SENT',
   INTERVIEW_PREP_REMINDER = 'INTERVIEW_PREP_REMINDER',
-  INTERVIEW_PREP_FINAL_REMINDER = 'INTERVIEW_PREP_FINAL_REMINDER'
+  INTERVIEW_PREP_FINAL_REMINDER = 'INTERVIEW_PREP_FINAL_REMINDER',
+  OFFER_SENT = 'OFFER_SENT',
+  OFFER_ACCEPTED = 'OFFER_ACCEPTED',
+  OFFER_DECLINED = 'OFFER_DECLINED',
+  OFFER_CLARIFICATION = 'OFFER_CLARIFICATION',
+  JOINING_REMINDER = 'JOINING_REMINDER',
+  JOINING_CONFIRMED = 'JOINING_CONFIRMED',
+  PLACEMENT_CLOSED = 'PLACEMENT_CLOSED',
+  APPLICATION_RECEIVED = 'APPLICATION_RECEIVED',
+  APPLICATION_SHORTLISTED = 'APPLICATION_SHORTLISTED',
+  APPLICATION_REJECTED = 'APPLICATION_REJECTED'
 }
 
 export enum EmailStatus {
@@ -819,3 +829,303 @@ export async function logInterviewPrepKitEmail(
     }
   });
 }
+
+/**
+ * Log OFFER_SENT Email
+ */
+export async function logOfferSentEmail(
+  agencyId: string,
+  recipientEmail: string,
+  candidateName: string,
+  companyName: string,
+  positionTitle: string,
+  offeredCtcStr: string,
+  offerUrl: string
+) {
+  const agency = await fetchAgencyContext(agencyId);
+  const { generateOfferSentTemplate } = await import('./emailTemplates');
+  const rendered = generateOfferSentTemplate({
+    agency,
+    candidateName,
+    companyName,
+    positionTitle,
+    offeredCtcStr,
+    offerUrl
+  });
+
+  return createEmailLog({
+    agencyId,
+    eventType: EmailEventType.OFFER_SENT,
+    recipientEmail,
+    subject: rendered.subject,
+    htmlBody: rendered.html,
+    textBody: rendered.text,
+    metadata: { candidateName, companyName, positionTitle, offeredCtcStr, offerUrl }
+  });
+}
+
+/**
+ * Log OFFER_ACCEPTED Email
+ */
+export async function logOfferAcceptedEmail(
+  agencyId: string,
+  recipientEmail: string,
+  candidateName: string,
+  companyName: string,
+  positionTitle: string,
+  joiningDateStr: string,
+  offeredCtcStr: string
+) {
+  const agency = await fetchAgencyContext(agencyId);
+  const { generateOfferAcceptedTemplate } = await import('./emailTemplates');
+  const rendered = generateOfferAcceptedTemplate({
+    agency,
+    candidateName,
+    companyName,
+    positionTitle,
+    joiningDateStr,
+    offeredCtcStr
+  });
+
+  return createEmailLog({
+    agencyId,
+    eventType: EmailEventType.OFFER_ACCEPTED,
+    recipientEmail,
+    subject: rendered.subject,
+    htmlBody: rendered.html,
+    textBody: rendered.text,
+    metadata: { candidateName, companyName, positionTitle, joiningDateStr, offeredCtcStr }
+  });
+}
+
+/**
+ * Log OFFER_DECLINED Email
+ */
+export async function logOfferDeclinedEmail(
+  agencyId: string,
+  recipientEmail: string,
+  candidateName: string,
+  companyName: string,
+  positionTitle: string,
+  declineReason?: string
+) {
+  const agency = await fetchAgencyContext(agencyId);
+  const { generateOfferDeclinedTemplate } = await import('./emailTemplates');
+  const rendered = generateOfferDeclinedTemplate({
+    agency,
+    candidateName,
+    companyName,
+    positionTitle,
+    declineReason
+  });
+
+  return createEmailLog({
+    agencyId,
+    eventType: EmailEventType.OFFER_DECLINED,
+    recipientEmail,
+    subject: rendered.subject,
+    htmlBody: rendered.html,
+    textBody: rendered.text,
+    metadata: { candidateName, companyName, positionTitle, declineReason }
+  });
+}
+
+/**
+ * Log OFFER_CLARIFICATION Email
+ */
+export async function logOfferClarificationEmail(
+  agencyId: string,
+  recipientEmail: string,
+  candidateName: string,
+  companyName: string,
+  positionTitle: string,
+  questionTitle: string,
+  questionDetails: string
+) {
+  const agency = await fetchAgencyContext(agencyId);
+  const { generateOfferClarificationTemplate } = await import('./emailTemplates');
+  const rendered = generateOfferClarificationTemplate({
+    agency,
+    candidateName,
+    companyName,
+    positionTitle,
+    questionTitle,
+    questionDetails
+  });
+
+  return createEmailLog({
+    agencyId,
+    eventType: EmailEventType.OFFER_CLARIFICATION,
+    recipientEmail,
+    subject: rendered.subject,
+    htmlBody: rendered.html,
+    textBody: rendered.text,
+    metadata: { candidateName, companyName, positionTitle, questionTitle, questionDetails }
+  });
+}
+
+/**
+ * Log JOINING_REMINDER Email
+ */
+export async function logJoiningReminderEmail(
+  agencyId: string,
+  recipientEmail: string,
+  candidateName: string,
+  companyName: string,
+  positionTitle: string,
+  joiningDateStr: string,
+  daysLeft: number
+) {
+  const agency = await fetchAgencyContext(agencyId);
+  const { generateJoiningReminderTemplate } = await import('./emailTemplates');
+  const rendered = generateJoiningReminderTemplate({
+    agency,
+    candidateName,
+    companyName,
+    positionTitle,
+    joiningDateStr,
+    daysLeft
+  });
+
+  return createEmailLog({
+    agencyId,
+    eventType: EmailEventType.JOINING_REMINDER,
+    recipientEmail,
+    subject: rendered.subject,
+    htmlBody: rendered.html,
+    textBody: rendered.text,
+    metadata: { candidateName, companyName, positionTitle, joiningDateStr, daysLeft }
+  });
+}
+
+/**
+ * Log JOINING_CONFIRMED Email
+ */
+export async function logJoiningConfirmedEmail(
+  agencyId: string,
+  recipientEmail: string,
+  candidateName: string,
+  companyName: string,
+  positionTitle: string,
+  joiningDateStr: string,
+  finalSalaryStr: string
+) {
+  const agency = await fetchAgencyContext(agencyId);
+  const { generateJoiningConfirmedTemplate } = await import('./emailTemplates');
+  const rendered = generateJoiningConfirmedTemplate({
+    agency,
+    candidateName,
+    companyName,
+    positionTitle,
+    joiningDateStr,
+    finalSalaryStr
+  });
+
+  return createEmailLog({
+    agencyId,
+    eventType: EmailEventType.JOINING_CONFIRMED,
+    recipientEmail,
+    subject: rendered.subject,
+    htmlBody: rendered.html,
+    textBody: rendered.text,
+    metadata: { candidateName, companyName, positionTitle, joiningDateStr, finalSalaryStr }
+  });
+}
+
+/**
+ * Log PLACEMENT_CLOSED Email
+ */
+export async function logPlacementClosedEmail(
+  agencyId: string,
+  recipientEmail: string,
+  candidateName: string,
+  companyName: string,
+  revenueStr: string
+) {
+  const agency = await fetchAgencyContext(agencyId);
+  const { generatePlacementClosedTemplate } = await import('./emailTemplates');
+  const rendered = generatePlacementClosedTemplate({
+    agency,
+    candidateName,
+    companyName,
+    revenueStr
+  });
+
+  return createEmailLog({
+    agencyId,
+    eventType: EmailEventType.PLACEMENT_CLOSED,
+    recipientEmail,
+    subject: rendered.subject,
+    htmlBody: rendered.html,
+    textBody: rendered.text,
+    metadata: { candidateName, companyName, revenueStr }
+  });
+}
+
+export async function logApplicationReceivedEmail(
+  agencyId: string,
+  recipientEmail: string,
+  candidateName: string,
+  jobTitle: string,
+  companyName: string
+) {
+  const agency = await fetchAgencyContext(agencyId);
+  const { generateApplicationReceivedTemplate } = await import('./emailTemplates');
+  const rendered = generateApplicationReceivedTemplate({ agency, candidateName, jobTitle, companyName });
+
+  return createEmailLog({
+    agencyId,
+    eventType: EmailEventType.APPLICATION_RECEIVED,
+    recipientEmail,
+    subject: rendered.subject,
+    htmlBody: rendered.html,
+    textBody: rendered.text,
+    metadata: { candidateName, jobTitle, companyName }
+  });
+}
+
+export async function logApplicationShortlistedEmail(
+  agencyId: string,
+  recipientEmail: string,
+  candidateName: string,
+  jobTitle: string,
+  companyName: string
+) {
+  const agency = await fetchAgencyContext(agencyId);
+  const { generateApplicationShortlistedTemplate } = await import('./emailTemplates');
+  const rendered = generateApplicationShortlistedTemplate({ agency, candidateName, jobTitle, companyName });
+
+  return createEmailLog({
+    agencyId,
+    eventType: EmailEventType.APPLICATION_SHORTLISTED,
+    recipientEmail,
+    subject: rendered.subject,
+    htmlBody: rendered.html,
+    textBody: rendered.text,
+    metadata: { candidateName, jobTitle, companyName }
+  });
+}
+
+export async function logApplicationRejectedEmail(
+  agencyId: string,
+  recipientEmail: string,
+  candidateName: string,
+  jobTitle: string,
+  companyName: string
+) {
+  const agency = await fetchAgencyContext(agencyId);
+  const { generateApplicationRejectedTemplate } = await import('./emailTemplates');
+  const rendered = generateApplicationRejectedTemplate({ agency, candidateName, jobTitle, companyName });
+
+  return createEmailLog({
+    agencyId,
+    eventType: EmailEventType.APPLICATION_REJECTED,
+    recipientEmail,
+    subject: rendered.subject,
+    htmlBody: rendered.html,
+    textBody: rendered.text,
+    metadata: { candidateName, jobTitle, companyName }
+  });
+}
+
+

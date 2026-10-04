@@ -939,3 +939,284 @@ Review Preparation Kit: ${prepUrl}`;
   };
 }
 
+// =========================================================
+// OF-01 EMAIL TEMPLATES
+// =========================================================
+
+export interface OfferSentEmailParams {
+  agency: BaseAgencyContext;
+  candidateName: string;
+  companyName: string;
+  positionTitle: string;
+  offeredCtcStr: string;
+  offerUrl: string;
+}
+
+export function generateOfferSentTemplate(params: OfferSentEmailParams): RenderedEmail {
+  const { agency, candidateName, companyName, positionTitle, offeredCtcStr, offerUrl } = params;
+  const title = `Official Employment Offer: ${positionTitle} at ${companyName}`;
+
+  const htmlContent = `
+    <p style="margin-top: 0; font-size: 14px; color: #1e293b;">Dear <strong>${candidateName}</strong>,</p>
+    <p style="font-size: 13.5px; color: #334155; line-height: 1.5;">Congratulations! We are pleased to extend an official employment offer for the position of <strong>${positionTitle}</strong> with <strong>${companyName}</strong>.</p>
+
+    <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-left: 4px solid #16a34a; padding: 18px; border-radius: 8px; margin: 20px 0;">
+      <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="5" style="font-size: 13px; color: #1e293b;">
+        <tr><td width="35%" style="font-weight: 700; color: #15803d;">Company:</td><td style="font-weight: 800;">${companyName}</td></tr>
+        <tr><td style="font-weight: 700; color: #15803d;">Position:</td><td style="font-weight: 800;">${positionTitle}</td></tr>
+        <tr><td style="font-weight: 700; color: #15803d;">Offered Annual Compensation:</td><td style="font-weight: 800; color: #047857; font-size: 15px;">${offeredCtcStr}</td></tr>
+      </table>
+    </div>
+
+    <p style="font-size: 13px; color: #475569;">Please click the button below to view full offer details, compensation structure, terms, and submit your response.</p>
+  `;
+
+  return {
+    subject: title,
+    html: wrapMasterLayout(agency, title, htmlContent, { label: 'Review & Respond to Offer', url: offerUrl }),
+    text: `Offer Extended: ${positionTitle} at ${companyName}\nReview Offer: ${offerUrl}`
+  };
+}
+
+export function generateOfferAcceptedTemplate(params: {
+  agency: BaseAgencyContext;
+  candidateName: string;
+  companyName: string;
+  positionTitle: string;
+  joiningDateStr: string;
+  offeredCtcStr: string;
+}): RenderedEmail {
+  const { agency, candidateName, companyName, positionTitle, joiningDateStr, offeredCtcStr } = params;
+  const title = `Offer ACCEPTED by ${candidateName} - ${positionTitle}`;
+
+  const htmlContent = `
+    <p style="margin-top: 0; font-size: 14px; color: #1e293b;">Great news! Candidate <strong>${candidateName}</strong> has officially accepted the employment offer for <strong>${positionTitle}</strong> at <strong>${companyName}</strong>.</p>
+
+    <div style="background-color: #ecfdf5; border-left: 4px solid #059669; padding: 16px; border-radius: 8px; margin: 20px 0;">
+      <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="4" style="font-size: 13px; color: #1e293b;">
+        <tr><td width="35%" style="font-weight: 700; color: #047857;">Candidate:</td><td style="font-weight: 800;">${candidateName}</td></tr>
+        <tr><td style="font-weight: 700; color: #047857;">Company:</td><td style="font-weight: 800;">${companyName}</td></tr>
+        <tr><td style="font-weight: 700; color: #047857;">Position:</td><td style="font-weight: 700;">${positionTitle}</td></tr>
+        <tr><td style="font-weight: 700; color: #047857;">Joining Date:</td><td style="font-weight: 800; color: #065f46;">${joiningDateStr}</td></tr>
+        <tr><td style="font-weight: 700; color: #047857;">Offered CTC:</td><td style="font-weight: 800;">${offeredCtcStr}</td></tr>
+      </table>
+    </div>
+
+    <p style="font-size: 13px; color: #475569;">The pre-joining document verification process has been initialized in Joining Tracker.</p>
+  `;
+
+  return {
+    subject: title,
+    html: wrapMasterLayout(agency, title, htmlContent),
+    text: `Offer Accepted by ${candidateName} for ${positionTitle} at ${companyName}. Expected Joining: ${joiningDateStr}`
+  };
+}
+
+export function generateOfferDeclinedTemplate(params: {
+  agency: BaseAgencyContext;
+  candidateName: string;
+  companyName: string;
+  positionTitle: string;
+  declineReason?: string;
+}): RenderedEmail {
+  const { agency, candidateName, companyName, positionTitle, declineReason } = params;
+  const title = `Offer Declined by ${candidateName} - ${positionTitle}`;
+
+  const htmlContent = `
+    <p style="margin-top: 0; font-size: 14px; color: #1e293b;">Candidate <strong>${candidateName}</strong> has declined the employment offer for <strong>${positionTitle}</strong> at <strong>${companyName}</strong>.</p>
+
+    <div style="background-color: #fff1f2; border-left: 4px solid #e11d48; padding: 16px; border-radius: 8px; margin: 20px 0;">
+      <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="4" style="font-size: 13px; color: #1e293b;">
+        <tr><td width="35%" style="font-weight: 700; color: #be123c;">Candidate:</td><td style="font-weight: 800;">${candidateName}</td></tr>
+        <tr><td style="font-weight: 700; color: #be123c;">Company:</td><td style="font-weight: 800;">${companyName}</td></tr>
+        <tr><td style="font-weight: 700; color: #be123c;">Reason Provided:</td><td style="font-weight: 700; color: #9f1239;">${declineReason || 'No specific reason specified'}</td></tr>
+      </table>
+    </div>
+  `;
+
+  return {
+    subject: title,
+    html: wrapMasterLayout(agency, title, htmlContent),
+    text: `Offer Declined by ${candidateName} for ${positionTitle}. Reason: ${declineReason || 'None specified'}`
+  };
+}
+
+export function generateOfferClarificationTemplate(params: {
+  agency: BaseAgencyContext;
+  candidateName: string;
+  companyName: string;
+  positionTitle: string;
+  questionTitle: string;
+  questionDetails: string;
+}): RenderedEmail {
+  const { agency, candidateName, companyName, positionTitle, questionTitle, questionDetails } = params;
+  const title = `Offer Clarification Requested by ${candidateName}`;
+
+  const htmlContent = `
+    <p style="margin-top: 0; font-size: 14px; color: #1e293b;">Candidate <strong>${candidateName}</strong> has requested clarification regarding their offer for <strong>${positionTitle}</strong> at <strong>${companyName}</strong>.</p>
+
+    <div style="background-color: #fffbeb; border-left: 4px solid #d97706; padding: 16px; border-radius: 8px; margin: 20px 0;">
+      <p style="font-weight: 800; color: #92400e; margin-top: 0;">${questionTitle}</p>
+      <p style="font-size: 13px; color: #1e293b; white-space: pre-wrap;">${questionDetails}</p>
+    </div>
+  `;
+
+  return {
+    subject: title,
+    html: wrapMasterLayout(agency, title, htmlContent),
+    text: `Offer Clarification Requested by ${candidateName}: ${questionTitle} - ${questionDetails}`
+  };
+}
+
+export function generateJoiningReminderTemplate(params: {
+  agency: BaseAgencyContext;
+  candidateName: string;
+  companyName: string;
+  positionTitle: string;
+  joiningDateStr: string;
+  daysLeft: number;
+}): RenderedEmail {
+  const { agency, candidateName, companyName, positionTitle, joiningDateStr, daysLeft } = params;
+  const title = `Reminder: Joining Date in ${daysLeft} Day(s) - ${positionTitle} at ${companyName}`;
+
+  const htmlContent = `
+    <p style="margin-top: 0; font-size: 14px; color: #1e293b;">Hi <strong>${candidateName}</strong>,</p>
+    <p style="font-size: 13.5px; color: #334155; line-height: 1.5;">This is a friendly reminder that your joining date with <strong>${companyName}</strong> for the role of <strong>${positionTitle}</strong> is coming up in <strong>${daysLeft} day(s)</strong> on <strong>${joiningDateStr}</strong>.</p>
+
+    <div style="background-color: #f0f9ff; border-left: 4px solid #0284c7; padding: 16px; border-radius: 8px; margin: 20px 0;">
+      <p style="margin: 0; font-size: 13px; color: #0369a1; font-weight: 700;">Please ensure all requested pre-joining documentation has been uploaded.</p>
+    </div>
+  `;
+
+  return {
+    subject: title,
+    html: wrapMasterLayout(agency, title, htmlContent),
+    text: `Joining Reminder: Your joining with ${companyName} is in ${daysLeft} day(s) on ${joiningDateStr}`
+  };
+}
+
+export function generateJoiningConfirmedTemplate(params: {
+  agency: BaseAgencyContext;
+  candidateName: string;
+  companyName: string;
+  positionTitle: string;
+  joiningDateStr: string;
+  finalSalaryStr: string;
+}): RenderedEmail {
+  const { agency, candidateName, companyName, positionTitle, joiningDateStr, finalSalaryStr } = params;
+  const title = `PLACEMENT CONFIRMED: ${candidateName} Joined ${companyName}`;
+
+  const htmlContent = `
+    <p style="margin-top: 0; font-size: 14px; color: #1e293b;">🎉 Successful Placement Confirmed!</p>
+    <p style="font-size: 13.5px; color: #334155;">Both recruiter and client have officially confirmed that <strong>${candidateName}</strong> has joined <strong>${companyName}</strong> as <strong>${positionTitle}</strong>.</p>
+
+    <div style="background-color: #f0fdf4; border-left: 4px solid #16a34a; padding: 16px; border-radius: 8px; margin: 20px 0;">
+      <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="4" style="font-size: 13px; color: #1e293b;">
+        <tr><td width="35%" style="font-weight: 700; color: #15803d;">Candidate:</td><td style="font-weight: 800;">${candidateName}</td></tr>
+        <tr><td style="font-weight: 700; color: #15803d;">Company:</td><td style="font-weight: 800;">${companyName}</td></tr>
+        <tr><td style="font-weight: 700; color: #15803d;">Position:</td><td style="font-weight: 700;">${positionTitle}</td></tr>
+        <tr><td style="font-weight: 700; color: #15803d;">Joined On:</td><td style="font-weight: 800; color: #047857;">${joiningDateStr}</td></tr>
+        <tr><td style="font-weight: 700; color: #15803d;">Final Salary:</td><td style="font-weight: 800;">${finalSalaryStr}</td></tr>
+      </table>
+    </div>
+
+    <p style="font-size: 13px; color: #475569;">A placement record and revenue ledger entry have been generated.</p>
+  `;
+
+  return {
+    subject: title,
+    html: wrapMasterLayout(agency, title, htmlContent),
+    text: `Placement Confirmed: ${candidateName} joined ${companyName} on ${joiningDateStr}`
+  };
+}
+
+export function generatePlacementClosedTemplate(params: {
+  agency: BaseAgencyContext;
+  candidateName: string;
+  companyName: string;
+  revenueStr: string;
+}): RenderedEmail {
+  const { agency, candidateName, companyName, revenueStr } = params;
+  const title = `Revenue Invoiced: Placement Closed for ${candidateName} at ${companyName}`;
+
+  const htmlContent = `
+    <p style="margin-top: 0; font-size: 14px; color: #1e293b;">Placement closure verified for candidate <strong>${candidateName}</strong> with <strong>${companyName}</strong>.</p>
+    <p style="font-size: 13.5px; color: #334155;">Calculated Agency Revenue: <strong style="color: #047857; font-size: 16px;">${revenueStr}</strong></p>
+  `;
+
+  return {
+    subject: title,
+    html: wrapMasterLayout(agency, title, htmlContent),
+    text: `Placement Closed for ${candidateName} at ${companyName}. Revenue: ${revenueStr}`
+  };
+}
+
+export function generateApplicationReceivedTemplate(params: {
+  agency: BaseAgencyContext;
+  candidateName: string;
+  jobTitle: string;
+  companyName: string;
+}): RenderedEmail {
+  const { agency, candidateName, jobTitle, companyName } = params;
+  const title = `Application Received: ${jobTitle} at ${companyName}`;
+
+  const htmlContent = `
+    <p style="margin-top: 0; font-size: 14px; color: #1e293b;">Dear <strong>${candidateName}</strong>,</p>
+    <p style="font-size: 13.5px; color: #334155; line-height: 1.6;">Thank you for applying for the position of <strong>${jobTitle}</strong> at <strong>${companyName}</strong> through our recruitment portal.</p>
+    <p style="font-size: 13.5px; color: #334155; line-height: 1.6;">Our talent acquisition team and automated resume screening pipeline are currently reviewing your candidate profile and experience. We will get in touch with you if your qualifications match our requirement criteria.</p>
+  `;
+
+  return {
+    subject: title,
+    html: wrapMasterLayout(agency, title, htmlContent),
+    text: `Application Received for ${jobTitle} at ${companyName}. We are reviewing your profile.`
+  };
+}
+
+export function generateApplicationShortlistedTemplate(params: {
+  agency: BaseAgencyContext;
+  candidateName: string;
+  jobTitle: string;
+  companyName: string;
+}): RenderedEmail {
+  const { agency, candidateName, jobTitle, companyName } = params;
+  const title = `Great News! Your Application for ${jobTitle} has been Shortlisted`;
+
+  const htmlContent = `
+    <p style="margin-top: 0; font-size: 14px; color: #1e293b;">Dear <strong>${candidateName}</strong>,</p>
+    <p style="font-size: 13.5px; color: #334155; line-height: 1.6;">We are pleased to inform you that your profile has been <strong>shortlisted</strong> for the <strong>${jobTitle}</strong> position at <strong>${companyName}</strong>.</p>
+    <p style="font-size: 13.5px; color: #334155; line-height: 1.6;">Our recruitment team will contact you shortly to coordinate your interview schedule and next steps.</p>
+  `;
+
+  return {
+    subject: title,
+    html: wrapMasterLayout(agency, title, htmlContent),
+    text: `Your application for ${jobTitle} at ${companyName} has been shortlisted!`
+  };
+}
+
+export function generateApplicationRejectedTemplate(params: {
+  agency: BaseAgencyContext;
+  candidateName: string;
+  jobTitle: string;
+  companyName: string;
+}): RenderedEmail {
+  const { agency, candidateName, jobTitle, companyName } = params;
+  const title = `Update on your application for ${jobTitle} at ${companyName}`;
+
+  const htmlContent = `
+    <p style="margin-top: 0; font-size: 14px; color: #1e293b;">Dear <strong>${candidateName}</strong>,</p>
+    <p style="font-size: 13.5px; color: #334155; line-height: 1.6;">Thank you for your interest in the <strong>${jobTitle}</strong> position at <strong>${companyName}</strong>.</p>
+    <p style="font-size: 13.5px; color: #334155; line-height: 1.6;">After careful review of all candidate applications, we have decided to proceed with other candidates whose profiles align more closely with the immediate requirements of this role.</p>
+    <p style="font-size: 13.5px; color: #334155; line-height: 1.6;">We will keep your profile in our active candidate repository for suitable future opportunities.</p>
+  `;
+
+  return {
+    subject: title,
+    html: wrapMasterLayout(agency, title, htmlContent),
+    text: `Update regarding your application for ${jobTitle} at ${companyName}.`
+  };
+}
+
+
+

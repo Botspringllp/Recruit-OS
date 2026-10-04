@@ -14,6 +14,10 @@ import {
   Award,
   Inbox,
   Globe,
+  UserCheck,
+  DollarSign,
+  Share2,
+  BrainCircuit,
   X
 } from 'lucide-react';
 import { UserRoleType } from '@/types/dashboard';
@@ -96,6 +100,46 @@ export const Sidebar: React.FC<SidebarProps> = ({
       requiredPermission: 'offer.view'
     },
     {
+      id: 'joining',
+      label: 'Joining Tracker',
+      href: '/joining',
+      icon: 'UserCheck',
+      rolesAllowed: ['MASTER_OWNER', 'AGENCY_OWNER', 'AGENCY_FOUNDER', 'RECRUITER'],
+      requiredPermission: 'offer.view'
+    },
+    {
+      id: 'placements',
+      label: 'Placement Closure',
+      href: '/placements',
+      icon: 'Briefcase',
+      rolesAllowed: ['MASTER_OWNER', 'AGENCY_OWNER', 'AGENCY_FOUNDER', 'RECRUITER', 'FINANCE_MANAGER'],
+      requiredPermission: 'finance.view'
+    },
+    {
+      id: 'revenue',
+      label: 'Revenue Engine',
+      href: '/revenue',
+      icon: 'DollarSign',
+      rolesAllowed: ['MASTER_OWNER', 'AGENCY_OWNER', 'AGENCY_FOUNDER', 'FINANCE_MANAGER', 'FINANCE_ADMIN'],
+      requiredPermission: 'finance.view'
+    },
+    {
+      id: 'sourcing',
+      label: 'Sourcing Analytics',
+      href: '/sourcing',
+      icon: 'Share2',
+      rolesAllowed: ['MASTER_OWNER', 'AGENCY_OWNER', 'AGENCY_FOUNDER', 'RECRUITER'],
+      requiredPermission: 'candidate.view'
+    },
+    {
+      id: 'talent-search',
+      label: 'AI Talent Search',
+      href: '/talent-search',
+      icon: 'BrainCircuit',
+      rolesAllowed: ['MASTER_OWNER', 'AGENCY_OWNER', 'AGENCY_FOUNDER', 'RECRUITER'],
+      requiredPermission: 'candidate.view'
+    },
+    {
       id: 'compliance',
       label: 'Compliance Radar',
       href: '/compliance',
@@ -172,6 +216,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
         return <CalendarDays className="h-4.5 w-4.5" />;
       case 'Award':
         return <Award className="h-4.5 w-4.5" />;
+      case 'UserCheck':
+        return <UserCheck className="h-4.5 w-4.5" />;
+      case 'DollarSign':
+        return <DollarSign className="h-4.5 w-4.5" />;
+      case 'Share2':
+        return <Share2 className="h-4.5 w-4.5" />;
+      case 'BrainCircuit':
+        return <BrainCircuit className="h-4.5 w-4.5" />;
       case 'ShieldCheck':
         return <ShieldCheck className="h-4.5 w-4.5" />;
       case 'Handshake':

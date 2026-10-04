@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/router';
 import {
   Bell,
   Inbox,
@@ -10,13 +9,13 @@ import {
   User,
   Send,
   ShieldAlert,
-  Info,
-  Check,
   CheckCheck,
-  ExternalLink,
   ChevronRight,
-  Clock
+  Clock,
+  Wifi,
+  WifiOff
 } from 'lucide-react';
+import { useNotificationToast } from './NotificationToastProvider';
 
 export interface NotificationItem {
   id: string;
@@ -37,9 +36,18 @@ export const NotificationBell: React.FC = () => {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isSseConnected, setIsSseConnected] = useState<boolean>(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const fetchNotifications = async () => {
+  // Access Toast Provider
+  let toastApi: { addToast: (t: any) => void } | null = null;
+  try {
+    toastApi = useNotificationToast();
+  } catch (err) {
+    // Fallback if rendered outside provider
+  }
+
+  const fetchInitialNotifications = async () => {
     try {
       setIsLoading(true);
       const res = await fetch('/api/notifications?limit=6');
@@ -49,17 +57,67 @@ export const NotificationBell: React.FC = () => {
         setUnreadCount(data.unreadCount || 0);
       }
     } catch (err) {
-      console.error('Failed to fetch notifications:', err);
+      console.error('Failed to fetch initial notifications:', err);
     } finally {
       setIsLoading(false);
     }
   };
 
+  // PART D: Connect to Real-Time SSE Notification Stream (/api/notifications/stream)
   useEffect(() => {
-    fetchNotifications();
-    // Poll every 30 seconds for live notifications
-    const interval = setInterval(fetchNotifications, 30000);
-    return () => clearInterval(interval);
+    fetchInitialNotifications();
+
+    let eventSource: EventSource | null = null;
+
+    const setupSseConnection = () => {
+      eventSource = new EventSource('/api/notifications/stream');
+
+      eventSource.addEventListener('connected', () => {
+        setIsSseConnected(true);
+      });
+
+      eventSource.addEventListener('notification', (event: MessageEvent) => {
+        try {
+          const newNotif: NotificationItem = JSON.parse(event.data);
+          
+          setNotifications((prev) => {
+            const exists = prev.some((n) => n.id === newNotif.id);
+            if (exists) return prev;
+            return [newNotif, ...prev].slice(0, 8);
+          });
+
+          setUnreadCount((prev) => prev + 1);
+
+          // Trigger Live Toast Notification
+          if (toastApi) {
+            toastApi.addToast({
+              title: newNotif.title,
+              message: newNotif.message,
+              type: newNotif.type || 'INFO'
+            });
+          }
+        } catch (err) {
+          console.error('Failed parsing SSE notification payload:', err);
+        }
+      });
+
+      eventSource.onerror = () => {
+        setIsSseConnected(false);
+        if (eventSource) {
+          eventSource.close();
+        }
+        // Auto-reconnect after 5 seconds
+        setTimeout(setupSseConnection, 5000);
+      };
+    };
+
+    setupSseConnection();
+
+    return () => {
+      if (eventSource) {
+        eventSource.close();
+      }
+    };
   }, []);
 
   // Close dropdown on click outside
@@ -108,7 +166,6 @@ export const NotificationBell: React.FC = () => {
 
     setIsOpen(false);
 
-    // Automatic Navigation depending on Entity Type & Entity ID
     let targetUrl = '/notifications';
     if (notif.entityType === 'REQUIREMENT' && notif.entityId) {
       targetUrl = `/incoming-requirements/${notif.entityId}`;
@@ -182,11 +239,25 @@ export const NotificationBell: React.FC = () => {
             <div className="flex items-center gap-2">
               <Bell className="h-4 w-4 text-amber-400" />
               <h3 className="font-extrabold text-xs tracking-wider uppercase">Notifications</h3>
-              {unreadCount > 0 && (
-                <span className="bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full text-[10px] font-black">
-                  {unreadCount} new
-                </span>
-              )}
+              
+              {/* SSE Connection Status Pill */}
+              <span
+                className={`text-[9px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 border ${
+                  isSseConnected
+                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                    : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                }`}
+              >
+                {isSseConnected ? (
+                  <>
+                    <Wifi className="h-2.5 w-2.5 text-emerald-400" /> LIVE SSE
+                  </>
+                ) : (
+                  <>
+                    <WifiOff className="h-2.5 w-2.5 text-amber-400" /> RECONNECTING
+                  </>
+                )}
+              </span>
             </div>
 
             {unreadCount > 0 && (
@@ -207,7 +278,7 @@ export const NotificationBell: React.FC = () => {
               <div className="p-8 text-center space-y-2">
                 <Bell className="h-8 w-8 text-slate-300 mx-auto" />
                 <p className="font-bold text-slate-500">No notifications yet</p>
-                <p className="text-[11px] text-slate-400">All system and workflow events will appear here.</p>
+                <p className="text-[11px] text-slate-400">All real-time workflow events will stream instantly here.</p>
               </div>
             ) : (
               notifications.map((notif) => (
@@ -254,7 +325,7 @@ export const NotificationBell: React.FC = () => {
               onClick={() => setIsOpen(false)}
               className="text-xs font-black text-amber-700 hover:text-amber-800 flex items-center justify-center gap-1 transition-colors"
             >
-              <span>View All Notifications</span>
+              <span>Open Notification Center</span>
               <ChevronRight className="h-3.5 w-3.5" />
             </Link>
           </div>
