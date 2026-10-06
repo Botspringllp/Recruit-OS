@@ -92,52 +92,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
       requiredPermission: 'interview.view'
     },
     {
-      id: 'offers',
-      label: 'Offer Management',
-      href: '/offers',
-      icon: 'Award',
-      rolesAllowed: ['MASTER_OWNER', 'AGENCY_OWNER', 'AGENCY_FOUNDER', 'RECRUITER'],
-      requiredPermission: 'offer.view'
-    },
-    {
-      id: 'joining',
-      label: 'Joining Tracker',
-      href: '/joining',
-      icon: 'UserCheck',
-      rolesAllowed: ['MASTER_OWNER', 'AGENCY_OWNER', 'AGENCY_FOUNDER', 'RECRUITER'],
-      requiredPermission: 'offer.view'
-    },
-    {
-      id: 'placements',
-      label: 'Placement Closure',
-      href: '/placements',
-      icon: 'Briefcase',
-      rolesAllowed: ['MASTER_OWNER', 'AGENCY_OWNER', 'AGENCY_FOUNDER', 'RECRUITER', 'FINANCE_MANAGER'],
-      requiredPermission: 'finance.view'
-    },
-    {
       id: 'revenue',
       label: 'Revenue Engine',
       href: '/revenue',
       icon: 'DollarSign',
       rolesAllowed: ['MASTER_OWNER', 'AGENCY_OWNER', 'AGENCY_FOUNDER', 'FINANCE_MANAGER', 'FINANCE_ADMIN'],
       requiredPermission: 'finance.view'
-    },
-    {
-      id: 'sourcing',
-      label: 'Sourcing Analytics',
-      href: '/sourcing',
-      icon: 'Share2',
-      rolesAllowed: ['MASTER_OWNER', 'AGENCY_OWNER', 'AGENCY_FOUNDER', 'RECRUITER'],
-      requiredPermission: 'candidate.view'
-    },
-    {
-      id: 'talent-search',
-      label: 'AI Talent Search',
-      href: '/talent-search',
-      icon: 'BrainCircuit',
-      rolesAllowed: ['MASTER_OWNER', 'AGENCY_OWNER', 'AGENCY_FOUNDER', 'RECRUITER'],
-      requiredPermission: 'candidate.view'
     },
     {
       id: 'compliance',
@@ -148,14 +108,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
       badgeVariant: 'amber',
       rolesAllowed: ['MASTER_OWNER', 'AGENCY_OWNER', 'AGENCY_FOUNDER', 'COMPLIANCE_OFFICER'],
       requiredPermission: 'compliance.view'
-    },
-    {
-      id: 'partners',
-      label: 'Partner Co-Broker',
-      href: '/partners',
-      icon: 'Handshake',
-      rolesAllowed: ['MASTER_OWNER', 'AGENCY_OWNER', 'AGENCY_FOUNDER', 'RECRUITER', 'PARTNER_RECRUITER'],
-      requiredPermission: 'partner.view'
     },
     {
       id: 'finance',

@@ -314,6 +314,7 @@ export async function markPrepKitCompletedAction(
  */
 export async function checkAndSendPrepKitRemindersAction(): Promise<{
   success: boolean;
+  sent24hCount: number;
   sent7hCount: number;
   sent1hCount: number;
   error?: string;
@@ -321,7 +322,34 @@ export async function checkAndSendPrepKitRemindersAction(): Promise<{
   try {
     const now = new Date();
 
-    // Find preparation kits where status is NOT COMPLETED
+    // 1. Auto-dispatch Preparation Kit to candidates whose interview is <= 24 hours away
+    const upcomingInterviewsNeedingKit = await prisma.interviewSchedule.findMany({
+      where: {
+        confirmedStartTime: { not: null },
+        status: { in: ['CONFIRMED', 'SCHEDULED'] }
+      },
+      include: {
+        preparationKit: true
+      } as any
+    });
+
+    let sent24hCount = 0;
+    for (const interview of upcomingInterviewsNeedingKit) {
+      if (!interview.confirmedStartTime) continue;
+      const diffMs = new Date(interview.confirmedStartTime).getTime() - now.getTime();
+      const hoursUntil = diffMs / (1000 * 60 * 60);
+
+      // Check if interview is within 24 hours (hoursUntil <= 24 && hoursUntil > 0) AND prep kit not sent yet
+      const kit = (interview as any).preparationKit;
+      if (hoursUntil <= 24 && hoursUntil > 0 && (!kit || !kit.sentAt)) {
+        const res = await generateAndSendPrepKitAction(interview.id);
+        if (res.success) {
+          sent24hCount++;
+        }
+      }
+    }
+
+    // 2. Find preparation kits where status is NOT COMPLETED for 7h and 1h reminders
     const pendingKits = await (prisma as any).interviewPreparationKit.findMany({
       where: {
         status: { in: ['PENDING', 'SENT', 'OPENED'] }
@@ -455,10 +483,10 @@ export async function checkAndSendPrepKitRemindersAction(): Promise<{
       }
     }
 
-    return { success: true, sent7hCount, sent1hCount };
+    return { success: true, sent24hCount, sent7hCount, sent1hCount };
   } catch (err: any) {
     console.error('Error in checkAndSendPrepKitRemindersAction:', err);
-    return { success: false, sent7hCount: 0, sent1hCount: 0, error: err.message };
+    return { success: false, sent24hCount: 0, sent7hCount: 0, sent1hCount: 0, error: err.message };
   }
 }
 

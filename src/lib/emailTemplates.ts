@@ -668,7 +668,8 @@ export function generateClientInterviewInvitationTemplate(params: ClientIntervie
   const appUrl = baseUrl || DEFAULT_BASE_URL;
   const title = `Interview Invitation: ${positionTitle} at ${companyName}`;
 
-  const activeCalendlyUrl = calendlyUrl?.trim();
+  const DEFAULT_CALENDLY_URL = 'https://calendly.com/divyanshu-botspring/30min';
+  const activeCalendlyUrl = calendlyUrl?.trim() || DEFAULT_CALENDLY_URL;
 
   let schedulingSectionHtml = '';
   let schedulingSectionText = '';

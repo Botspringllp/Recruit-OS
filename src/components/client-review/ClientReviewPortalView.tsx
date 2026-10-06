@@ -180,8 +180,6 @@ export function ClientReviewPortalView({
   // Interview Scheduling Modal State
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [targetCandidatesForScheduling, setTargetCandidatesForScheduling] = useState<SubmittedCandidateViewItem[]>([]);
-  const [scheduleMode, setScheduleMode] = useState<'CALENDLY' | 'SLOTS'>('CALENDLY');
-  const [calendlyUrlInput, setCalendlyUrlInput] = useState<string>('https://calendly.com/divyanshu-botspring/interview');
   const [interviewTypeSelect, setInterviewTypeSelect] = useState<string>('Technical Round');
   const [customInterviewType, setCustomInterviewType] = useState<string>('');
   const [interviewNotes, setInterviewNotes] = useState<string>('');
@@ -249,7 +247,6 @@ export function ClientReviewPortalView({
 
   function openInterviewScheduleModal(cands: SubmittedCandidateViewItem[]) {
     setTargetCandidatesForScheduling(cands);
-    setScheduleMode('CALENDLY');
     setInterviewTypeSelect('Technical Round');
     setCustomInterviewType('');
     setInterviewNotes('');
@@ -276,17 +273,9 @@ export function ClientReviewPortalView({
   async function submitInterviewScheduleModal(e: React.FormEvent) {
     e.preventDefault();
     if (!targetCandidatesForScheduling || targetCandidatesForScheduling.length === 0) return;
-
-    if (scheduleMode === 'CALENDLY') {
-      if (!calendlyUrlInput || !calendlyUrlInput.trim()) {
-        setScheduleError('Please enter a valid Calendly link.');
-        return;
-      }
-    } else {
-      if (!slot1 || !slot2 || !slot3) {
-        setScheduleError('Please provide all 3 proposed interview time slots.');
-        return;
-      }
+    if (!slot1 || !slot2 || !slot3) {
+      setScheduleError('Please provide all 3 proposed interview time slots.');
+      return;
     }
 
     const finalInterviewType =
@@ -307,10 +296,9 @@ export function ClientReviewPortalView({
         token,
         interviewType: finalInterviewType,
         interviewNotes,
-        calendlyUrl: scheduleMode === 'CALENDLY' ? calendlyUrlInput.trim() : undefined,
-        slot1: scheduleMode === 'SLOTS' ? slot1 : undefined,
-        slot2: scheduleMode === 'SLOTS' ? slot2 : undefined,
-        slot3: scheduleMode === 'SLOTS' ? slot3 : undefined
+        slot1,
+        slot2,
+        slot3
       });
 
       if (res.success) {
@@ -332,7 +320,7 @@ export function ClientReviewPortalView({
       );
       setIsScheduleModalOpen(false);
       setSelectedSubmissions([]);
-      alert(`Interview invitation sent with Calendly booking link for ${names.join(', ')}!`);
+      alert(`Interview invitation sent for ${names.join(', ')}!`);
     } else {
       setScheduleError('Failed to schedule interview for selected candidate(s).');
     }
@@ -1167,73 +1155,18 @@ export function ClientReviewPortalView({
                 )}
               </div>
 
-              {/* Scheduling Mode Selection Tabs */}
-              <div className="space-y-2">
+              {/* 3 Proposed Time Slots (Date & Time Inputs) */}
+              <div className="space-y-3">
                 <label className="text-xs font-black text-slate-700 uppercase tracking-wider block">
-                  Scheduling Option
+                  Proposed Availability
                 </label>
-                <div className="grid grid-cols-2 gap-2 bg-slate-100 p-1.5 rounded-2xl">
-                  <button
-                    type="button"
-                    onClick={() => setScheduleMode('CALENDLY')}
-                    className={`py-2 px-3 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                      scheduleMode === 'CALENDLY'
-                        ? 'bg-blue-600 text-white shadow-sm'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    <Calendar className="h-3.5 w-3.5" />
-                    <span>Calendly Link</span>
-                  </button>
 
-                  <button
-                    type="button"
-                    onClick={() => setScheduleMode('SLOTS')}
-                    className={`py-2 px-3 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                      scheduleMode === 'SLOTS'
-                        ? 'bg-slate-900 text-white shadow-sm'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    <Clock className="h-3.5 w-3.5" />
-                    <span>Manual 3 Slots</span>
-                  </button>
+                <div className="space-y-2.5">
+                  <SlotPickerInput index={1} value={slot1} onChange={setSlot1} />
+                  <SlotPickerInput index={2} value={slot2} onChange={setSlot2} />
+                  <SlotPickerInput index={3} value={slot3} onChange={setSlot3} />
                 </div>
               </div>
-
-              {/* Calendly URL Input Section */}
-              {scheduleMode === 'CALENDLY' ? (
-                <div className="space-y-2 bg-blue-50/60 border border-blue-200/80 p-4 rounded-2xl">
-                  <label className="text-xs font-black text-blue-950 flex items-center gap-1.5 uppercase tracking-wider">
-                    <Calendar className="h-3.5 w-3.5 text-blue-600" />
-                    Calendly Booking URL
-                  </label>
-                  <input
-                    type="url"
-                    required
-                    value={calendlyUrlInput}
-                    onChange={e => setCalendlyUrlInput(e.target.value)}
-                    placeholder="https://calendly.com/your-name/interview"
-                    className="w-full px-3.5 py-2.5 bg-white border border-blue-300 text-slate-900 font-extrabold text-xs rounded-xl focus:ring-2 focus:ring-blue-500 outline-none shadow-xs transition"
-                  />
-                  <p className="text-[11px] font-semibold text-blue-900/80 leading-relaxed">
-                    The candidate will receive an invitation email containing a direct booking button to select their preferred date & time on your Calendly calendar.
-                  </p>
-                </div>
-              ) : (
-                /* 3 Proposed Time Slots (Date & Time Inputs) */
-                <div className="space-y-3">
-                  <label className="text-xs font-black text-slate-700 uppercase tracking-wider block">
-                    Proposed Availability (3 Slots)
-                  </label>
-
-                  <div className="space-y-2.5">
-                    <SlotPickerInput index={1} value={slot1} onChange={setSlot1} />
-                    <SlotPickerInput index={2} value={slot2} onChange={setSlot2} />
-                    <SlotPickerInput index={3} value={slot3} onChange={setSlot3} />
-                  </div>
-                </div>
-              )}
 
               {/* Optional Client Notes */}
               <div className="space-y-1.5">
