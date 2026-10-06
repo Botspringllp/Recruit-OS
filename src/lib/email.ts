@@ -655,8 +655,9 @@ export async function logClientInterviewInvitationEmail(
   companyName: string,
   interviewType: string,
   interviewNotes: string | null | undefined,
-  slots: Array<{ index: number; dateTimeStr: string }>,
-  token: string
+  slots: Array<{ id?: string; index: number; dateTimeStr: string; dayDateStr?: string; timeTzStr?: string }>,
+  token: string,
+  calendlyUrl?: string | null
 ) {
   const agency = await fetchAgencyContext(agencyId);
   const rendered = generateClientInterviewInvitationTemplate({
@@ -667,6 +668,7 @@ export async function logClientInterviewInvitationEmail(
     interviewType,
     interviewNotes,
     slots,
+    calendlyUrl,
     token
   });
 
@@ -683,7 +685,8 @@ export async function logClientInterviewInvitationEmail(
       companyName,
       interviewType,
       token,
-      slotCount: slots.length
+      calendlyUrl,
+      slotCount: slots ? slots.length : 0
     }
   });
 }

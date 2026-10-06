@@ -554,15 +554,20 @@ export async function updateClientDecisionAction(
         }
       });
 
-      if (subWithDetails && subWithDetails.recruiter?.email) {
+      if (subWithDetails) {
         const candidateName = `${subWithDetails.candidate.firstName} ${subWithDetails.candidate.lastName}`.trim();
         const clientName = subWithDetails.job?.client?.companyName || 'Client';
         const positionTitle = subWithDetails.job?.title || 'Job Mandate';
 
+        let targetRecruiterEmail = subWithDetails.recruiter?.email?.trim();
+        if (!targetRecruiterEmail || targetRecruiterEmail === 'vikrant@botspring.in' || targetRecruiterEmail.includes('botspringhq.in') || !targetRecruiterEmail.includes('@')) {
+          targetRecruiterEmail = 'divyanshu@botspring.in';
+        }
+
         if (decision === 'INTERVIEW') {
           await logClientInterviewEmail(
             subWithDetails.job.agencyId,
-            subWithDetails.recruiter.email,
+            targetRecruiterEmail,
             candidateName,
             positionTitle,
             clientName,
@@ -571,7 +576,7 @@ export async function updateClientDecisionAction(
         } else if (decision === 'REJECT') {
           await logClientRejectEmail(
             subWithDetails.job.agencyId,
-            subWithDetails.recruiter.email,
+            targetRecruiterEmail,
             candidateName,
             positionTitle,
             clientName,
@@ -580,7 +585,7 @@ export async function updateClientDecisionAction(
         } else {
           await logClientHoldEmail(
             subWithDetails.job.agencyId,
-            subWithDetails.recruiter.email,
+            targetRecruiterEmail,
             candidateName,
             positionTitle,
             clientName,

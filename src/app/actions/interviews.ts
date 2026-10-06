@@ -327,9 +327,10 @@ export async function scheduleClientInterviewAction(payload: {
   token: string;
   interviewType: string;
   interviewNotes?: string;
-  slot1: string;
-  slot2: string;
-  slot3: string;
+  calendlyUrl?: string;
+  slot1?: string;
+  slot2?: string;
+  slot3?: string;
 }): Promise<{
   success: boolean;
   interviewId?: string;
@@ -337,7 +338,7 @@ export async function scheduleClientInterviewAction(payload: {
   error?: string;
 }> {
   try {
-    const { submissionId, token, interviewType, interviewNotes, slot1, slot2, slot3 } = payload;
+    const { submissionId, token, interviewType, interviewNotes, calendlyUrl, slot1, slot2, slot3 } = payload;
 
     if (!submissionId || !token) {
       return { success: false, error: 'Invalid candidate submission request.' };
@@ -347,16 +348,14 @@ export async function scheduleClientInterviewAction(payload: {
       return { success: false, error: 'Interview type is required.' };
     }
 
-    if (!slot1 || !slot2 || !slot3) {
-      return { success: false, error: 'Minimum 3 availability slots are required.' };
-    }
+    let d1: Date | null = null;
+    let d2: Date | null = null;
+    let d3: Date | null = null;
 
-    const d1 = new Date(slot1);
-    const d2 = new Date(slot2);
-    const d3 = new Date(slot3);
-
-    if (isNaN(d1.getTime()) || isNaN(d2.getTime()) || isNaN(d3.getTime())) {
-      return { success: false, error: 'Invalid date/time format for one or more slots.' };
+    if (slot1 && slot2 && slot3) {
+      d1 = new Date(slot1);
+      d2 = new Date(slot2);
+      d3 = new Date(slot3);
     }
 
     // Security check: Verify submission & secure token
@@ -410,26 +409,28 @@ export async function scheduleClientInterviewAction(payload: {
         status: 'PENDING_SLOT_SELECTION',
         candidateToken,
         tokenExpiresAt,
-        meetingProvider: 'MANUAL',
+        meetingProvider: calendlyUrl ? 'CALENDLY' as any : 'MANUAL',
         createdBy: 'CLIENT'
       }
     });
 
-    // Create 3 ProposedInterviewSlot records
-    const slotTimes = [d1, d2, d3];
-    const createdSlots = await Promise.all(
-      slotTimes.map(st =>
-        prisma.proposedInterviewSlot.create({
-          data: {
-            agencyId,
-            submissionId: submission.id,
-            startTime: st,
-            endTime: new Date(st.getTime() + 45 * 60 * 1000),
-            isSelected: false
-          }
-        })
-      )
-    );
+    let createdSlots: any[] = [];
+    if (d1 && d2 && d3) {
+      const slotTimes = [d1, d2, d3];
+      createdSlots = await Promise.all(
+        slotTimes.map(st =>
+          prisma.proposedInterviewSlot.create({
+            data: {
+              agencyId,
+              submissionId: submission.id,
+              startTime: st,
+              endTime: new Date(st.getTime() + 45 * 60 * 1000),
+              isSelected: false
+            }
+          })
+        )
+      );
+    }
 
     // Update Submission Status
     await prisma.candidateSubmission.update({
@@ -462,18 +463,18 @@ export async function scheduleClientInterviewAction(payload: {
     // SECTION C: Trigger Email Event CLIENT_INTERVIEW_INVITATION to Candidate & Recruiter
     const { logClientInterviewInvitationEmail, processPendingEmails } = await import('@/lib/email');
 
-    const formattedSlots = slotTimes.map((st, idx) => ({
-      index: idx + 1,
-      dateTimeStr: st.toLocaleString('en-US', {
-        weekday: 'short',
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true
-      })
-    }));
+    const formattedSlots = createdSlots.map((slot, idx) => {
+      const st = slot.startTime;
+      const dayDateStr = st.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+      const timeTzStr = `${st.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })} IST`;
+      return {
+        id: slot.id,
+        index: idx + 1,
+        dateTimeStr: `${dayDateStr} - ${timeTzStr}`,
+        dayDateStr,
+        timeTzStr
+      };
+    });
 
     // Email to Candidate
     if (submission.candidate.email) {
@@ -486,7 +487,8 @@ export async function scheduleClientInterviewAction(payload: {
         interviewType,
         interviewNotes,
         formattedSlots,
-        candidateToken
+        candidateToken,
+        calendlyUrl
       );
     }
 
@@ -594,112 +596,169 @@ export async function getInterviewSlotSelectionDataAction(candidateToken: string
 }
 
 /**
- * SECTION D & E: Candidate Slot Selection Submission Action
+ * SECTION D & E: Candidate One-Click Slot Confirmation Action (Atomic & Concurrency-Safe)
  */
 export async function confirmCandidateSlotSelectionAction(
   candidateToken: string,
-  selectedSlotId: string
+  selectedSlotId?: string
 ): Promise<{
   success: boolean;
+  alreadyConfirmed?: boolean;
+  candidateName?: string;
+  positionTitle?: string;
+  companyName?: string;
+  roundType?: string;
   confirmedStartTime?: string;
+  timezoneStr?: string;
+  meetingUrl?: string;
   error?: string;
 }> {
   try {
-    if (!candidateToken || !selectedSlotId) {
-      return { success: false, error: 'Invalid candidate slot selection request.' };
+    if (!candidateToken) {
+      return { success: false, error: 'Invalid candidate interview confirmation token.' };
     }
 
-    const interview = await (prisma as any).interviewSchedule.findUnique({
-      where: { candidateToken },
-      include: {
-        submission: {
-          include: {
-            job: {
-              select: {
-                title: true,
-                agencyId: true,
-                client: {
-                  select: {
-                    companyName: true,
-                    contacts: { select: { email: true }, take: 1 }
+    // Atomic transaction for concurrency safety & race conditions
+    const txResult = await prisma.$transaction(async (tx) => {
+      const interview = await (tx as any).interviewSchedule.findUnique({
+        where: { candidateToken },
+        include: {
+          submission: {
+            include: {
+              job: {
+                select: {
+                  title: true,
+                  agencyId: true,
+                  client: {
+                    select: {
+                      companyName: true,
+                      contacts: { select: { email: true }, take: 1 }
+                    }
                   }
                 }
-              }
-            },
-            candidate: { select: { firstName: true, lastName: true, email: true } },
-            recruiter: { select: { id: true, email: true } }
+              },
+              candidate: { select: { firstName: true, lastName: true, email: true } },
+              recruiter: { select: { id: true, email: true } }
+            }
           }
         }
+      });
+
+      if (!interview) {
+        return { success: false, error: 'Interview invitation token not found.' };
       }
-    });
 
-    if (!interview) {
-      return { success: false, error: 'Interview invitation token not found.' };
-    }
+      const candidateName = `${interview.submission.candidate.firstName} ${interview.submission.candidate.lastName}`.trim();
+      const positionTitle = interview.submission.job.title;
+      const companyName = interview.submission.job.client?.companyName || 'Client Company';
+      const roundType = interview.roundType || 'Client Discussion';
+      const timezoneStr = 'IST (UTC+5:30)';
 
-    if (interview.tokenConsumedAt) {
+      // Check if already confirmed (subsequent clicks or race condition)
+      if (interview.tokenConsumedAt || interview.status === 'SCHEDULED') {
+        const meetingUrl = interview.meetingUrl || interview.meetingLink || `https://meet.jit.si/recruitos-interview-${interview.id.slice(0, 8)}`;
+        return {
+          success: true,
+          alreadyConfirmed: true,
+          candidateName,
+          positionTitle,
+          companyName,
+          roundType,
+          confirmedStartTime: interview.confirmedStartTime ? interview.confirmedStartTime.toISOString() : undefined,
+          timezoneStr,
+          meetingUrl
+        };
+      }
+
+      // Find target slot: specified slotId or first available slot if direct link used
+      let slot = null;
+      if (selectedSlotId) {
+        slot = await tx.proposedInterviewSlot.findFirst({
+          where: { id: selectedSlotId, submissionId: interview.submissionId }
+        });
+      } else {
+        slot = await tx.proposedInterviewSlot.findFirst({
+          where: { submissionId: interview.submissionId },
+          orderBy: { startTime: 'asc' }
+        });
+      }
+
+      if (!slot) {
+        return { success: false, error: 'Selected interview time slot not found or invalid.' };
+      }
+
+      // Generate meeting link
+      const meetingId = `meet-${crypto.randomBytes(8).toString('hex')}`;
+      const meetingUrl = interview.meetingUrl || interview.meetingLink || `https://meet.jit.si/recruitos-interview-${interview.id.slice(0, 8)}`;
+
+      // Update selected slot & lock remaining slots
+      await tx.proposedInterviewSlot.updateMany({
+        where: { submissionId: interview.submissionId },
+        data: { isSelected: false }
+      });
+      await tx.proposedInterviewSlot.update({
+        where: { id: slot.id },
+        data: { isSelected: true }
+      });
+
+      // Update InterviewSchedule to SCHEDULED & mark token consumed
+      const updatedInterview = await tx.interviewSchedule.update({
+        where: { id: interview.id },
+        data: {
+          slotId: slot.id,
+          confirmedStartTime: slot.startTime,
+          scheduledStart: slot.startTime,
+          scheduledEnd: slot.endTime,
+          meetingId,
+          meetingUrl,
+          meetingLink: meetingUrl,
+          meetingProvider: 'JITSI' as any,
+          meetingStatus: 'SCHEDULED',
+          meetingGeneratedAt: new Date(),
+          status: 'SCHEDULED',
+          tokenConsumedAt: new Date(),
+          updatedAt: new Date()
+        } as any
+      });
+
+      // Update CandidateSubmission stage to INTERVIEW_SCHEDULED
+      await tx.candidateSubmission.update({
+        where: { id: interview.submissionId },
+        data: {
+          stage: PipelineStage.INTERVIEW_SCHEDULED,
+          updatedAt: new Date()
+        }
+      });
+
       return {
-        success: false,
-        error: `This interview slot link has already been used on ${new Date(interview.tokenConsumedAt).toLocaleString()}. Duplicate submissions are not allowed.`
+        success: true,
+        alreadyConfirmed: false,
+        interview: updatedInterview,
+        submission: interview.submission,
+        slot,
+        candidateName,
+        positionTitle,
+        companyName,
+        roundType,
+        timezoneStr,
+        meetingUrl
       };
+    });
+
+    if (!txResult.success) {
+      return { success: false, error: txResult.error };
     }
 
-    const slot = await prisma.proposedInterviewSlot.findFirst({
-      where: { id: selectedSlotId, submissionId: interview.submissionId }
-    });
-
-    if (!slot) {
-      return { success: false, error: 'Selected time slot not found.' };
-    }
-
-    const agencyId = interview.agencyId || interview.submission.job.agencyId;
-    const candidateName = `${interview.submission.candidate.firstName} ${interview.submission.candidate.lastName}`.trim();
-    const positionTitle = interview.submission.job.title;
-    const companyName = interview.submission.job.client?.companyName || 'Client Company';
-
-    // Generate Meeting Record details
-    const meetingId = `meet-${crypto.randomBytes(8).toString('hex')}`;
-    const meetingUrl = interview.meetingUrl || interview.meetingLink || `https://meet.jit.si/recruitos-interview-${interview.id.slice(0, 8)}`;
-
-    // Update selected slot & unselect remaining slots
-    await prisma.proposedInterviewSlot.updateMany({
-      where: { submissionId: interview.submissionId },
-      data: { isSelected: false }
-    });
-    await prisma.proposedInterviewSlot.update({
-      where: { id: slot.id },
-      data: { isSelected: true }
-    });
-
-    // Update InterviewSchedule with meeting details & mark token consumed
-    const updatedInterview = await prisma.interviewSchedule.update({
-      where: { id: interview.id },
-      data: {
-        slotId: slot.id,
-        confirmedStartTime: slot.startTime,
-        scheduledStart: slot.startTime,
-        scheduledEnd: slot.endTime,
-        meetingId,
-        meetingUrl,
-        meetingLink: meetingUrl,
-        meetingProvider: 'JITSI' as any,
-        meetingStatus: 'SCHEDULED',
-        meetingGeneratedAt: new Date(),
-        status: 'SCHEDULED',
-        tokenConsumedAt: new Date(),
-        updatedAt: new Date()
-      } as any
-    });
-
-    // Update CandidateSubmission stage to INTERVIEW_SCHEDULED
-    await prisma.candidateSubmission.update({
-      where: { id: interview.submissionId },
-      data: {
-        stage: PipelineStage.INTERVIEW_SCHEDULED,
-        updatedAt: new Date()
-      }
-    });
-
+    const interview = txResult.interview!;
+    const submission = txResult.submission!;
+    const slot = txResult.slot!;
+    const candidateName = txResult.candidateName || 'Candidate';
+    const positionTitle = txResult.positionTitle || 'Position';
+    const companyName = txResult.companyName || 'Company';
+    const roundType = txResult.roundType || 'Interview';
+    const timezoneStr = txResult.timezoneStr || 'IST (UTC+5:30)';
+    const meetingUrl = txResult.meetingUrl || '#';
+    const agencyId = interview.agencyId || submission.job.agencyId;
     const selectedSlotStr = slot.startTime.toLocaleString('en-US', {
       weekday: 'short',
       month: 'short',
@@ -709,16 +768,13 @@ export async function confirmCandidateSlotSelectionAction(
       minute: '2-digit',
       hour12: true
     });
-    const timezoneStr = 'IST (UTC+5:30)';
 
-    // SECTION I: Trigger Notifications IW-01-B & IW-01-C
+    // Notifications (IW-01-B & IW-01-C)
     const { createNotification, NotificationType, NotificationCategory } = await import('@/lib/notifications');
-
-    // Notify Recruiter
-    if (interview.submission.recruiter?.id) {
+    if (submission.recruiter?.id) {
       await createNotification({
         agencyId,
-        recipientUserId: interview.submission.recruiter.id,
+        recipientUserId: submission.recruiter.id,
         title: `Interview Scheduled: ${candidateName}`,
         message: `Candidate ${candidateName} confirmed slot ${selectedSlotStr} for ${positionTitle} (${companyName}). Meeting Link: ${meetingUrl}`,
         type: NotificationType.SUCCESS,
@@ -728,18 +784,17 @@ export async function confirmCandidateSlotSelectionAction(
       });
     }
 
-    // SECTION C & E: Trigger Email Event INTERVIEW_SLOT_SELECTED to Candidate, Recruiter, and Client
-    const { logInterviewSlotSelectedEmail } = await import('@/lib/email');
+    // Confirmation Emails (Candidate, Recruiter, Client)
+    const { logInterviewSlotSelectedEmail, processPendingEmails } = await import('@/lib/email');
 
-    // Email Candidate
-    if (interview.submission.candidate.email) {
+    if (submission.candidate?.email) {
       await logInterviewSlotSelectedEmail(
         agencyId,
-        interview.submission.candidate.email,
+        submission.candidate.email,
         candidateName,
         positionTitle,
         companyName,
-        interview.roundType || 'Client Discussion',
+        roundType,
         selectedSlotStr,
         meetingUrl,
         timezoneStr,
@@ -747,24 +802,25 @@ export async function confirmCandidateSlotSelectionAction(
       );
     }
 
-    // Email Recruiter
-    if (interview.submission.recruiter?.email) {
-      await logInterviewSlotSelectedEmail(
-        agencyId,
-        interview.submission.recruiter.email,
-        candidateName,
-        positionTitle,
-        companyName,
-        interview.roundType || 'Client Discussion',
-        selectedSlotStr,
-        meetingUrl,
-        timezoneStr,
-        'RECRUITER'
-      );
+    let recruiterEmail = submission.recruiter?.email?.trim();
+    if (!recruiterEmail || recruiterEmail === 'vikrant@botspring.in' || recruiterEmail.includes('botspringhq.in') || !recruiterEmail.includes('@')) {
+      recruiterEmail = 'divyanshu@botspring.in';
     }
 
-    // Email Client Contact
-    const clientEmail = interview.submission.job.client?.contacts[0]?.email;
+    await logInterviewSlotSelectedEmail(
+      agencyId,
+      recruiterEmail,
+      candidateName,
+      positionTitle,
+      companyName,
+      roundType,
+      selectedSlotStr,
+      meetingUrl,
+      timezoneStr,
+      'RECRUITER'
+    );
+
+    const clientEmail = submission.job.client?.contacts[0]?.email;
     if (clientEmail) {
       await logInterviewSlotSelectedEmail(
         agencyId,
@@ -772,7 +828,7 @@ export async function confirmCandidateSlotSelectionAction(
         candidateName,
         positionTitle,
         companyName,
-        interview.roundType || 'Client Discussion',
+        roundType,
         selectedSlotStr,
         meetingUrl,
         timezoneStr,
@@ -780,7 +836,10 @@ export async function confirmCandidateSlotSelectionAction(
       );
     }
 
-    // Automatically generate and dispatch Interview Preparation Kit (PHASE IW-03)
+    // Immediate email dispatch
+    await processPendingEmails(agencyId);
+
+    // Auto-generate Interview Prep Kit (IW-03)
     try {
       const { generateAndSendPrepKitAction } = await import('@/app/actions/interviewPrep');
       await generateAndSendPrepKitAction(interview.id);
@@ -793,7 +852,14 @@ export async function confirmCandidateSlotSelectionAction(
 
     return {
       success: true,
-      confirmedStartTime: slot.startTime.toISOString()
+      alreadyConfirmed: false,
+      candidateName,
+      positionTitle,
+      companyName,
+      roundType,
+      confirmedStartTime: slot.startTime.toISOString(),
+      timezoneStr,
+      meetingUrl
     };
   } catch (err: any) {
     console.error('Error in confirmCandidateSlotSelectionAction:', err);

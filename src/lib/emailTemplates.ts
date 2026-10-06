@@ -506,13 +506,11 @@ export function generateInterviewSelectedTemplate(params: ClientInterviewParams)
   const textContent = `Client Selected Candidate For Interview\n
 Candidate Name: ${candidateName}
 Position: ${positionTitle}
-Client Name: ${clientName}
-
-Open Candidate Submission: ${ctaUrl}`;
+Client Name: ${clientName}`;
 
   return {
     subject: title,
-    html: wrapMasterLayout(agency, title, htmlContent, { label: 'Open Candidate Submission', url: ctaUrl }),
+    html: wrapMasterLayout(agency, title, htmlContent),
     text: textContent
   };
 }
@@ -531,9 +529,7 @@ export interface ClientHoldParams {
 
 export function generateCandidateHoldTemplate(params: ClientHoldParams): RenderedEmail {
   const { agency, candidateName, positionTitle, clientName, notes, baseUrl } = params;
-  const appUrl = baseUrl || DEFAULT_BASE_URL;
-  const title = `Candidate Put On Hold By Client`;
-  const ctaUrl = `${appUrl}/submissions`;
+  const title = `Candidate Put On Hold By Client - ${candidateName}`;
 
   const htmlContent = `
     <p style="margin-top: 0;">The client has put a submitted candidate on hold.</p>
@@ -543,23 +539,22 @@ export function generateCandidateHoldTemplate(params: ClientHoldParams): Rendere
         <tr><td width="35%" style="font-weight: 700; color: #b45309;">Candidate Name:</td><td style="font-weight: 800; color: #78350f;">${candidateName}</td></tr>
         <tr><td style="font-weight: 700; color: #b45309;">Position:</td><td style="font-weight: 700; color: #0d3859;">${positionTitle}</td></tr>
         <tr><td style="font-weight: 700; color: #b45309;">Client Name:</td><td>${clientName}</td></tr>
-        ${notes ? `<tr><td style="font-weight: 700; color: #b45309;">Client Notes:</td><td>${notes}</td></tr>` : ''}
+        ${notes ? `<tr><td style="font-weight: 700; color: #b45309;">Client Notes / Reason:</td><td style="font-weight: 700; color: #d97706;">${notes}</td></tr>` : ''}
       </table>
     </div>
 
     <p>The candidate status has been updated to ON_HOLD in the recruitment pipeline.</p>
   `;
 
-  const textContent = `Candidate Put On Hold By Client\n
+  const textContent = `Candidate Put On Hold By Client - ${candidateName}\n
 Candidate Name: ${candidateName}
 Position: ${positionTitle}
 Client Name: ${clientName}
-${notes ? `Notes: ${notes}\n` : ''}
-Open Submissions: ${ctaUrl}`;
+${notes ? `Client Notes: ${notes}\n` : ''}`;
 
   return {
     subject: title,
-    html: wrapMasterLayout(agency, title, htmlContent, { label: 'Open Submissions', url: ctaUrl }),
+    html: wrapMasterLayout(agency, title, htmlContent),
     text: textContent
   };
 }
@@ -578,9 +573,7 @@ export interface ClientRejectParams {
 
 export function generateCandidateRejectedTemplate(params: ClientRejectParams): RenderedEmail {
   const { agency, candidateName, positionTitle, clientName, notes, baseUrl } = params;
-  const appUrl = baseUrl || DEFAULT_BASE_URL;
-  const title = `Candidate Rejected By Client`;
-  const ctaUrl = `${appUrl}/submissions`;
+  const title = `Candidate Rejected By Client - ${candidateName}`;
 
   const htmlContent = `
     <p style="margin-top: 0;">The client has declined a submitted candidate profile.</p>
@@ -590,23 +583,22 @@ export function generateCandidateRejectedTemplate(params: ClientRejectParams): R
         <tr><td width="35%" style="font-weight: 700; color: #be123c;">Candidate Name:</td><td style="font-weight: 800; color: #881337;">${candidateName}</td></tr>
         <tr><td style="font-weight: 700; color: #be123c;">Position:</td><td style="font-weight: 700; color: #0d3859;">${positionTitle}</td></tr>
         <tr><td style="font-weight: 700; color: #be123c;">Client Name:</td><td>${clientName}</td></tr>
-        ${notes ? `<tr><td style="font-weight: 700; color: #be123c;">Rejection Feedback:</td><td>${notes}</td></tr>` : ''}
+        ${notes ? `<tr><td style="font-weight: 700; color: #be123c;">Rejection Reason / Notes:</td><td style="font-weight: 700; color: #be123c;">${notes}</td></tr>` : ''}
       </table>
     </div>
 
     <p>Please review candidate pipeline feedback and continue sourcing alternative matches.</p>
   `;
 
-  const textContent = `Candidate Rejected By Client\n
+  const textContent = `Candidate Rejected By Client - ${candidateName}\n
 Candidate Name: ${candidateName}
 Position: ${positionTitle}
 Client Name: ${clientName}
-${notes ? `Feedback: ${notes}\n` : ''}
-Open Submissions: ${ctaUrl}`;
+${notes ? `Rejection Reason: ${notes}\n` : ''}`;
 
   return {
     subject: title,
-    html: wrapMasterLayout(agency, title, htmlContent, { label: 'Open Submissions', url: ctaUrl }),
+    html: wrapMasterLayout(agency, title, htmlContent),
     text: textContent
   };
 }
@@ -665,63 +657,96 @@ export interface ClientInterviewInvitationParams {
   companyName: string;
   interviewType: string;
   interviewNotes?: string | null;
-  slots: Array<{ index: number; dateTimeStr: string }>;
+  slots?: Array<{ id?: string; index: number; dateTimeStr: string; dayDateStr?: string; timeTzStr?: string }>;
+  calendlyUrl?: string | null;
   token: string;
   baseUrl?: string;
 }
 
 export function generateClientInterviewInvitationTemplate(params: ClientInterviewInvitationParams): RenderedEmail {
-  const { agency, candidateName, positionTitle, companyName, interviewType, interviewNotes, slots, token, baseUrl } = params;
+  const { agency, candidateName, positionTitle, companyName, interviewType, interviewNotes, slots, calendlyUrl, token, baseUrl } = params;
   const appUrl = baseUrl || DEFAULT_BASE_URL;
   const title = `Interview Invitation: ${positionTitle} at ${companyName}`;
-  const slotSelectionUrl = `${appUrl}/interview/select/${token}`;
 
-  const slotsListHtml = slots.map(s => `
-    <tr style="border-bottom: 1px solid #e2e8f0;">
-      <td style="padding: 10px 12px; font-weight: 700; color: #0d3859; width: 80px;">Option ${s.index}:</td>
-      <td style="padding: 10px 12px; font-weight: 600; color: #1e293b;">${s.dateTimeStr}</td>
-    </tr>
-  `).join('');
+  const activeCalendlyUrl = calendlyUrl?.trim();
+
+  let schedulingSectionHtml = '';
+  let schedulingSectionText = '';
+
+  if (activeCalendlyUrl) {
+    schedulingSectionHtml = `
+      <div style="background-color: #f0f7ff; border: 2px solid #0069ff; border-radius: 12px; padding: 24px; text-align: center; margin: 24px 0;">
+        <p style="margin: 0 0 8px 0; font-size: 16px; font-weight: 800; color: #0d3859;">
+          🗓️ Select Your Preferred Interview Time
+        </p>
+        <p style="margin: 0 0 16px 0; font-size: 13px; color: #475569; line-height: 1.5;">
+          Please click the button below to view available dates and book your interview slot via Calendly.
+        </p>
+        <div style="margin: 16px 0;">
+          <a href="${activeCalendlyUrl}" target="_blank" style="display: inline-block; background-color: #0069ff; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 800; font-size: 15px; text-align: center; box-shadow: 0 4px 12px rgba(0, 105, 255, 0.3);">
+            📅 Open Calendly & Book Interview Slot
+          </a>
+        </div>
+        <p style="margin: 12px 0 0 0; font-size: 11px; color: #64748b;">
+          Direct calendar booking via Calendly.
+        </p>
+      </div>
+    `;
+    schedulingSectionText = `Schedule Your Interview on Calendly:\n${activeCalendlyUrl}`;
+  } else if (slots && slots.length > 0) {
+    const slotButtonsHtml = slots.map((s) => {
+      const slotIdParam = s.id ? `?slotId=${s.id}` : '';
+      const confirmUrl = `${appUrl}/interview/confirm-slot/${token}${slotIdParam}`;
+      const buttonLabel = s.dayDateStr && s.timeTzStr
+        ? `[ ${s.dayDateStr} - ${s.timeTzStr} ]`
+        : `[ ${s.dateTimeStr} ]`;
+
+      return `
+        <div style="margin: 12px 0;">
+          <a href="${confirmUrl}" target="_blank" style="display: block; background-color: #0d3859; color: #ffffff; text-decoration: none; padding: 14px 20px; border-radius: 8px; font-weight: 700; font-size: 14px; text-align: center; box-shadow: 0 4px 6px -1px rgba(13, 56, 89, 0.2);">
+            ${buttonLabel}
+          </a>
+        </div>
+      `;
+    }).join('');
+
+    schedulingSectionHtml = `
+      <p style="font-weight: 700; color: #0f172a; margin-top: 24px; margin-bottom: 12px;">Please choose one of the available interview slots:</p>
+      <div style="margin-bottom: 24px;">
+        ${slotButtonsHtml}
+      </div>
+    `;
+    schedulingSectionText = `Please choose one of the available interview slots:\n${slots.map((s, i) => `${i + 1}. ${s.dateTimeStr} -> ${appUrl}/interview/confirm-slot/${token}${s.id ? `?slotId=${s.id}` : ''}`).join('\n')}`;
+  }
 
   const htmlContent = `
     <p style="margin-top: 0;">Hello <strong>${candidateName}</strong>,</p>
-    <p>You have been invited for an interview for the position of <strong>${positionTitle}</strong> with <strong>${companyName}</strong>.</p>
+    <p>You have been invited for an interview for the position of <strong>${positionTitle}</strong> at <strong>${companyName}</strong>.</p>
 
     <div style="background-color: #f1f5f9; border-left: 4px solid #0d3859; padding: 16px; border-radius: 6px; margin: 20px 0;">
       <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="4" style="font-size: 13px; color: #1e293b;">
-        <tr><td width="35%" style="font-weight: 700; color: #475569;">Position Title:</td><td style="font-weight: 700; color: #0d3859;">${positionTitle}</td></tr>
+        <tr><td width="35%" style="font-weight: 700; color: #475569;">Candidate Name:</td><td style="font-weight: 800; color: #0d3859;">${candidateName}</td></tr>
+        <tr><td style="font-weight: 700; color: #475569;">Position Title:</td><td style="font-weight: 700; color: #0d3859;">${positionTitle}</td></tr>
         <tr><td style="font-weight: 700; color: #475569;">Company Name:</td><td style="font-weight: 700;">${companyName}</td></tr>
-        <tr><td style="font-weight: 700; color: #475569;">Interview Type:</td><td><span style="background-color: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 11px;">${interviewType}</span></td></tr>
+        <tr><td style="font-weight: 700; color: #475569;">Interview Round:</td><td><span style="background-color: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 11px;">${interviewType}</span></td></tr>
         ${interviewNotes ? `<tr><td style="font-weight: 700; color: #475569;">Client Notes:</td><td>${interviewNotes}</td></tr>` : ''}
       </table>
     </div>
 
-    <h3 style="font-size: 15px; font-weight: 800; color: #0f172a; margin: 24px 0 12px 0;">Available Time Slots</h3>
-    <div style="background-color: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; margin-bottom: 24px;">
-      <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="font-size: 13px;">
-        <tbody>
-          ${slotsListHtml}
-        </tbody>
-      </table>
-    </div>
-
-    <p>Please click the button below to confirm your preferred interview slot.</p>
+    ${schedulingSectionHtml}
   `;
 
   const textContent = `Interview Invitation: ${positionTitle} at ${companyName}\n
 Candidate Name: ${candidateName}
 Position: ${positionTitle}
 Company: ${companyName}
-Interview Type: ${interviewType}
+Interview Round: ${interviewType}
 ${interviewNotes ? `Notes: ${interviewNotes}\n` : ''}
-Available Slots:
-${slots.map(s => `Option ${s.index}: ${s.dateTimeStr}`).join('\n')}
-
-Choose Interview Slot: ${slotSelectionUrl}`;
+${schedulingSectionText}`;
 
   return {
     subject: title,
-    html: wrapMasterLayout(agency, title, htmlContent, { label: 'Choose Interview Slot', url: slotSelectionUrl }),
+    html: wrapMasterLayout(agency, title, htmlContent, null),
     text: textContent
   };
 }
@@ -744,15 +769,20 @@ export interface InterviewSlotSelectedParams {
 
 export function generateInterviewSlotSelectedTemplate(params: InterviewSlotSelectedParams): RenderedEmail {
   const { agency, candidateName, positionTitle, companyName, interviewType, selectedSlotStr, meetingUrl, timezoneStr, recipientType = 'CANDIDATE', baseUrl } = params;
-  const appUrl = baseUrl || DEFAULT_BASE_URL;
-  const title = `Interview Confirmed - ${positionTitle} at ${companyName}`;
   const tzName = timezoneStr || 'IST (UTC+5:30)';
   
+  let subject = `Interview Confirmed - ${positionTitle}`;
+  if (recipientType === 'RECRUITER') {
+    subject = `Candidate Interview Confirmed - ${candidateName}`;
+  } else if (recipientType === 'CLIENT') {
+    subject = `Interview Slot Confirmed - ${candidateName}`;
+  }
+
   const meetingLinkDisplay = meetingUrl || `https://meet.jit.si/recruitos-interview-${encodeURIComponent(candidateName.toLowerCase().replace(/\s+/g, '-'))}`;
   const cta = { label: 'Join Interview', url: meetingLinkDisplay };
 
   const htmlContent = `
-    <p style="margin-top: 0;">Your interview has been officially confirmed and scheduled.</p>
+    <p style="margin-top: 0;">The interview slot has been officially confirmed and scheduled.</p>
 
     <div style="background-color: #ecfdf5; border-left: 4px solid #10b981; padding: 18px; border-radius: 8px; margin: 20px 0;">
       <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="5" style="font-size: 13px; color: #1e293b;">
@@ -760,7 +790,7 @@ export function generateInterviewSlotSelectedTemplate(params: InterviewSlotSelec
         <tr><td style="font-weight: 700; color: #047857;">Position Title:</td><td style="font-weight: 800; color: #0d3859;">${positionTitle}</td></tr>
         <tr><td style="font-weight: 700; color: #047857;">Company:</td><td style="font-weight: 700;">${companyName}</td></tr>
         <tr><td style="font-weight: 700; color: #047857;">Interview Round:</td><td>${interviewType}</td></tr>
-        <tr><td style="font-weight: 700; color: #047857;">Confirmed Time:</td><td style="font-weight: 800; color: #0d3859;">${selectedSlotStr}</td></tr>
+        <tr><td style="font-weight: 700; color: #047857;">Confirmed Date & Time:</td><td style="font-weight: 800; color: #0d3859;">${selectedSlotStr}</td></tr>
         <tr><td style="font-weight: 700; color: #047857;">Timezone:</td><td style="font-weight: 600; color: #475569;">${tzName}</td></tr>
         <tr><td style="font-weight: 700; color: #047857;">Meeting Link:</td><td><a href="${meetingLinkDisplay}" target="_blank" style="color: #0284c7; font-weight: 700; word-break: break-all;">${meetingLinkDisplay}</a></td></tr>
       </table>
@@ -769,7 +799,7 @@ export function generateInterviewSlotSelectedTemplate(params: InterviewSlotSelec
     <p style="font-size: 13px; color: #475569;">Please ensure you join 5 minutes prior to the scheduled start time.</p>
   `;
 
-  const textContent = `Interview Confirmed - ${positionTitle} at ${companyName}\n
+  const textContent = `${subject}\n
 Candidate Name: ${candidateName}
 Position: ${positionTitle}
 Company: ${companyName}
@@ -781,8 +811,8 @@ Meeting Link: ${meetingLinkDisplay}
 Join Interview: ${meetingLinkDisplay}`;
 
   return {
-    subject: title,
-    html: wrapMasterLayout(agency, title, htmlContent, cta),
+    subject,
+    html: wrapMasterLayout(agency, subject, htmlContent, cta),
     text: textContent
   };
 }
