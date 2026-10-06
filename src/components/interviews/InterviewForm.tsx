@@ -75,8 +75,8 @@ export function InterviewForm({ submissions = [], initialData = {}, isEdit = fal
   return (
     <form onSubmit={handleSubmit} className="space-y-6 max-w-3xl">
       {error && (
-        <div className="p-4 bg-rose-500/10 border border-rose-500/30 rounded-2xl flex items-center gap-3 text-xs text-rose-300">
-          <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+        <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl flex items-center gap-3 text-xs text-rose-800 font-bold">
+          <AlertCircle className="h-4 w-4 shrink-0 text-rose-600" />
           <span>{error}</span>
         </div>
       )}
@@ -84,15 +84,15 @@ export function InterviewForm({ submissions = [], initialData = {}, isEdit = fal
       {/* Select Submission / Candidate Pair */}
       {!isEdit && (
         <div className="space-y-2">
-          <label className="text-xs font-semibold text-slate-300 flex items-center gap-2">
-            <User className="h-4 w-4 text-brand-400" />
+          <label className="text-xs font-black text-slate-700 flex items-center gap-2 uppercase tracking-wide">
+            <User className="h-4 w-4 text-indigo-600" />
             Candidate Submission Record *
           </label>
           <select
             value={submissionId}
             onChange={(e) => setSubmissionId(e.target.value)}
             disabled={isPending}
-            className="w-full px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-brand-500 transition"
+            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 font-extrabold focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 transition cursor-pointer"
           >
             <option value="">Select Candidate & Job Requisition</option>
             {submissions.map((sub) => (
@@ -101,22 +101,22 @@ export function InterviewForm({ submissions = [], initialData = {}, isEdit = fal
               </option>
             ))}
           </select>
-          {fieldErrors.submissionId && <p className="text-[11px] text-rose-400">{fieldErrors.submissionId}</p>}
+          {fieldErrors.submissionId && <p className="text-[11px] text-rose-600 font-bold">{fieldErrors.submissionId}</p>}
         </div>
       )}
 
       {/* Grid: Round Type & Mode */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         <div className="space-y-2">
-          <label className="text-xs font-semibold text-slate-300 flex items-center gap-2">
-            <Briefcase className="h-4 w-4 text-indigo-400" />
+          <label className="text-xs font-black text-slate-700 flex items-center gap-2 uppercase tracking-wide">
+            <Briefcase className="h-4 w-4 text-indigo-600" />
             Interview Round Type *
           </label>
           <select
             value={roundType}
             onChange={(e) => setRoundType(e.target.value)}
             disabled={isPending}
-            className="w-full px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-brand-500 transition"
+            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 font-extrabold focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 transition cursor-pointer"
           >
             <option value="HR_ROUND">HR Round</option>
             <option value="TECHNICAL_ASSESSMENT">Technical Assessment</option>
@@ -125,19 +125,19 @@ export function InterviewForm({ submissions = [], initialData = {}, isEdit = fal
             <option value="FINAL_MANAGERIAL">Final Managerial</option>
             <option value="INTERNAL_SCREENING">Internal Screening</option>
           </select>
-          {fieldErrors.roundType && <p className="text-[11px] text-rose-400">{fieldErrors.roundType}</p>}
+          {fieldErrors.roundType && <p className="text-[11px] text-rose-600 font-bold">{fieldErrors.roundType}</p>}
         </div>
 
         <div className="space-y-2">
-          <label className="text-xs font-semibold text-slate-300 flex items-center gap-2">
-            <Video className="h-4 w-4 text-purple-400" />
+          <label className="text-xs font-black text-slate-700 flex items-center gap-2 uppercase tracking-wide">
+            <Video className="h-4 w-4 text-indigo-600" />
             Interview Mode *
           </label>
           <select
             value={mode}
             onChange={(e) => setMode(e.target.value)}
             disabled={isPending}
-            className="w-full px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-brand-500 transition"
+            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 font-extrabold focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 transition cursor-pointer"
           >
             <option value="GOOGLE_MEET">Google Meet</option>
             <option value="ZOOM">Zoom</option>
@@ -145,15 +145,15 @@ export function InterviewForm({ submissions = [], initialData = {}, isEdit = fal
             <option value="PHONE">Phone Call</option>
             <option value="IN_PERSON">In Person</option>
           </select>
-          {fieldErrors.mode && <p className="text-[11px] text-rose-400">{fieldErrors.mode}</p>}
+          {fieldErrors.mode && <p className="text-[11px] text-rose-600 font-bold">{fieldErrors.mode}</p>}
         </div>
       </div>
 
       {/* Grid: Schedule Date & Time, Duration */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         <div className="space-y-2">
-          <label className="text-xs font-semibold text-slate-300 flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-emerald-400" />
+          <label className="text-xs font-black text-slate-700 flex items-center gap-2 uppercase tracking-wide">
+            <Calendar className="h-4 w-4 text-indigo-600" />
             Schedule Date & Time *
           </label>
           <input
@@ -161,14 +161,14 @@ export function InterviewForm({ submissions = [], initialData = {}, isEdit = fal
             value={scheduledAt}
             onChange={(e) => setScheduledAt(e.target.value)}
             disabled={isPending}
-            className="w-full px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-brand-500 transition"
+            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 font-extrabold focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 transition cursor-pointer"
           />
-          {fieldErrors.scheduledAt && <p className="text-[11px] text-rose-400">{fieldErrors.scheduledAt}</p>}
+          {fieldErrors.scheduledAt && <p className="text-[11px] text-rose-600 font-bold">{fieldErrors.scheduledAt}</p>}
         </div>
 
         <div className="space-y-2">
-          <label className="text-xs font-semibold text-slate-300 flex items-center gap-2">
-            <Clock className="h-4 w-4 text-amber-400" />
+          <label className="text-xs font-black text-slate-700 flex items-center gap-2 uppercase tracking-wide">
+            <Clock className="h-4 w-4 text-indigo-600" />
             Duration (Minutes) *
           </label>
           <input
@@ -179,16 +179,16 @@ export function InterviewForm({ submissions = [], initialData = {}, isEdit = fal
             value={durationMinutes}
             onChange={(e) => setDurationMinutes(parseInt(e.target.value, 10) || 45)}
             disabled={isPending}
-            className="w-full px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-brand-500 transition"
+            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 font-extrabold focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 transition"
           />
-          {fieldErrors.durationMinutes && <p className="text-[11px] text-rose-400">{fieldErrors.durationMinutes}</p>}
+          {fieldErrors.durationMinutes && <p className="text-[11px] text-rose-600 font-bold">{fieldErrors.durationMinutes}</p>}
         </div>
       </div>
 
       {/* Meeting Link */}
       <div className="space-y-2">
-        <label className="text-xs font-semibold text-slate-300 flex items-center gap-2">
-          <LinkIcon className="h-4 w-4 text-cyan-400" />
+        <label className="text-xs font-black text-slate-700 flex items-center gap-2 uppercase tracking-wide">
+          <LinkIcon className="h-4 w-4 text-indigo-600" />
           Meeting Link (Google Meet / Zoom / Teams URL)
         </label>
         <input
@@ -197,15 +197,15 @@ export function InterviewForm({ submissions = [], initialData = {}, isEdit = fal
           onChange={(e) => setMeetingLink(e.target.value)}
           placeholder="https://meet.google.com/abc-defg-hij"
           disabled={isPending}
-          className="w-full px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-600 focus:outline-none focus:border-brand-500 transition"
+          className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 font-extrabold placeholder:text-slate-400 placeholder:font-normal focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 transition"
         />
-        {fieldErrors.meetingLink && <p className="text-[11px] text-rose-400">{fieldErrors.meetingLink}</p>}
+        {fieldErrors.meetingLink && <p className="text-[11px] text-rose-600 font-bold">{fieldErrors.meetingLink}</p>}
       </div>
 
       {/* Recruiter Notes */}
       <div className="space-y-2">
-        <label className="text-xs font-semibold text-slate-300 flex items-center gap-2">
-          <FileText className="h-4 w-4 text-slate-400" />
+        <label className="text-xs font-black text-slate-700 flex items-center gap-2 uppercase tracking-wide">
+          <FileText className="h-4 w-4 text-indigo-600" />
           Recruiter Preparation & Interview Notes
         </label>
         <textarea
@@ -214,24 +214,24 @@ export function InterviewForm({ submissions = [], initialData = {}, isEdit = fal
           onChange={(e) => setNotes(e.target.value)}
           placeholder="Add agenda, technical focus areas, interviewer details, or special instructions..."
           disabled={isPending}
-          className="w-full px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-600 focus:outline-none focus:border-brand-500 transition"
+          className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 font-extrabold placeholder:text-slate-400 placeholder:font-normal focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 transition"
         />
       </div>
 
       {/* Submit Buttons */}
-      <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800/80">
+      <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
         <button
           type="button"
           onClick={() => router.back()}
           disabled={isPending}
-          className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 rounded-xl text-xs font-semibold transition"
+          className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 rounded-xl text-xs font-extrabold transition cursor-pointer"
         >
           Cancel
         </button>
         <button
           type="submit"
           disabled={isPending}
-          className="px-6 py-2.5 bg-brand-500 hover:bg-brand-600 text-white rounded-xl text-xs font-bold shadow-lg shadow-brand-500/20 transition flex items-center gap-2"
+          className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-extrabold shadow-md shadow-indigo-600/20 transition flex items-center gap-2 cursor-pointer"
         >
           {isPending ? 'Saving Schedule...' : isEdit ? 'Update Interview Schedule' : 'Schedule Interview'}
         </button>

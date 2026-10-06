@@ -47,25 +47,27 @@ export default async function EditInterviewPage({ params }: EditInterviewPagePro
 
   return (
     <div className="space-y-6 pb-12">
-      <div className="flex items-center gap-3 border-b border-slate-800/80 pb-5">
+      {/* Top Header Bar */}
+      <div className="flex items-center gap-3 border-b border-slate-200 pb-5">
         <Link
           href={`/interviews/${params.id}`}
-          className="p-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-400 hover:text-white transition"
+          className="p-2 bg-white border border-slate-300 rounded-xl text-slate-700 hover:text-indigo-600 hover:bg-slate-100 transition shadow-2xs"
         >
           <ArrowLeft className="h-4 w-4" />
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-            <Calendar className="h-6 w-6 text-brand-400" />
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+            <Calendar className="h-6 w-6 text-indigo-600" />
             Edit / Reschedule Interview Round
           </h1>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs font-semibold text-slate-600 mt-1">
             Update interview schedule timing, meeting link, mode, or candidate prep notes.
           </p>
         </div>
       </div>
 
-      <div className="glass-panel p-6 sm:p-8 rounded-2xl border border-slate-800/80">
+      {/* Main Form Container */}
+      <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm shadow-slate-200/50">
         <InterviewForm initialData={initialData} isEdit={true} />
       </div>
     </div>

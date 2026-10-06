@@ -90,13 +90,12 @@ export default async function CandidateDetailPage({ params }: CandidateDetailPag
             Edit Profile
           </Link>
 
-          <div className="p-1 bg-white border border-slate-200 rounded-xl">
-            <DeleteCandidateButton
-              candidateId={candidate.id}
-              candidateName={`${candidate.firstName} ${candidate.lastName}`}
-              redirectToList={true}
-            />
-          </div>
+          <DeleteCandidateButton
+            candidateId={candidate.id}
+            candidateName={`${candidate.firstName} ${candidate.lastName}`}
+            redirectToList={true}
+            variant="full"
+          />
         </div>
       </div>
 

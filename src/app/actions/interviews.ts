@@ -1051,3 +1051,43 @@ export async function submitInterviewOutcomeFeedbackAction(
   }
 }
 
+/**
+ * Delete Interview Action
+ */
+export async function deleteInterviewAction(interviewId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    if (!interviewId) {
+      return { success: false, error: 'Interview ID is required.' };
+    }
+
+    const interview = await prisma.interviewSchedule.findUnique({
+      where: { id: interviewId }
+    });
+
+    if (!interview) {
+      return { success: false, error: 'Interview schedule record not found.' };
+    }
+
+    // Clean up related slots & prep kits
+    await prisma.proposedInterviewSlot.deleteMany({
+      where: { submissionId: interview.submissionId }
+    }).catch(() => null);
+
+    await (prisma as any).interviewPreparationKit.deleteMany({
+      where: { interviewScheduleId: interviewId }
+    }).catch(() => null);
+
+    // Delete interview schedule
+    await prisma.interviewSchedule.delete({
+      where: { id: interviewId }
+    });
+
+    revalidatePath('/interviews');
+    return { success: true };
+  } catch (err: any) {
+    console.error('Error in deleteInterviewAction:', err);
+    return { success: false, error: err.message || 'Failed to delete interview schedule.' };
+  }
+}
+
+

@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { Calendar, Plus, Search, Filter, Video, Clock, User, Briefcase, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
 import { InterviewStatusDropdown } from '@/components/interviews/InterviewStatusDropdown';
-import { InterviewReadinessWidget } from '@/components/interviews/InterviewReadinessWidget';
+import { DeleteInterviewButton } from '@/components/interviews/DeleteInterviewButton';
 import { getCurrentUser, hasPermission } from '@/lib/rbac';
 
 export const revalidate = 0;
@@ -104,9 +104,6 @@ export default async function InterviewsPage({ searchParams }: InterviewsPagePro
           Schedule New Interview
         </Link>
       </div>
-
-      {/* PART K: Interview Readiness Dashboard Widget */}
-      <InterviewReadinessWidget agencyId={agencyId} />
 
       {/* Controls Bar: Search & Filters */}
       <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm shadow-slate-200/50 space-y-4">
@@ -317,6 +314,10 @@ export default async function InterviewsPage({ searchParams }: InterviewsPagePro
                     >
                       Edit / Reschedule
                     </Link>
+                    <DeleteInterviewButton
+                      interviewId={interview.id}
+                      candidateName={`${candidate.firstName} ${candidate.lastName}`}
+                    />
                   </div>
                 </div>
               </div>
